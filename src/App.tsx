@@ -1,19 +1,42 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider } from './lib/auth'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
+import Cadastro from './pages/Cadastro'
+import Obras from './pages/Obras'
 import Obra from './pages/Obra'
+import RotaProtegida from './components/RotaProtegida'
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/app" element={<Navigate to="/app/demo" replace />} />
-        <Route path="/app/:obraId" element={<Obra />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/cadastro" element={<Cadastro />} />
+          <Route path="/app" element={<Navigate to="/app/obras" replace />} />
+          <Route
+            path="/app/obras"
+            element={
+              <RotaProtegida>
+                <Obras />
+              </RotaProtegida>
+            }
+          />
+          <Route path="/app/demo" element={<Obra />} />
+          <Route
+            path="/app/obra/:obraId"
+            element={
+              <RotaProtegida>
+                <Obra />
+              </RotaProtegida>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   )
 }
 

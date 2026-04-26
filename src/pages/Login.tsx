@@ -1,7 +1,8 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useState, FormEvent } from 'react'
 import { LogoFull } from '../lib/logo'
-import { supabase, supabaseConfigurado } from '../lib/supabase'
+import { entrar } from '../lib/auth'
+import { supabaseConfigurado } from '../lib/supabase'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -10,12 +11,12 @@ export default function Login() {
   const [erro, setErro] = useState<string | null>(null)
   const [carregando, setCarregando] = useState(false)
 
-  async function entrar(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault()
     setErro(null)
 
-    if (!supabaseConfigurado || !supabase) {
-      // Modo demo enquanto Supabase nao esta configurado
+    if (!supabaseConfigurado) {
+      // Modo demo: qualquer email/senha entra na obra exemplo
       if (email && senha) {
         navigate('/app/demo')
         return
@@ -25,14 +26,14 @@ export default function Login() {
     }
 
     setCarregando(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password: senha })
-    setCarregando(false)
-
-    if (error) {
-      setErro(error.message)
-      return
+    try {
+      await entrar(email, senha)
+      navigate('/app/obras')
+    } catch (err: any) {
+      setErro(err?.message ?? 'Erro ao entrar')
+    } finally {
+      setCarregando(false)
     }
-    navigate('/app/demo')
   }
 
   return (
@@ -48,11 +49,11 @@ export default function Login() {
 
           {!supabaseConfigurado && (
             <div className="mb-5 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-md px-3 py-2">
-              Modo demo ativo — Supabase ainda nao conectado. Qualquer email/senha entra na obra de exemplo.
+              Modo demo ativo - Supabase ainda nao conectado. Qualquer email/senha entra na obra de exemplo.
             </div>
           )}
 
-          <form onSubmit={entrar} className="space-y-4">
+          <form onSubmit={submit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Email</label>
               <input
@@ -72,7 +73,7 @@ export default function Login() {
                 className="input"
                 value={senha}
                 onChange={(e) => setSenha(e.target.value)}
-                placeholder="••••••••"
+                placeholder="senha"
                 required
               />
             </div>
@@ -80,12 +81,15 @@ export default function Login() {
             {erro && <div className="text-sm text-red-600">{erro}</div>}
 
             <button type="submit" className="btn-primary w-full" disabled={carregando}>
-              {carregando ? 'Entrando…' : 'Entrar'}
+              {carregando ? 'Entrando...' : 'Entrar'}
             </button>
           </form>
 
-          <div className="mt-5 pt-5 border-t border-slate-200 text-center">
-            <Link to="/" className="text-sm text-slate-500 hover:text-slate-900">← Voltar pra home</Link>
+          <div className="mt-5 pt-5 border-t border-slate-200 flex items-center justify-between text-sm">
+            <Link to="/" className="text-slate-500 hover:text-slate-900">Voltar</Link>
+            {supabaseConfigurado && (
+              <Link to="/cadastro" className="text-laranja-dark font-semibold hover:underline">Criar conta</Link>
+            )}
           </div>
         </div>
       </div>
