@@ -1,0 +1,75 @@
+import type { DadosObra } from '../types/obra'
+
+export const SEED: DadosObra = {
+  obra: {
+    nome: 'Residencial Vila Bela',
+    endereco: 'Rua das Palmeiras, 450 — Jundiai/SP',
+    cliente: 'Joao da Silva',
+    empresa: 'Esquadrias 5G',
+    inicio: '2026-03-12',
+  },
+  cards: [
+    {
+      id: 'c1',
+      tipo: 'peca',
+      sigla: 'J1',
+      nome: 'Janela sala 1',
+      descricao: 'Janela de aluminio branco 1,20 x 1,00m, 2 folhas de correr com vidro temperado 6mm.',
+      aba: 'cliente',
+      statusEmAndamento: null,
+      prazoContrato: null,
+      encerrado: false,
+      aceiteFinal: null,
+      historico: [
+        { autor: 'Empresa', tipo: 'empresa', data: '14/03/2026 10:20', texto: 'Primeira medicao realizada. Aguardando instalacao do contramarco pela construcao.' },
+      ],
+    },
+    {
+      id: 'c2',
+      tipo: 'peca',
+      sigla: 'J2',
+      nome: 'Janela sala 2',
+      descricao: 'Janela de aluminio branco 1,50 x 1,20m, 4 folhas com vidro temperado 8mm.',
+      aba: 'emandamento',
+      statusEmAndamento: 'Fabricando',
+      prazoContrato: '2026-05-10',
+      encerrado: false,
+      aceiteFinal: null,
+      historico: [
+        { autor: 'Empresa', tipo: 'empresa', data: '10/04/2026 09:15', texto: 'Contramarco conferido. Medidas confirmadas. Iniciando fabricacao.' },
+        { autor: 'Sistema', tipo: 'sistema', data: '10/04/2026 09:16', texto: 'Status alterado para "Fabricando". Prazo contratual: 10/05/2026.' },
+      ],
+    },
+    {
+      id: 'c3',
+      tipo: 'peca',
+      sigla: 'P1',
+      nome: 'Porta cozinha',
+      descricao: 'Porta de aluminio 0,80 x 2,10m com vidro temperado fume.',
+      aba: 'conclusao',
+      statusEmAndamento: 'Concluido',
+      prazoContrato: '2026-04-20',
+      encerrado: false,
+      aceiteFinal: null,
+      historico: [
+        { autor: 'Empresa', tipo: 'empresa', data: '18/04/2026 14:10', texto: 'Porta instalada. Testado funcionamento das fechaduras.' },
+        { autor: 'Sistema', tipo: 'sistema', data: '18/04/2026 14:12', texto: 'Status movido para "Conclusao". Aguardando aceite final do cliente.' },
+      ],
+    },
+    {
+      id: 'c4',
+      tipo: 'acordo',
+      sigla: 'A1',
+      nome: 'Cor da janela suite master',
+      descricao: 'Cliente optou por aluminio preto fosco ao inves do branco orcado. Acrescimo de R$ 480,00 acordado em obra.',
+      aba: 'empresa',
+      statusEmAndamento: null,
+      prazoContrato: null,
+      encerrado: false,
+      aceiteFinal: null,
+      historico: [
+        { autor: 'Cliente', tipo: 'cliente', data: '16/04/2026 16:30', texto: 'Confirmo a mudanca pra aluminio preto fosco na janela da suite master, com acrescimo de R$ 480,00.' },
+      ],
+    },
+  ],
+}

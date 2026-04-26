@@ -1,0 +1,586 @@
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import { LogoFull } from '../lib/logo'
+import { ABAS, STATUS_EM_ANDAMENTO } from '../types/obra'
+import type { AbaId, Card, DadosObra, Perfil, TipoCard } from '../types/obra'
+import { SEED } from '../lib/seed'
+import { agora, diasAte, formataData, statusSemantico } from '../lib/helpers'
+
+const STORAGE_PREFIX = '5gobra:'
+
+function carregar(obraId: string): DadosObra {
+  try {
+    const raw = localStorage.getItem(STORAGE_PREFIX + obraId)
+    if (raw) {
+      const d = JSON.parse(raw)
+      if (d?.obra && Array.isArray(d.cards)) return d
+    }
+  } catch {}
+  return structuredClone(SEED)
+}
+
+function salvar(obraId: string, dados: DadosObra) {
+  try { localStorage.setItem(STORAGE_PREFIX + obraId, JSON.stringify(dados)) } catch {}
+}
+
+export default function Obra() {
+  const { obraId = 'demo' } = useParams<{ obraId: string }>()
+
+  const [dados, setDados] = useState<DadosObra>(() => carregar(obraId))
+  const [perfil, setPerfil] = useState<Perfil>('empresa')
+  const [abaAtiva, setAbaAtiva] = useState<AbaId>('cliente')
+  const [cardAbertoId, setCardAbertoId] = useState<string | null>(null)
+  const [novoAberto, setNovoAberto] = useState(false)
+  const [toastMsg, setToastMsg] = useState<string | null>(null)
+
+  useEffect(() => salvar(obraId, dados), [obraId, dados])
+
+  function toast(msg: string) {
+    setToastMsg(msg)
+    window.setTimeout(() => setToastMsg(null), 2400)
+  }
+
+  function resetar() {
+    if (!confirm('Reiniciar o protótipo e voltar aos dados-exemplo?')) return
+    localStorage.removeItem(STORAGE_PREFIX + obraId)
+    setDados(structuredClone(SEED))
+    setCardAbertoId(null)
+    setNovoAberto(false)
+    toast('Demo reiniciada')
+  }
+
+  const cardAberto = useMemo(
+    () => dados.cards.find((c) => c.id === cardAbertoId) ?? null,
+    [dados.cards, cardAbertoId]
+  )
+
+  const cardsDaAba = dados.cards.filter((c) => c.aba === abaAtiva)
+  const contagem = (a: AbaId) => dados.cards.filter((c) => c.aba === a).length
+
+  function alterarStatus(cardId: string, novo: string) {
+    setDados((d) => ({
+      ...d,
+      cards: d.cards.map((c) => {
+        if (c.id !== cardId) return c
+        const hist = [...c.historico, { autor: 'Sistema', tipo: 'sistema' as const, data: agora(), texto: `Status: "${c.statusEmAndamento ?? '—'}" → "${novo}".` }]
+        if (novo === 'Concluido') {
+          hist.push({ autor: 'Sistema', tipo: 'sistema', data: agora(), texto: 'Peca concluida. Movida para aba Conclusao. Aguardando aceite do cliente.' })
+          return { ...c, statusEmAndamento: novo, aba: 'conclusao' as AbaId, historico: hist }
+        }
+        return { ...c, statusEmAndamento: novo, historico: hist }
+      }),
+    }))
+    if (novo === 'Concluido') toast('Peca concluida — aguardando aceite do cliente')
+    else toast('Status atualizado')
+  }
+
+  function registrar(cardId: string, texto: string, moveAba: boolean) {
+    if (!texto.trim()) { toast('Escreva algo antes de registrar'); return }
+    const autor = perfil === 'empresa' ? 'Empresa' : 'Cliente'
+    setDados((d) => ({
+      ...d,
+      cards: d.cards.map((c) => {
+        if (c.id !== cardId) return c
+        const hist = [...c.historico, { autor, tipo: perfil, data: agora(), texto }]
+        if (moveAba) {
+          let destino: AbaId = c.aba
+          if (c.aba === 'emandamento') destino = perfil === 'empresa' ? 'cliente' : 'empresa'
+          else if (c.aba === 'cliente') destino = 'empresa'
+          else if (c.aba === 'empresa') destino = 'cliente'
+          hist.push({ autor: 'Sistema', tipo: 'sistema', data: agora(), texto: `Movido para aba ${destino === 'cliente' ? 'Cliente' : destino === 'empresa' ? 'Empresa' : destino}.` })
+          return { ...c, aba: destino, historico: hist }
+        }
+        return { ...c, historico: hist }
+      }),
+    }))
+    setCardAbertoId(null)
+    toast('Registro salvo')
+  }
+
+  function darAceite(cardId: string) {
+    const quando = agora()
+    setDados((d) => ({
+      ...d,
+      cards: d.cards.map((c) => {
+        if (c.id !== cardId) return c
+        const hist = [
+          ...c.historico,
+          { autor: 'Cliente', tipo: 'cliente' as const, data: quando, texto: 'Aceite final confirmado. Peca oficialmente entregue e garantia iniciada.' },
+          { autor: 'Sistema', tipo: 'sistema' as const, data: quando, texto: 'Card encerrado. Inicio de garantia registrado.' },
+        ]
+        return { ...c, aceiteFinal: quando, encerrado: true, historico: hist }
+      }),
+    }))
+    toast('Aceite confirmado — garantia iniciada')
+  }
+
+  function reabrir(cardId: string, texto: string) {
+    if (!texto.trim()) { toast('Descreva o problema antes de reabrir'); return }
+    setDados((d) => ({
+      ...d,
+      cards: d.cards.map((c) => {
+        if (c.id !== cardId) return c
+        const hist = [
+          ...c.historico,
+          { autor: 'Cliente', tipo: 'cliente' as const, data: agora(), texto },
+          { autor: 'Sistema', tipo: 'sistema' as const, data: agora(), texto: 'Cliente identificou problema. Card reaberto e enviado para Empresa.' },
+        ]
+        return { ...c, aba: 'empresa' as AbaId, historico: hist }
+      }),
+    }))
+    setCardAbertoId(null)
+    toast('Card reaberto para a empresa')
+  }
+
+  function criar(novo: { tipo: TipoCard; sigla: string; nome: string; descricao: string; destino: AbaId; prazoContrato: string }) {
+    if (!novo.sigla.trim() || !novo.nome.trim()) { toast('Preencha sigla e nome'); return }
+    if (novo.destino === 'emandamento' && !novo.prazoContrato) { toast('Informe o prazo contratual'); return }
+    const autor = perfil === 'empresa' ? 'Empresa' : 'Cliente'
+    const card: Card = {
+      id: 'c_' + Date.now(),
+      tipo: novo.tipo,
+      sigla: novo.sigla.toUpperCase(),
+      nome: novo.nome,
+      descricao: novo.descricao,
+      aba: novo.destino,
+      statusEmAndamento: novo.destino === 'emandamento' ? 'Aguardando fabricacao' : null,
+      prazoContrato: novo.destino === 'emandamento' ? novo.prazoContrato : null,
+      encerrado: false,
+      aceiteFinal: null,
+      historico: [{ autor, tipo: perfil, data: agora(), texto: 'Registro criado.' }],
+    }
+    setDados((d) => ({ ...d, cards: [...d.cards, card] }))
+    setNovoAberto(false)
+    setAbaAtiva(novo.destino)
+    toast('Registro criado')
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] min-h-screen">
+      {/* Sidebar */}
+      <aside className="hidden md:flex flex-col gap-1 bg-white border-r border-slate-200 p-3">
+        <div className="px-2.5 pb-4 mb-3 border-b border-slate-200">
+          <Link to="/"><LogoFull /></Link>
+        </div>
+        <SidebarSec titulo="Obra" />
+        <NavItem ativo>Painel da obra</NavItem>
+        <NavItem>Documentos</NavItem>
+        <NavItem>Cronograma</NavItem>
+        <div className="h-px bg-slate-200 my-2 mx-1" />
+        <SidebarSec titulo="Sistema" />
+        <NavItem>Perfil</NavItem>
+        <NavItem>Configurações</NavItem>
+        <NavItem onClick={resetar}>Reiniciar demo</NavItem>
+        <div className="mt-auto pt-4 border-t border-slate-200">
+          <Link to="/" className="block px-3 py-2 text-xs text-slate-500 hover:text-slate-900">← Sair</Link>
+        </div>
+      </aside>
+
+      {/* Conteúdo */}
+      <main className="flex flex-col">
+        {/* Header */}
+        <div className="bg-white border-b border-slate-200 px-7 py-3.5 flex items-center gap-5">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2.5 font-bold text-[15px]">
+              {dados.obra.nome}
+              <span className="bg-laranja-soft text-laranja-dark border border-laranja-border px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">Protótipo</span>
+            </div>
+            <div className="text-xs text-slate-500 mt-0.5">{dados.obra.endereco} · Cliente: {dados.obra.cliente} · Empresa: {dados.obra.empresa}</div>
+          </div>
+          <div className="flex bg-slate-100 p-0.5 rounded-lg gap-0.5 border border-slate-200">
+            <button
+              className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition ${perfil === 'empresa' ? 'bg-laranja text-white' : 'text-slate-600 hover:text-slate-900'}`}
+              onClick={() => setPerfil('empresa')}
+            >Visão Empresa</button>
+            <button
+              className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition ${perfil === 'cliente' ? 'bg-laranja text-white' : 'text-slate-600 hover:text-slate-900'}`}
+              onClick={() => setPerfil('cliente')}
+            >Visão Cliente</button>
+          </div>
+        </div>
+
+        {/* Abas */}
+        <div className="bg-white border-b border-slate-200 px-7 flex gap-1 overflow-x-auto">
+          {ABAS.map((a) => (
+            <button
+              key={a.id}
+              onClick={() => setAbaAtiva(a.id)}
+              className={`py-3.5 px-4 text-xs md:text-[13px] font-semibold border-b-2 -mb-px whitespace-nowrap inline-flex items-center gap-2 transition ${abaAtiva === a.id ? 'text-laranja border-laranja' : 'text-slate-500 border-transparent hover:text-slate-900'}`}
+            >
+              {a.rotulo}
+              <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold min-w-[20px] text-center ${abaAtiva === a.id ? 'bg-laranja-soft text-laranja-dark' : 'bg-slate-100 text-slate-500'}`}>
+                {contagem(a.id)}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Info da aba */}
+        <div className="bg-white border-b border-slate-200 px-7 py-3.5 flex items-center justify-between gap-3 text-xs text-slate-500">
+          <span>{ABAS.find((a) => a.id === abaAtiva)?.descricao}</span>
+          {abaAtiva !== 'conclusao' && (
+            <button className="btn-primary text-xs px-3.5 py-2" onClick={() => setNovoAberto(true)}>+ Registrar</button>
+          )}
+        </div>
+
+        {/* Grid de cards */}
+        <div className="flex-1">
+          {cardsDaAba.length === 0 ? (
+            <div className="py-16 text-center text-slate-400">Nada aqui no momento.</div>
+          ) : (
+            <div className="grid gap-3.5 p-7" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+              {cardsDaAba.map((c) => (
+                <CardView key={c.id} card={c} perfil={perfil} onClick={() => setCardAbertoId(c.id)} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="text-[10px] text-slate-400 text-center py-4 border-t border-slate-200 bg-white">
+          Dados salvos localmente no navegador. Em breve conectado ao Supabase com sua obra real.
+        </div>
+      </main>
+
+      {/* Modais */}
+      {cardAberto && (
+        <ModalCard
+          card={cardAberto}
+          perfil={perfil}
+          onClose={() => setCardAbertoId(null)}
+          onAlterarStatus={(s) => alterarStatus(cardAberto.id, s)}
+          onRegistrar={(t, mover) => registrar(cardAberto.id, t, mover)}
+          onAceitar={() => darAceite(cardAberto.id)}
+          onReabrir={(t) => reabrir(cardAberto.id, t)}
+        />
+      )}
+      {novoAberto && (
+        <ModalNovo
+          abaAtiva={abaAtiva}
+          onClose={() => setNovoAberto(false)}
+          onCriar={criar}
+        />
+      )}
+
+      {/* Toast */}
+      {toastMsg && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white border border-slate-300 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2.5 text-sm z-50">
+          <span className="text-status-andamento font-bold">✓</span>
+          <span>{toastMsg}</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SidebarSec({ titulo }: { titulo: string }) {
+  return <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3 py-1">{titulo}</div>
+}
+function NavItem({ children, ativo, onClick }: { children: React.ReactNode; ativo?: boolean; onClick?: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition text-left w-full ${ativo ? 'bg-laranja text-white font-semibold' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
+    >
+      <span className="w-4 inline-flex items-center justify-center">■</span>
+      {children}
+    </button>
+  )
+}
+
+function CardView({ card, perfil, onClick }: { card: Card; perfil: Perfil; onClick: () => void }) {
+  const s = statusSemantico(card)
+  const tipoLabel = { peca: 'Peça', acordo: 'Acordo', reclamacao: 'Reclamação' }[card.tipo]
+  const labelStatus =
+    s === 'aguarda' ? (card.aba === 'cliente' ? 'Aguardando cliente' : card.aba === 'empresa' ? 'Aguardando empresa' : 'Aguardando')
+    : s === 'andamento' ? 'Em andamento'
+    : s === 'instalado' ? 'Instalado'
+    : s === 'concluido' ? (card.aceiteFinal ? 'Aceite concluído' : 'Aguardando aceite')
+    : 'Atenção'
+  const statusTxt = card.aba === 'emandamento' && card.statusEmAndamento ? card.statusEmAndamento : labelStatus
+
+  let prazoNode: React.ReactNode = null
+  if (card.aba === 'emandamento' && card.prazoContrato) {
+    const dias = diasAte(card.prazoContrato)
+    if (dias !== null) {
+      let cls = 'text-[11px] font-medium text-slate-400'
+      let txt = `Prazo ${formataData(card.prazoContrato)}`
+      if (dias < 0) { cls = 'text-[11px] font-semibold text-red-600'; txt = `Atrasado ${Math.abs(dias)}d` }
+      else if (dias <= 7) { cls = 'text-[11px] font-semibold text-red-600'; txt = `Vence em ${dias}d` }
+      else if (dias <= 30) { cls = 'text-[11px] text-status-andamento font-medium'; txt = `${dias}d restantes` }
+      prazoNode = <span className={cls}>{txt}</span>
+    }
+  }
+
+  const novoParaVoce =
+    (perfil === 'empresa' && card.aba === 'empresa') ||
+    (perfil === 'cliente' && card.aba === 'cliente') ||
+    (perfil === 'cliente' && card.aba === 'conclusao' && !card.aceiteFinal)
+
+  const corLado = card.tipo === 'peca' ? 'bg-peca' : 'bg-acordo'
+  const siglaCls = card.tipo === 'peca'
+    ? 'bg-peca-soft text-peca-dark border-peca-border'
+    : 'bg-acordo-soft text-acordo-dark border-acordo-border'
+  const dotCls = {
+    aguarda: 'bg-status-aguarda',
+    andamento: 'bg-status-andamento',
+    instalado: 'bg-status-instalado',
+    concluido: 'bg-status-concluido',
+    erro: 'bg-status-erro',
+  }[s]
+
+  return (
+    <div onClick={onClick} className={`card-base ${card.encerrado ? 'opacity-60' : ''}`}>
+      <span className={`absolute left-0 top-0 bottom-0 w-1 ${corLado}`} />
+      {novoParaVoce && !card.encerrado && (
+        <span className="absolute top-2.5 right-2.5 bg-laranja text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+          Pra você
+        </span>
+      )}
+      <div className="flex items-center justify-between gap-2.5 mb-2">
+        <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold border ${siglaCls}`}>{card.sigla}</span>
+        <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">{tipoLabel}</span>
+      </div>
+      <div className={`text-sm font-semibold mb-1 leading-snug ${card.encerrado ? 'line-through' : ''}`}>{card.nome}</div>
+      <div className="text-xs text-slate-500 leading-snug mb-2.5 line-clamp-2">{card.descricao}</div>
+      <div className="flex items-center justify-between gap-2 mt-2 pt-2.5 border-t border-slate-200">
+        <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
+          <span className={`w-2 h-2 rounded-full ${dotCls}`} />
+          {statusTxt}
+        </span>
+        {prazoNode}
+      </div>
+    </div>
+  )
+}
+
+function ModalCard({
+  card, perfil, onClose, onAlterarStatus, onRegistrar, onAceitar, onReabrir,
+}: {
+  card: Card; perfil: Perfil; onClose: () => void
+  onAlterarStatus: (s: string) => void
+  onRegistrar: (texto: string, moveAba: boolean) => void
+  onAceitar: () => void
+  onReabrir: (texto: string) => void
+}) {
+  const [texto, setTexto] = useState('')
+  const tipoLabel = { peca: 'Peça', acordo: 'Acordo', reclamacao: 'Reclamação' }[card.tipo]
+  const abaLabel = ABAS.find((a) => a.id === card.aba)?.rotulo
+  const siglaCls = card.tipo === 'peca'
+    ? 'bg-peca-soft text-peca-dark border-peca-border'
+    : 'bg-acordo-soft text-acordo-dark border-acordo-border'
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm grid place-items-center p-5 z-40" onClick={onClose}>
+      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="px-6 py-5 border-b border-slate-200 flex items-start gap-4">
+          <div className="flex-1 min-w-0">
+            <span className={`inline-block px-2.5 py-1 rounded-md text-xs font-bold border mb-2 ${siglaCls}`}>{card.sigla} — {tipoLabel}</span>
+            <div className="text-lg font-bold mb-1">{card.nome}</div>
+            <div className="text-sm text-slate-500">{card.descricao}</div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-md bg-slate-100 text-slate-500 grid place-items-center hover:bg-slate-200 hover:text-slate-900 transition">×</button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+          <div className="grid grid-cols-2 gap-2.5">
+            <Info label="Aba atual" valor={abaLabel ?? '—'} />
+            <Info label="Tipo" valor={tipoLabel} />
+            {card.aba === 'emandamento' && (
+              <>
+                <Info label="Prazo contratual" valor={formataData(card.prazoContrato)} />
+                <Info label="Status" valor={card.statusEmAndamento ?? '—'} />
+              </>
+            )}
+          </div>
+
+          {card.aba === 'conclusao' && (
+            <div>
+              {card.aceiteFinal ? (
+                <div className="bg-emerald-50 border border-emerald-200 px-4 py-3 rounded-lg text-xs text-slate-700">
+                  <span className="text-emerald-700 font-bold">✓ Aceite confirmado</span> pelo cliente em {card.aceiteFinal}. Garantia iniciada nesta data.
+                </div>
+              ) : perfil === 'cliente' ? (
+                <div className="bg-emerald-50 border border-emerald-200 px-4 py-4 rounded-lg">
+                  <div className="font-bold text-sm text-emerald-700 mb-1">✓ Dar aceite final</div>
+                  <p className="text-xs text-slate-600 mb-3">A peça foi instalada pela empresa. Ao confirmar, você aceita oficialmente a entrega desta peça e inicia a garantia.</p>
+                  <button className="btn-primary" onClick={onAceitar}>Confirmar aceite</button>
+                </div>
+              ) : (
+                <div className="bg-emerald-50 border border-emerald-200 px-4 py-4 rounded-lg">
+                  <div className="font-bold text-sm text-emerald-700 mb-1">⏳ Aguardando aceite do cliente</div>
+                  <p className="text-xs text-slate-600">O cliente precisa abrir este card e confirmar o aceite para iniciar a garantia.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {card.aba === 'emandamento' && perfil === 'empresa' && !card.encerrado && (
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">Status do processo (empresa)</div>
+              <select
+                className="input"
+                value={card.statusEmAndamento ?? ''}
+                onChange={(e) => onAlterarStatus(e.target.value)}
+              >
+                {STATUS_EM_ANDAMENTO.map((s) => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+          )}
+
+          {!card.encerrado && (
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">Registrar novo movimento</div>
+              <textarea
+                className="input min-h-[90px]"
+                value={texto}
+                onChange={(e) => setTexto(e.target.value)}
+                placeholder="Descreva o que aconteceu, a confirmacao, pedido, combinado..."
+              />
+              <div className="flex gap-2 flex-wrap mt-2.5">
+                <button className="btn-primary" onClick={() => onRegistrar(texto, true)}>
+                  Registrar {perfil === 'empresa' ? '(joga pro cliente)' : '(joga pra empresa)'}
+                </button>
+                {card.aba === 'emandamento' && (
+                  <button className="btn-ghost" onClick={() => onRegistrar(texto, false)}>Registrar sem mover</button>
+                )}
+                {card.aba === 'conclusao' && perfil === 'cliente' && !card.aceiteFinal && (
+                  <button
+                    className="btn bg-transparent text-red-600 border border-red-200 hover:bg-red-50"
+                    onClick={() => onReabrir(texto)}
+                  >Tem problema — reabrir</button>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">Histórico</div>
+            <div className="space-y-2.5">
+              {(card.historico ?? []).slice().reverse().map((h, i) => (
+                <div
+                  key={i}
+                  className={`bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-md text-xs ${
+                    h.tipo === 'empresa' ? 'border-l-2 border-l-laranja' :
+                    h.tipo === 'cliente' ? 'border-l-2 border-l-peca' : 'border-l-2 border-l-slate-300 opacity-90'
+                  }`}
+                >
+                  <div className="flex justify-between items-center mb-1 gap-2.5">
+                    <span className={`font-bold text-[11px] uppercase tracking-wider ${
+                      h.tipo === 'empresa' ? 'text-laranja-dark' :
+                      h.tipo === 'cliente' ? 'text-peca-dark' : 'text-slate-400'
+                    }`}>{h.autor}</span>
+                    <span className="text-[11px] text-slate-400">{h.data}</span>
+                  </div>
+                  <div className="text-slate-700 leading-relaxed">{h.texto}</div>
+                </div>
+              ))}
+              {(card.historico ?? []).length === 0 && (
+                <div className="bg-slate-50 px-3 py-2.5 rounded-md text-xs text-slate-400">Nenhum registro ainda.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Info({ label, valor }: { label: string; valor: string }) {
+  return (
+    <div className="bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-md">
+      <div className="text-[10px] text-slate-400 uppercase tracking-wide font-semibold mb-0.5">{label}</div>
+      <div className="text-sm text-slate-900 font-medium">{valor}</div>
+    </div>
+  )
+}
+
+function ModalNovo({
+  abaAtiva, onClose, onCriar,
+}: {
+  abaAtiva: AbaId
+  onClose: () => void
+  onCriar: (n: { tipo: TipoCard; sigla: string; nome: string; descricao: string; destino: AbaId; prazoContrato: string }) => void
+}) {
+  const [tipo, setTipo] = useState<TipoCard>('peca')
+  const [sigla, setSigla] = useState('')
+  const [nome, setNome] = useState('')
+  const [descricao, setDescricao] = useState('')
+  const [destino, setDestino] = useState<AbaId>(abaAtiva === 'conclusao' ? 'cliente' : abaAtiva)
+  const [prazoContrato, setPrazoContrato] = useState('')
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm grid place-items-center p-5 z-40" onClick={onClose}>
+      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="px-6 py-5 border-b border-slate-200 flex items-start gap-4">
+          <div className="flex-1">
+            <div className="text-lg font-bold mb-1">+ Novo registro</div>
+            <div className="text-sm text-slate-500">Crie uma peça, acordo ou reclamação nesta obra.</div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-md bg-slate-100 text-slate-500 grid place-items-center hover:bg-slate-200 hover:text-slate-900 transition">×</button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">Tipo</div>
+            <div className="flex gap-2 flex-wrap">
+              {(['peca', 'acordo', 'reclamacao'] as TipoCard[]).map((t) => {
+                const sel = tipo === t
+                const cls = sel
+                  ? t === 'peca'
+                    ? 'bg-peca-soft border-peca-border text-peca-dark'
+                    : 'bg-acordo-soft border-acordo-border text-acordo-dark'
+                  : 'bg-white border-slate-200 text-slate-500'
+                return (
+                  <button
+                    key={t}
+                    onClick={() => setTipo(t)}
+                    className={`flex-1 min-w-[100px] border px-3 py-2.5 rounded-md font-semibold text-xs text-center transition ${cls}`}
+                  >
+                    {t === 'peca' ? 'Peça' : t === 'acordo' ? 'Acordo' : 'Reclamação'}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="flex gap-2.5 flex-col md:flex-row">
+            <div className="flex-1">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Sigla/ID</label>
+              <input className="input" value={sigla} onChange={(e) => setSigla(e.target.value)} placeholder="J1" />
+            </div>
+            <div className="flex-1">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Destino inicial</label>
+              <select className="input" value={destino} onChange={(e) => setDestino(e.target.value as AbaId)}>
+                <option value="cliente">Cliente (espera algo do cliente)</option>
+                <option value="empresa">Empresa (espera algo da empresa)</option>
+                {tipo === 'peca' && <option value="emandamento">Em andamento (já com prazo)</option>}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Nome</label>
+            <input className="input" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Janela sala 2 / Cor da porta suite / Vidro trincado" />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Descrição</label>
+            <textarea className="input min-h-[90px]" value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Detalhes da peça, termos do acordo ou descrição do problema" />
+          </div>
+
+          {destino === 'emandamento' && (
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Prazo contratual</label>
+              <input className="input" type="date" value={prazoContrato} onChange={(e) => setPrazoContrato(e.target.value)} />
+            </div>
+          )}
+        </div>
+
+        <div className="px-6 py-4 border-t border-slate-200 flex gap-2.5 justify-end bg-slate-50">
+          <button className="btn-ghost" onClick={onClose}>Cancelar</button>
+          <button className="btn-primary" onClick={() => onCriar({ tipo, sigla, nome, descricao, destino, prazoContrato })}>Criar</button>
+        </div>
+      </div>
+    </div>
+  )
+}
