@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "G Obra — modulo de comunicacao Empresa x Cliente do 5G Gerenciamento",
+  "description": "G Obra - modulo de comunicacao Empresa x Cliente do 5G Gerenciamento",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -24,4 +24,6 @@
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.13",
     "typescript": "^5.6.2",
-    "vite
+    "vite": "^5.4.8"
+  }
+}
