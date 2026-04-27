@@ -279,8 +279,8 @@ function ModalCardCliente({
 
           {card.aba === 'cliente' && !card.encerrado && (
             <div className="bg-emerald-50 border border-emerald-200 px-4 py-4 rounded-lg">
-              <div className="font-bold text-sm text-emerald-700 mb-1">Esta tudo certo com este item?</div>
-              <p className="text-xs text-slate-600 mb-3">Se a peca esta correta como combinado, basta confirmar. Sua confirmacao fica registrada com data e hora.</p>
+              <div className="font-bold text-sm text-emerald-700 mb-1">Está tudo certo com este item?</div>
+              <p className="text-xs text-slate-600 mb-3">Se este item está como combinado, é só confirmar. Sua confirmação fica registrada com data e hora — vale como prova oficial.</p>
               <button
                 className="btn-primary w-full md:w-auto"
                 disabled={salvando}
