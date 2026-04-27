@@ -7,6 +7,7 @@ import {
   pegarObraPorToken,
   listarCardsDaObra,
   criarCard,
+  criarVariosCards,
   atualizarCard,
   adicionarHistorico,
   rowsParaDadosObra,
@@ -14,6 +15,7 @@ import {
   type ObraRow,
 } from '../lib/api'
 import { agora } from '../lib/helpers'
+import type { ItemImportado } from '../lib/alumisoft'
 
 const STORAGE_PREFIX = '5gobra:'
 
@@ -37,14 +39,13 @@ interface UseObraDataResult {
   darAceite: (cardId: string) => Promise<void>
   reabrir: (cardId: string, texto: string, perfil: 'empresa' | 'cliente') => Promise<void>
   criarNovo: (input: NovoCardInput, perfil: 'empresa' | 'cliente') => Promise<AbaId>
+  importarItens: (itens: ItemImportado[], perfil: 'empresa' | 'cliente') => Promise<number>
   resetar: () => void
 }
 
 function ehDemo(idOrToken: string) {
   return idOrToken === 'demo' || !supabaseConfigurado
 }
-
-// =============== MODO DEMO (localStorage) ===============
 
 function carregarDemo(idOrToken: string): DadosObra {
   try {
@@ -60,8 +61,6 @@ function carregarDemo(idOrToken: string): DadosObra {
 function salvarDemo(idOrToken: string, dados: DadosObra) {
   try { localStorage.setItem(STORAGE_PREFIX + idOrToken, JSON.stringify(dados)) } catch {}
 }
-
-// =============== MODO BANCO ===============
 
 async function carregarDoBanco(obraResolvida: ObraRow): Promise<DadosObra> {
   const cardsRows = await listarCardsDaObra(obraResolvida.id)
@@ -79,8 +78,6 @@ async function carregarDoBanco(obraResolvida: ObraRow): Promise<DadosObra> {
   return rowsParaDadosObra(obraResolvida, cardsRows, histPorCard)
 }
 
-// =============== HOOK ===============
-
 export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' = 'id'): UseObraDataResult {
   const modo: 'demo' | 'banco' = ehDemo(idOrToken) ? 'demo' : 'banco'
   const [dados, setDados] = useState<DadosObra | null>(null)
@@ -88,7 +85,6 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
 
-  // Carga inicial
   useEffect(() => {
     let ativo = true
     setCarregando(true)
@@ -122,12 +118,9 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     return () => { ativo = false }
   }, [idOrToken, modo, modoCarregamento])
 
-  // Salvar localmente no demo (toda mudanca em dados)
   useEffect(() => {
     if (modo === 'demo' && dados) salvarDemo(idOrToken, dados)
   }, [idOrToken, modo, dados])
-
-  // ============ Mutacoes ============
 
   const alterarStatus = useCallback(async (cardId: string, novoStatus: string) => {
     if (!dados) return
@@ -302,11 +295,59 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     return input.destino
   }, [modo, obraReal])
 
+  const importarItens = useCallback(async (itens: ItemImportado[], perfil: 'empresa' | 'cliente'): Promise<number> => {
+    if (itens.length === 0) return 0
+    const autor = perfil === 'empresa' ? 'Empresa' : 'Cliente'
+    if (modo === 'demo') {
+      setDados((d) => {
+        if (!d) return d
+        const novosCards: Card[] = itens.map((it, i) => ({
+          id: 'c_' + Date.now() + '_' + i,
+          tipo: it.tipo,
+          sigla: it.sigla.toUpperCase(),
+          nome: it.nome,
+          descricao: it.descricao,
+          aba: 'cliente' as AbaId,
+          statusEmAndamento: null,
+          prazoContrato: null,
+          encerrado: false,
+          aceiteFinal: null,
+          historico: [{ autor, tipo: perfil as AutorTipo, data: agora(), texto: 'Item importado do Alumisoft (origem: ' + it.origemTipologia + ').' }],
+        }))
+        return { ...d, cards: [...d.cards, ...novosCards] }
+      })
+      return itens.length
+    }
+    if (!obraReal) throw new Error('Obra nao carregada')
+    const linhas = itens.map((it) => ({
+      obra_id: obraReal.id,
+      tipo: it.tipo,
+      sigla: it.sigla.toUpperCase(),
+      nome: it.nome,
+      descricao: it.descricao,
+      aba: 'cliente' as AbaId,
+      status_em_andamento: null,
+      prazo_contrato: null,
+    }))
+    const criados = await criarVariosCards(linhas)
+    await Promise.all(criados.map((c, idx) =>
+      adicionarHistorico({
+        card_id: c.id,
+        autor,
+        autor_tipo: perfil,
+        texto: 'Item importado do Alumisoft (origem: ' + itens[idx].origemTipologia + ').',
+      })
+    ))
+    const novo = await carregarDoBanco(obraReal)
+    setDados(novo)
+    return criados.length
+  }, [modo, obraReal])
+
   const resetar = useCallback(() => {
     if (modo !== 'demo') return
     localStorage.removeItem(STORAGE_PREFIX + idOrToken)
     setDados(structuredClone(SEED))
   }, [modo, idOrToken])
 
-  return { dados, modo, obraReal, carregando, erro, alterarStatus, registrar, darAceite, reabrir, criarNovo, resetar }
+  return { dados, modo, obraReal, carregando, erro, alterarStatus, registrar, darAceite, reabrir, criarNovo, importarItens, resetar }
 }

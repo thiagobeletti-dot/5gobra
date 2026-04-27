@@ -6,6 +6,7 @@ import type { AbaId, Card, Perfil, TipoCard } from '../types/obra'
 import { diasAte, formataData, statusSemantico } from '../lib/helpers'
 import { useObraData } from '../hooks/useObraData'
 import { sair, useAuth } from '../lib/auth'
+import ImportarItens from '../components/ImportarItens'
 
 export default function Obra() {
   const { obraId = 'demo' } = useParams<{ obraId: string }>()
@@ -17,6 +18,7 @@ export default function Obra() {
   const [abaAtiva, setAbaAtiva] = useState<AbaId>('cliente')
   const [cardAbertoId, setCardAbertoId] = useState<string | null>(null)
   const [novoAberto, setNovoAberto] = useState(false)
+  const [importarAberto, setImportarAberto] = useState(false)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
 
   function toast(msg: string) {
@@ -53,7 +55,6 @@ export default function Obra() {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] min-h-screen">
-      {/* Sidebar */}
       <aside className="hidden md:flex flex-col gap-1 bg-white border-r border-slate-200 p-3">
         <div className="px-2.5 pb-4 mb-3 border-b border-slate-200">
           <Link to="/"><LogoFull /></Link>
@@ -90,9 +91,7 @@ export default function Obra() {
         </div>
       </aside>
 
-      {/* Conteudo */}
       <main className="flex flex-col">
-        {/* Header */}
         <div className="bg-white border-b border-slate-200 px-7 py-3.5 flex items-center gap-5">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2.5 font-bold text-[15px]">
@@ -109,45 +108,47 @@ export default function Obra() {
           </div>
           <div className="flex bg-slate-100 p-0.5 rounded-lg gap-0.5 border border-slate-200">
             <button
-              className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition ${perfil === 'empresa' ? 'bg-laranja text-white' : 'text-slate-600 hover:text-slate-900'}`}
+              className={'px-3.5 py-1.5 rounded-md text-xs font-semibold transition ' + (perfil === 'empresa' ? 'bg-laranja text-white' : 'text-slate-600 hover:text-slate-900')}
               onClick={() => setPerfil('empresa')}
             >Visao Empresa</button>
             <button
-              className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition ${perfil === 'cliente' ? 'bg-laranja text-white' : 'text-slate-600 hover:text-slate-900'}`}
+              className={'px-3.5 py-1.5 rounded-md text-xs font-semibold transition ' + (perfil === 'cliente' ? 'bg-laranja text-white' : 'text-slate-600 hover:text-slate-900')}
               onClick={() => setPerfil('cliente')}
             >Visao Cliente</button>
           </div>
         </div>
 
-        {/* Abas */}
         <div className="bg-white border-b border-slate-200 px-7 flex gap-1 overflow-x-auto">
           {ABAS.map((a) => (
             <button
               key={a.id}
               onClick={() => setAbaAtiva(a.id)}
-              className={`py-3.5 px-4 text-xs md:text-[13px] font-semibold border-b-2 -mb-px whitespace-nowrap inline-flex items-center gap-2 transition ${abaAtiva === a.id ? 'text-laranja border-laranja' : 'text-slate-500 border-transparent hover:text-slate-900'}`}
+              className={'py-3.5 px-4 text-xs md:text-[13px] font-semibold border-b-2 -mb-px whitespace-nowrap inline-flex items-center gap-2 transition ' + (abaAtiva === a.id ? 'text-laranja border-laranja' : 'text-slate-500 border-transparent hover:text-slate-900')}
             >
               {a.rotulo}
-              <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold min-w-[20px] text-center ${abaAtiva === a.id ? 'bg-laranja-soft text-laranja-dark' : 'bg-slate-100 text-slate-500'}`}>
+              <span className={'px-2 py-0.5 rounded-full text-[11px] font-bold min-w-[20px] text-center ' + (abaAtiva === a.id ? 'bg-laranja-soft text-laranja-dark' : 'bg-slate-100 text-slate-500')}>
                 {contagem(a.id)}
               </span>
             </button>
           ))}
         </div>
 
-        {/* Info da aba */}
         <div className="bg-white border-b border-slate-200 px-7 py-3.5 flex items-center justify-between gap-3 text-xs text-slate-500">
           <span>{ABAS.find((a) => a.id === abaAtiva)?.descricao}</span>
           {abaAtiva !== 'conclusao' && (
-            <button className="btn-primary text-xs px-3.5 py-2" onClick={() => setNovoAberto(true)}>+ Registrar</button>
+            <div className="flex gap-2">
+              {data.modo === 'banco' && (
+                <button className="btn-ghost text-xs px-3.5 py-2" onClick={() => setImportarAberto(true)}>+ Importar lista</button>
+              )}
+              <button className="btn-primary text-xs px-3.5 py-2" onClick={() => setNovoAberto(true)}>+ Registrar</button>
+            </div>
           )}
         </div>
 
-        {/* Grid de cards */}
         <div className="flex-1">
           {cardsDaAba.length === 0 ? (
             <div className="py-16 text-center text-slate-400">
-              {dados.cards.length === 0 ? 'Nenhum item cadastrado ainda. Clique em "+ Registrar" pra criar o primeiro.' : 'Nada nesta aba no momento.'}
+              {dados.cards.length === 0 ? 'Nenhum item cadastrado ainda. Clique em "+ Registrar" pra criar o primeiro, ou "+ Importar lista" pra carregar via Alumisoft.' : 'Nada nesta aba no momento.'}
             </div>
           ) : (
             <div className="grid gap-3.5 p-7" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
@@ -193,6 +194,7 @@ export default function Obra() {
           }}
         />
       )}
+
       {novoAberto && (
         <ModalNovo
           abaAtiva={abaAtiva}
@@ -204,6 +206,19 @@ export default function Obra() {
             setNovoAberto(false)
             setAbaAtiva(destino)
             toast('Registro criado')
+          }}
+        />
+      )}
+
+      {importarAberto && data.obraReal && (
+        <ImportarItens
+          obraId={data.obraReal.id}
+          onClose={() => setImportarAberto(false)}
+          onImportar={async (itens) => {
+            const n = await data.importarItens(itens, perfil)
+            setImportarAberto(false)
+            setAbaAtiva('cliente')
+            toast(n + (n === 1 ? ' item importado' : ' itens importados'))
           }}
         />
       )}
@@ -221,11 +236,12 @@ export default function Obra() {
 function SidebarSec({ titulo }: { titulo: string }) {
   return <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3 py-1">{titulo}</div>
 }
+
 function NavItem({ children, ativo, onClick }: { children: React.ReactNode; ativo?: boolean; onClick?: () => void }) {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition text-left w-full ${ativo ? 'bg-laranja text-white font-semibold' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
+      className={'flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition text-left w-full ' + (ativo ? 'bg-laranja text-white font-semibold' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900')}
     >
       <span className="w-4 inline-flex items-center justify-center">.</span>
       {children}
@@ -249,10 +265,10 @@ function CardView({ card, perfil, onClick }: { card: Card; perfil: Perfil; onCli
     const dias = diasAte(card.prazoContrato)
     if (dias !== null) {
       let cls = 'text-[11px] font-medium text-slate-400'
-      let txt = `Prazo ${formataData(card.prazoContrato)}`
-      if (dias < 0) { cls = 'text-[11px] font-semibold text-red-600'; txt = `Atrasado ${Math.abs(dias)}d` }
-      else if (dias <= 7) { cls = 'text-[11px] font-semibold text-red-600'; txt = `Vence em ${dias}d` }
-      else if (dias <= 30) { cls = 'text-[11px] text-status-andamento font-medium'; txt = `${dias}d restantes` }
+      let txt = 'Prazo ' + formataData(card.prazoContrato)
+      if (dias < 0) { cls = 'text-[11px] font-semibold text-red-600'; txt = 'Atrasado ' + Math.abs(dias) + 'd' }
+      else if (dias <= 7) { cls = 'text-[11px] font-semibold text-red-600'; txt = 'Vence em ' + dias + 'd' }
+      else if (dias <= 30) { cls = 'text-[11px] text-status-andamento font-medium'; txt = dias + 'd restantes' }
       prazoNode = <span className={cls}>{txt}</span>
     }
   }
@@ -275,22 +291,22 @@ function CardView({ card, perfil, onClick }: { card: Card; perfil: Perfil; onCli
   }[s]
 
   return (
-    <div onClick={onClick} className={`card-base ${card.encerrado ? 'opacity-60' : ''}`}>
-      <span className={`absolute left-0 top-0 bottom-0 w-1 ${corLado}`} />
+    <div onClick={onClick} className={'card-base ' + (card.encerrado ? 'opacity-60' : '')}>
+      <span className={'absolute left-0 top-0 bottom-0 w-1 ' + corLado} />
       {novoParaVoce && !card.encerrado && (
         <span className="absolute top-2.5 right-2.5 bg-laranja text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider">
           Pra voce
         </span>
       )}
       <div className="flex items-center justify-between gap-2.5 mb-2">
-        <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold border ${siglaCls}`}>{card.sigla}</span>
+        <span className={'px-2 py-0.5 rounded-md text-[11px] font-bold border ' + siglaCls}>{card.sigla}</span>
         <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">{tipoLabel}</span>
       </div>
-      <div className={`text-sm font-semibold mb-1 leading-snug ${card.encerrado ? 'line-through' : ''}`}>{card.nome}</div>
+      <div className={'text-sm font-semibold mb-1 leading-snug ' + (card.encerrado ? 'line-through' : '')}>{card.nome}</div>
       <div className="text-xs text-slate-500 leading-snug mb-2.5 line-clamp-2">{card.descricao}</div>
       <div className="flex items-center justify-between gap-2 mt-2 pt-2.5 border-t border-slate-200">
         <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
-          <span className={`w-2 h-2 rounded-full ${dotCls}`} />
+          <span className={'w-2 h-2 rounded-full ' + dotCls} />
           {statusTxt}
         </span>
         {prazoNode}
@@ -320,7 +336,7 @@ function ModalCard({
       <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="px-6 py-5 border-b border-slate-200 flex items-start gap-4">
           <div className="flex-1 min-w-0">
-            <span className={`inline-block px-2.5 py-1 rounded-md text-xs font-bold border mb-2 ${siglaCls}`}>{card.sigla} | {tipoLabel}</span>
+            <span className={'inline-block px-2.5 py-1 rounded-md text-xs font-bold border mb-2 ' + siglaCls}>{card.sigla} | {tipoLabel}</span>
             <div className="text-lg font-bold mb-1">{card.nome}</div>
             <div className="text-sm text-slate-500">{card.descricao}</div>
           </div>
@@ -405,16 +421,16 @@ function ModalCard({
               {(card.historico ?? []).slice().reverse().map((h, i) => (
                 <div
                   key={i}
-                  className={`bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-md text-xs ${
+                  className={'bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-md text-xs ' + (
                     h.tipo === 'empresa' ? 'border-l-2 border-l-laranja' :
                     h.tipo === 'cliente' ? 'border-l-2 border-l-peca' : 'border-l-2 border-l-slate-300 opacity-90'
-                  }`}
+                  )}
                 >
                   <div className="flex justify-between items-center mb-1 gap-2.5">
-                    <span className={`font-bold text-[11px] uppercase tracking-wider ${
+                    <span className={'font-bold text-[11px] uppercase tracking-wider ' + (
                       h.tipo === 'empresa' ? 'text-laranja-dark' :
                       h.tipo === 'cliente' ? 'text-peca-dark' : 'text-slate-400'
-                    }`}>{h.autor}</span>
+                    )}>{h.autor}</span>
                     <span className="text-[11px] text-slate-400">{h.data}</span>
                   </div>
                   <div className="text-slate-700 leading-relaxed">{h.texto}</div>
@@ -481,7 +497,7 @@ function ModalNovo({
                   <button
                     key={t}
                     onClick={() => setTipo(t)}
-                    className={`flex-1 min-w-[100px] border px-3 py-2.5 rounded-md font-semibold text-xs text-center transition ${cls}`}
+                    className={'flex-1 min-w-[100px] border px-3 py-2.5 rounded-md font-semibold text-xs text-center transition ' + cls}
                   >
                     {t === 'peca' ? 'Peca' : t === 'acordo' ? 'Acordo' : 'Reclamacao'}
                   </button>

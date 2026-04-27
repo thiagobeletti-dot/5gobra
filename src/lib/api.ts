@@ -143,6 +143,23 @@ export async function criarCard(dados: {
   return data as CardRow
 }
 
+export async function criarVariosCards(dados: Array<{
+  obra_id: string
+  tipo: TipoCard
+  sigla: string
+  nome: string
+  descricao?: string
+  aba: AbaId
+  status_em_andamento?: string | null
+  prazo_contrato?: string | null
+}>) {
+  if (!supabase) throw new Error('Supabase nao configurado')
+  if (dados.length === 0) return []
+  const { data, error } = await supabase.from('cards').insert(dados).select()
+  if (error) throw error
+  return (data ?? []) as CardRow[]
+}
+
 export async function atualizarCard(id: string, mudancas: Partial<CardRow>) {
   if (!supabase) throw new Error('Supabase nao configurado')
   const { data, error } = await supabase.from('cards').update(mudancas).eq('id', id).select().single()
