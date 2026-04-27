@@ -41,21 +41,18 @@ export default function ObraCliente() {
   const cardsDaAba = dados.cards.filter((c) => c.aba === abaAtiva)
   const contagem = (a: AbaId) => dados.cards.filter((c) => c.aba === a).length
 
-  // Quantos cards aguardando o cliente?
   const meusPendentes = dados.cards.filter((c) =>
     !c.encerrado && (c.aba === 'cliente' || (c.aba === 'conclusao' && !c.aceiteFinal))
   ).length
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Header (mobile-first) */}
       <header className="bg-white border-b border-slate-200 px-4 md:px-7 py-3.5">
         <div className="max-w-4xl mx-auto flex items-center gap-3">
           <Link to="/"><LogoFull small /></Link>
         </div>
       </header>
 
-      {/* Cabecalho da obra */}
       <div className="bg-white border-b border-slate-200 px-4 md:px-7 py-4">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-2 mb-1">
@@ -71,17 +68,16 @@ export default function ObraCliente() {
         </div>
       </div>
 
-      {/* Abas */}
       <div className="bg-white border-b border-slate-200 px-4 md:px-7 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto flex gap-1 overflow-x-auto">
           {ABAS.map((a) => (
             <button
               key={a.id}
               onClick={() => setAbaAtiva(a.id)}
-              className={`py-3 px-3 md:px-4 text-xs md:text-[13px] font-semibold border-b-2 -mb-px whitespace-nowrap inline-flex items-center gap-2 transition ${abaAtiva === a.id ? 'text-laranja border-laranja' : 'text-slate-500 border-transparent hover:text-slate-900'}`}
+              className={'py-3 px-3 md:px-4 text-xs md:text-[13px] font-semibold border-b-2 -mb-px whitespace-nowrap inline-flex items-center gap-2 transition ' + (abaAtiva === a.id ? 'text-laranja border-laranja' : 'text-slate-500 border-transparent hover:text-slate-900')}
             >
               {a.rotulo}
-              <span className={`px-1.5 py-0.5 rounded-full text-[11px] font-bold min-w-[20px] text-center ${abaAtiva === a.id ? 'bg-laranja-soft text-laranja-dark' : 'bg-slate-100 text-slate-500'}`}>
+              <span className={'px-1.5 py-0.5 rounded-full text-[11px] font-bold min-w-[20px] text-center ' + (abaAtiva === a.id ? 'bg-laranja-soft text-laranja-dark' : 'bg-slate-100 text-slate-500')}>
                 {contagem(a.id)}
               </span>
             </button>
@@ -89,7 +85,6 @@ export default function ObraCliente() {
         </div>
       </div>
 
-      {/* Descricao da aba */}
       <div className="bg-white px-4 md:px-7 py-3 text-xs text-slate-500 border-b border-slate-200">
         <div className="max-w-4xl mx-auto">
           {abaAtiva === 'cliente' && 'Itens aguardando voce - confirme, responda ou pergunte.'}
@@ -99,7 +94,6 @@ export default function ObraCliente() {
         </div>
       </div>
 
-      {/* Lista de cards */}
       <main className="flex-1">
         <div className="max-w-4xl mx-auto px-4 md:px-7 py-5">
           {cardsDaAba.length === 0 ? (
@@ -123,11 +117,16 @@ export default function ObraCliente() {
         <ModalCardCliente
           card={cardAberto}
           onClose={() => setCardAbertoId(null)}
+          onConfirmar={async () => {
+            await data.registrar(cardAberto.id, 'Cliente confirmou o item.', 'cliente', true)
+            setCardAbertoId(null)
+            toast('Item confirmado - enviado pra empresa')
+          }}
           onRegistrar={async (texto, mover) => {
             if (!texto.trim()) { toast('Escreva algo antes de registrar'); return }
             await data.registrar(cardAberto.id, texto, 'cliente', mover)
             setCardAbertoId(null)
-            toast('Registro enviado pra empresa')
+            toast('Mensagem enviada pra empresa')
           }}
           onAceitar={async () => {
             await data.darAceite(cardAberto.id)
@@ -168,10 +167,10 @@ function CardClienteView({ card, onClick }: { card: Card; onClick: () => void })
     const dias = diasAte(card.prazoContrato)
     if (dias !== null) {
       let cls = 'text-[11px] font-medium text-slate-400'
-      let txt = `Prazo ${formataData(card.prazoContrato)}`
-      if (dias < 0) { cls = 'text-[11px] font-semibold text-red-600'; txt = `Atrasado ${Math.abs(dias)}d` }
-      else if (dias <= 7) { cls = 'text-[11px] font-semibold text-red-600'; txt = `Em ${dias}d` }
-      else if (dias <= 30) { cls = 'text-[11px] text-status-andamento font-medium'; txt = `${dias}d restantes` }
+      let txt = 'Prazo ' + formataData(card.prazoContrato)
+      if (dias < 0) { cls = 'text-[11px] font-semibold text-red-600'; txt = 'Atrasado ' + Math.abs(dias) + 'd' }
+      else if (dias <= 7) { cls = 'text-[11px] font-semibold text-red-600'; txt = 'Em ' + dias + 'd' }
+      else if (dias <= 30) { cls = 'text-[11px] text-status-andamento font-medium'; txt = dias + 'd restantes' }
       prazoNode = <span className={cls}>{txt}</span>
     }
   }
@@ -190,22 +189,22 @@ function CardClienteView({ card, onClick }: { card: Card; onClick: () => void })
   }[s]
 
   return (
-    <div onClick={onClick} className={`card-base ${card.encerrado ? 'opacity-60' : ''}`}>
-      <span className={`absolute left-0 top-0 bottom-0 w-1 ${corLado}`} />
+    <div onClick={onClick} className={'card-base ' + (card.encerrado ? 'opacity-60' : '')}>
+      <span className={'absolute left-0 top-0 bottom-0 w-1 ' + corLado} />
       {aguardandoCliente && (
         <span className="absolute top-2.5 right-2.5 bg-laranja text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider">
           Pra voce
         </span>
       )}
       <div className="flex items-center justify-between gap-2.5 mb-2">
-        <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold border ${siglaCls}`}>{card.sigla}</span>
+        <span className={'px-2 py-0.5 rounded-md text-[11px] font-bold border ' + siglaCls}>{card.sigla}</span>
         <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">{tipoLabel}</span>
       </div>
-      <div className={`text-sm font-semibold mb-1 leading-snug ${card.encerrado ? 'line-through' : ''}`}>{card.nome}</div>
+      <div className={'text-sm font-semibold mb-1 leading-snug ' + (card.encerrado ? 'line-through' : '')}>{card.nome}</div>
       <div className="text-xs text-slate-500 leading-snug mb-2.5 line-clamp-2">{card.descricao}</div>
       <div className="flex items-center justify-between gap-2 mt-2 pt-2.5 border-t border-slate-200">
         <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
-          <span className={`w-2 h-2 rounded-full ${dotCls}`} />
+          <span className={'w-2 h-2 rounded-full ' + dotCls} />
           {statusTxt}
         </span>
         {prazoNode}
@@ -215,10 +214,11 @@ function CardClienteView({ card, onClick }: { card: Card; onClick: () => void })
 }
 
 function ModalCardCliente({
-  card, onClose, onRegistrar, onAceitar, onReabrir,
+  card, onClose, onConfirmar, onRegistrar, onAceitar, onReabrir,
 }: {
   card: Card
   onClose: () => void
+  onConfirmar: () => Promise<void>
   onRegistrar: (texto: string, moveAba: boolean) => Promise<void>
   onAceitar: () => Promise<void>
   onReabrir: (texto: string) => Promise<void>
@@ -236,7 +236,7 @@ function ModalCardCliente({
       <div className="bg-white border border-slate-200 rounded-t-2xl md:rounded-2xl w-full max-w-2xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="px-5 md:px-6 py-4 md:py-5 border-b border-slate-200 flex items-start gap-3">
           <div className="flex-1 min-w-0">
-            <span className={`inline-block px-2.5 py-1 rounded-md text-xs font-bold border mb-2 ${siglaCls}`}>{card.sigla} | {tipoLabel}</span>
+            <span className={'inline-block px-2.5 py-1 rounded-md text-xs font-bold border mb-2 ' + siglaCls}>{card.sigla} | {tipoLabel}</span>
             <div className="text-base md:text-lg font-bold mb-1">{card.nome}</div>
             <div className="text-sm text-slate-500">{card.descricao}</div>
           </div>
@@ -277,21 +277,37 @@ function ModalCardCliente({
             </div>
           )}
 
+          {card.aba === 'cliente' && !card.encerrado && (
+            <div className="bg-emerald-50 border border-emerald-200 px-4 py-4 rounded-lg">
+              <div className="font-bold text-sm text-emerald-700 mb-1">Esta tudo certo com este item?</div>
+              <p className="text-xs text-slate-600 mb-3">Se a peca esta correta como combinado, basta confirmar. Sua confirmacao fica registrada com data e hora.</p>
+              <button
+                className="btn-primary w-full md:w-auto"
+                disabled={salvando}
+                onClick={async () => { setSalvando(true); try { await onConfirmar() } finally { setSalvando(false) } }}
+              >Confirmar item</button>
+            </div>
+          )}
+
           {!card.encerrado && (
             <div>
-              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">Registrar mensagem pra empresa</div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">
+                {card.aba === 'cliente' ? 'Ou tem algo a dizer?' : 'Registrar mensagem pra empresa'}
+              </div>
               <textarea
                 className="input min-h-[100px]"
                 value={texto}
                 onChange={(e) => setTexto(e.target.value)}
-                placeholder="Confirme, pergunte, ou descreva alguma coisa que aconteceu na obra..."
+                placeholder={card.aba === 'cliente'
+                  ? 'Pergunte, peca uma mudanca, ou descreva algo especifico...'
+                  : 'Confirme, pergunte, ou descreva alguma coisa que aconteceu na obra...'}
               />
               <div className="flex gap-2 flex-wrap mt-2.5">
                 <button
-                  className="btn-primary"
+                  className="btn-ghost"
                   disabled={salvando}
                   onClick={async () => { setSalvando(true); try { await onRegistrar(texto, true) } finally { setSalvando(false) } }}
-                >Enviar pra empresa</button>
+                >Enviar mensagem</button>
                 {card.aba === 'conclusao' && !card.aceiteFinal && (
                   <button
                     className="btn bg-transparent text-red-600 border border-red-200 hover:bg-red-50"
@@ -309,16 +325,16 @@ function ModalCardCliente({
               {(card.historico ?? []).slice().reverse().map((h, i) => (
                 <div
                   key={i}
-                  className={`bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-md text-xs ${
+                  className={'bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-md text-xs ' + (
                     h.tipo === 'empresa' ? 'border-l-2 border-l-laranja' :
                     h.tipo === 'cliente' ? 'border-l-2 border-l-peca' : 'border-l-2 border-l-slate-300 opacity-90'
-                  }`}
+                  )}
                 >
                   <div className="flex justify-between items-center mb-1 gap-2.5">
-                    <span className={`font-bold text-[11px] uppercase tracking-wider ${
+                    <span className={'font-bold text-[11px] uppercase tracking-wider ' + (
                       h.tipo === 'empresa' ? 'text-laranja-dark' :
                       h.tipo === 'cliente' ? 'text-peca-dark' : 'text-slate-400'
-                    }`}>{h.autor}</span>
+                    )}>{h.autor}</span>
                     <span className="text-[11px] text-slate-400">{h.data}</span>
                   </div>
                   <div className="text-slate-700 leading-relaxed whitespace-pre-wrap">{h.texto}</div>
