@@ -1,17 +1,18 @@
 import { useEffect, useState, useCallback } from 'react'
 import type { Card, DadosObra, AbaId, TipoCard, AutorTipo } from '../types/obra'
 import { SEED } from '../lib/seed'
-import { supabaseConfigurado } from '../lib/supabase'
+import { supabaseConfigurado, supabase } from '../lib/supabase'
 import {
   pegarObraPorId,
+  pegarObraPorToken,
   listarCardsDaObra,
   criarCard,
   atualizarCard,
   adicionarHistorico,
   rowsParaDadosObra,
   type HistoricoRow,
+  type ObraRow,
 } from '../lib/api'
-import { supabase } from '../lib/supabase'
 import { agora } from '../lib/helpers'
 
 const STORAGE_PREFIX = '5gobra:'
@@ -28,6 +29,7 @@ interface NovoCardInput {
 interface UseObraDataResult {
   dados: DadosObra | null
   modo: 'demo' | 'banco'
+  obraReal: ObraRow | null
   carregando: boolean
   erro: string | null
   alterarStatus: (cardId: string, novoStatus: string) => Promise<void>
@@ -38,15 +40,15 @@ interface UseObraDataResult {
   resetar: () => void
 }
 
-function ehDemo(obraId: string) {
-  return obraId === 'demo' || !supabaseConfigurado
+function ehDemo(idOrToken: string) {
+  return idOrToken === 'demo' || !supabaseConfigurado
 }
 
 // =============== MODO DEMO (localStorage) ===============
 
-function carregarDemo(obraId: string): DadosObra {
+function carregarDemo(idOrToken: string): DadosObra {
   try {
-    const raw = localStorage.getItem(STORAGE_PREFIX + obraId)
+    const raw = localStorage.getItem(STORAGE_PREFIX + idOrToken)
     if (raw) {
       const d = JSON.parse(raw)
       if (d?.obra && Array.isArray(d.cards)) return d
@@ -55,16 +57,14 @@ function carregarDemo(obraId: string): DadosObra {
   return structuredClone(SEED)
 }
 
-function salvarDemo(obraId: string, dados: DadosObra) {
-  try { localStorage.setItem(STORAGE_PREFIX + obraId, JSON.stringify(dados)) } catch {}
+function salvarDemo(idOrToken: string, dados: DadosObra) {
+  try { localStorage.setItem(STORAGE_PREFIX + idOrToken, JSON.stringify(dados)) } catch {}
 }
 
-// =============== MODO BANCO (Supabase) ===============
+// =============== MODO BANCO ===============
 
-async function carregarDoBanco(obraId: string): Promise<DadosObra | null> {
-  const obra = await pegarObraPorId(obraId)
-  if (!obra) return null
-  const cardsRows = await listarCardsDaObra(obraId)
+async function carregarDoBanco(obraResolvida: ObraRow): Promise<DadosObra> {
+  const cardsRows = await listarCardsDaObra(obraResolvida.id)
   const histPorCard: Record<string, HistoricoRow[]> = {}
   if (cardsRows.length > 0 && supabase) {
     const { data: hists } = await supabase
@@ -76,14 +76,15 @@ async function carregarDoBanco(obraId: string): Promise<DadosObra | null> {
       ;(histPorCard[h.card_id] ??= []).push(h)
     }
   }
-  return rowsParaDadosObra(obra, cardsRows, histPorCard)
+  return rowsParaDadosObra(obraResolvida, cardsRows, histPorCard)
 }
 
 // =============== HOOK ===============
 
-export function useObraData(obraId: string): UseObraDataResult {
-  const modo: 'demo' | 'banco' = ehDemo(obraId) ? 'demo' : 'banco'
+export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' = 'id'): UseObraDataResult {
+  const modo: 'demo' | 'banco' = ehDemo(idOrToken) ? 'demo' : 'banco'
   const [dados, setDados] = useState<DadosObra | null>(null)
+  const [obraReal, setObraReal] = useState<ObraRow | null>(null)
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
 
@@ -93,25 +94,38 @@ export function useObraData(obraId: string): UseObraDataResult {
     setCarregando(true)
     setErro(null)
     if (modo === 'demo') {
-      setDados(carregarDemo(obraId))
+      setDados(carregarDemo(idOrToken))
+      setObraReal(null)
       setCarregando(false)
-    } else {
-      carregarDoBanco(obraId)
-        .then((d) => {
-          if (!ativo) return
-          if (d) setDados(d)
-          else setErro('Obra nao encontrada')
-        })
-        .catch((e: any) => { if (ativo) setErro(e?.message ?? 'Erro ao carregar obra') })
-        .finally(() => { if (ativo) setCarregando(false) })
+      return
     }
+    ;(async () => {
+      try {
+        const obra = modoCarregamento === 'token'
+          ? await pegarObraPorToken(idOrToken)
+          : await pegarObraPorId(idOrToken)
+        if (!ativo) return
+        if (!obra) {
+          setErro('Obra nao encontrada')
+          return
+        }
+        setObraReal(obra)
+        const d = await carregarDoBanco(obra)
+        if (!ativo) return
+        setDados(d)
+      } catch (e: any) {
+        if (ativo) setErro(e?.message ?? 'Erro ao carregar obra')
+      } finally {
+        if (ativo) setCarregando(false)
+      }
+    })()
     return () => { ativo = false }
-  }, [obraId, modo])
+  }, [idOrToken, modo, modoCarregamento])
 
   // Salvar localmente no demo (toda mudanca em dados)
   useEffect(() => {
-    if (modo === 'demo' && dados) salvarDemo(obraId, dados)
-  }, [obraId, modo, dados])
+    if (modo === 'demo' && dados) salvarDemo(idOrToken, dados)
+  }, [idOrToken, modo, dados])
 
   // ============ Mutacoes ============
 
@@ -135,7 +149,7 @@ export function useObraData(obraId: string): UseObraDataResult {
       })
       return
     }
-    // Banco
+    if (!obraReal) return
     const card = dados.cards.find((c) => c.id === cardId)
     if (!card) return
     const updates: any = { status_em_andamento: novoStatus }
@@ -145,9 +159,9 @@ export function useObraData(obraId: string): UseObraDataResult {
     if (novoStatus === 'Concluido') {
       await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Peca concluida. Movida para aba Conclusao. Aguardando aceite do cliente.' })
     }
-    const novo = await carregarDoBanco(obraId)
-    if (novo) setDados(novo)
-  }, [dados, modo, obraId])
+    const novo = await carregarDoBanco(obraReal)
+    setDados(novo)
+  }, [dados, modo, obraReal])
 
   const registrar = useCallback(async (cardId: string, texto: string, perfil: 'empresa' | 'cliente', moveAba: boolean) => {
     if (!dados || !texto.trim()) return
@@ -173,7 +187,7 @@ export function useObraData(obraId: string): UseObraDataResult {
       })
       return
     }
-    // Banco
+    if (!obraReal) return
     const card = dados.cards.find((c) => c.id === cardId)
     if (!card) return
     await adicionarHistorico({ card_id: cardId, autor, autor_tipo: perfil, texto })
@@ -187,9 +201,9 @@ export function useObraData(obraId: string): UseObraDataResult {
         await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: `Movido para aba ${novaAba === 'cliente' ? 'Cliente' : 'Empresa'}.` })
       }
     }
-    const novo = await carregarDoBanco(obraId)
-    if (novo) setDados(novo)
-  }, [dados, modo, obraId])
+    const novo = await carregarDoBanco(obraReal)
+    setDados(novo)
+  }, [dados, modo, obraReal])
 
   const darAceite = useCallback(async (cardId: string) => {
     if (!dados) return
@@ -212,7 +226,7 @@ export function useObraData(obraId: string): UseObraDataResult {
       })
       return
     }
-    // Banco - aceite com auditoria basica (timestamp + user agent)
+    if (!obraReal) return
     await atualizarCard(cardId, {
       aceite_final_at: new Date().toISOString(),
       aceite_final_user_agent: navigator.userAgent,
@@ -220,9 +234,9 @@ export function useObraData(obraId: string): UseObraDataResult {
     })
     await adicionarHistorico({ card_id: cardId, autor: 'Cliente', autor_tipo: 'cliente', texto: 'Aceite final confirmado. Peca oficialmente entregue e garantia iniciada.' })
     await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Card encerrado. Inicio de garantia registrado.' })
-    const novo = await carregarDoBanco(obraId)
-    if (novo) setDados(novo)
-  }, [dados, modo, obraId])
+    const novo = await carregarDoBanco(obraReal)
+    setDados(novo)
+  }, [dados, modo, obraReal])
 
   const reabrir = useCallback(async (cardId: string, texto: string, perfil: 'empresa' | 'cliente') => {
     if (!dados || !texto.trim()) return
@@ -244,12 +258,13 @@ export function useObraData(obraId: string): UseObraDataResult {
       })
       return
     }
+    if (!obraReal) return
     await adicionarHistorico({ card_id: cardId, autor: 'Cliente', autor_tipo: perfil, texto })
     await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Cliente identificou problema. Card reaberto e enviado para Empresa.' })
     await atualizarCard(cardId, { aba: 'empresa' })
-    const novo = await carregarDoBanco(obraId)
-    if (novo) setDados(novo)
-  }, [dados, modo, obraId])
+    const novo = await carregarDoBanco(obraReal)
+    setDados(novo)
+  }, [dados, modo, obraReal])
 
   const criarNovo = useCallback(async (input: NovoCardInput, perfil: 'empresa' | 'cliente'): Promise<AbaId> => {
     const autor = perfil === 'empresa' ? 'Empresa' : 'Cliente'
@@ -270,9 +285,9 @@ export function useObraData(obraId: string): UseObraDataResult {
       setDados((d) => d ? ({ ...d, cards: [...d.cards, novo] }) : d)
       return input.destino
     }
-    // Banco
+    if (!obraReal) throw new Error('Obra nao carregada')
     const cardRow = await criarCard({
-      obra_id: obraId,
+      obra_id: obraReal.id,
       tipo: input.tipo,
       sigla: input.sigla.toUpperCase(),
       nome: input.nome,
@@ -282,16 +297,16 @@ export function useObraData(obraId: string): UseObraDataResult {
       prazo_contrato: input.destino === 'emandamento' ? input.prazoContrato : null,
     })
     await adicionarHistorico({ card_id: cardRow.id, autor, autor_tipo: perfil, texto: 'Registro criado.' })
-    const novo = await carregarDoBanco(obraId)
-    if (novo) setDados(novo)
+    const novo = await carregarDoBanco(obraReal)
+    setDados(novo)
     return input.destino
-  }, [modo, obraId])
+  }, [modo, obraReal])
 
   const resetar = useCallback(() => {
     if (modo !== 'demo') return
-    localStorage.removeItem(STORAGE_PREFIX + obraId)
+    localStorage.removeItem(STORAGE_PREFIX + idOrToken)
     setDados(structuredClone(SEED))
-  }, [modo, obraId])
+  }, [modo, idOrToken])
 
-  return { dados, modo, carregando, erro, alterarStatus, registrar, darAceite, reabrir, criarNovo, resetar }
+  return { dados, modo, obraReal, carregando, erro, alterarStatus, registrar, darAceite, reabrir, criarNovo, resetar }
 }

@@ -13,6 +13,7 @@ export default function Obras() {
   const [carregando, setCarregando] = useState(true)
   const [novoAberto, setNovoAberto] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  const [linkCopiado, setLinkCopiado] = useState<string | null>(null)
 
   useEffect(() => {
     let ativo = true
@@ -39,6 +40,18 @@ export default function Obras() {
   async function logout() {
     await sair()
     navigate('/')
+  }
+
+  async function copiarLink(obra: ObraRow) {
+    const url = `${window.location.origin}/obra/${obra.token_cliente}`
+    try {
+      await navigator.clipboard.writeText(url)
+      setLinkCopiado(obra.id)
+      window.setTimeout(() => setLinkCopiado(null), 2400)
+    } catch {
+      // Fallback: abre prompt pra copiar manualmente
+      window.prompt('Link do cliente (copie):', url)
+    }
   }
 
   return (
@@ -89,17 +102,40 @@ export default function Obras() {
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
             {obras.map((o) => (
-              <Link
-                key={o.id}
-                to={`/app/obra/${o.id}`}
-                className="block bg-white border border-slate-200 rounded-xl p-5 hover:border-slate-300 hover:shadow-md transition"
-              >
-                <div className="font-semibold text-base mb-1">{o.nome}</div>
-                <div className="text-sm text-slate-500 mb-2">{o.endereco || 'Sem endereco'}</div>
-                <div className="text-xs text-slate-400">Cliente: {o.cliente_nome || '-'}</div>
-                <div className="text-xs text-slate-400 mt-2">Inicio: {o.inicio || '-'}</div>
-              </Link>
+              <div key={o.id} className="bg-white border border-slate-200 rounded-xl p-5 hover:border-slate-300 hover:shadow-md transition flex flex-col">
+                <Link to={`/app/obra/${o.id}`} className="block flex-1">
+                  <div className="font-semibold text-base mb-1">{o.nome}</div>
+                  <div className="text-sm text-slate-500 mb-2">{o.endereco || 'Sem endereco'}</div>
+                  <div className="text-xs text-slate-400">Cliente: {o.cliente_nome || '-'}</div>
+                  <div className="text-xs text-slate-400 mt-2">Inicio: {o.inicio || '-'}</div>
+                </Link>
+                <div className="mt-4 pt-3 border-t border-slate-200 flex items-center gap-2">
+                  <button
+                    onClick={() => copiarLink(o)}
+                    className="text-xs text-slate-500 hover:text-laranja-dark font-semibold inline-flex items-center gap-1.5 transition"
+                  >
+                    {linkCopiado === o.id ? (
+                      <>
+                        <span className="text-status-andamento">OK</span>
+                        Link copiado!
+                      </>
+                    ) : (
+                      <>
+                        <span>@</span>
+                        Copiar link do cliente
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
             ))}
+          </div>
+        )}
+
+        {empresaId && obras.length > 0 && (
+          <div className="mt-8 bg-slate-50 border border-slate-200 rounded-lg p-4 text-xs text-slate-600">
+            <div className="font-semibold text-slate-700 mb-1">Como funciona o link do cliente</div>
+            Cada obra tem um link unico. Quando voce manda esse link pro cliente (por WhatsApp, email, etc), ele acessa direto a propria obra dele - sem precisar criar conta nem senha.
           </div>
         )}
       </main>
