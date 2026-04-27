@@ -5,6 +5,7 @@ import { ABAS } from '../types/obra'
 import type { AbaId, Card } from '../types/obra'
 import { diasAte, formataData, statusSemantico } from '../lib/helpers'
 import { useObraData } from '../hooks/useObraData'
+import GaleriaFotos from '../components/GaleriaFotos'
 
 export default function ObraCliente() {
   const { token = '' } = useParams<{ token: string }>()
@@ -116,6 +117,7 @@ export default function ObraCliente() {
       {cardAberto && (
         <ModalCardCliente
           card={cardAberto}
+          podeFotos={data.modo === 'banco'}
           onClose={() => setCardAbertoId(null)}
           onConfirmar={async () => {
             await data.registrar(cardAberto.id, 'Cliente confirmou o item.', 'cliente', true)
@@ -137,6 +139,14 @@ export default function ObraCliente() {
             await data.reabrir(cardAberto.id, texto, 'cliente')
             setCardAbertoId(null)
             toast('Problema enviado pra empresa')
+          }}
+          onAdicionarFotos={async (arquivos) => {
+            const n = await data.adicionarFotos(cardAberto.id, arquivos)
+            toast(n + (n === 1 ? ' foto adicionada' : ' fotos adicionadas'))
+          }}
+          onRemoverFoto={async (fotoId) => {
+            await data.removerFoto(cardAberto.id, fotoId)
+            toast('Foto removida')
           }}
         />
       )}
@@ -214,14 +224,17 @@ function CardClienteView({ card, onClick }: { card: Card; onClick: () => void })
 }
 
 function ModalCardCliente({
-  card, onClose, onConfirmar, onRegistrar, onAceitar, onReabrir,
+  card, podeFotos, onClose, onConfirmar, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto,
 }: {
   card: Card
+  podeFotos: boolean
   onClose: () => void
   onConfirmar: () => Promise<void>
   onRegistrar: (texto: string, moveAba: boolean) => Promise<void>
   onAceitar: () => Promise<void>
   onReabrir: (texto: string) => Promise<void>
+  onAdicionarFotos: (arquivos: File[]) => Promise<void>
+  onRemoverFoto: (fotoId: string) => Promise<void>
 }) {
   const [texto, setTexto] = useState('')
   const [salvando, setSalvando] = useState(false)
@@ -317,6 +330,15 @@ function ModalCardCliente({
                 )}
               </div>
             </div>
+          )}
+
+          {podeFotos && (
+            <GaleriaFotos
+              fotos={card.fotos}
+              podeEditar={!card.encerrado}
+              onAdicionar={onAdicionarFotos}
+              onRemover={async (anexo) => onRemoverFoto(anexo.id)}
+            />
           )}
 
           <div>

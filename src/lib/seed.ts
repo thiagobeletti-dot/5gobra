@@ -3,7 +3,7 @@ import type { DadosObra } from '../types/obra'
 export const SEED: DadosObra = {
   obra: {
     nome: 'Residencial Vila Bela',
-    endereco: 'Rua das Palmeiras, 450 — Jundiai/SP',
+    endereco: 'Rua das Palmeiras, 450 - Jundiai/SP',
     cliente: 'Joao da Silva',
     empresa: 'Esquadrias 5G',
     inicio: '2026-03-12',
@@ -23,6 +23,7 @@ export const SEED: DadosObra = {
       historico: [
         { autor: 'Empresa', tipo: 'empresa', data: '14/03/2026 10:20', texto: 'Primeira medicao realizada. Aguardando instalacao do contramarco pela construcao.' },
       ],
+      fotos: [],
     },
     {
       id: 'c2',
@@ -39,6 +40,7 @@ export const SEED: DadosObra = {
         { autor: 'Empresa', tipo: 'empresa', data: '10/04/2026 09:15', texto: 'Contramarco conferido. Medidas confirmadas. Iniciando fabricacao.' },
         { autor: 'Sistema', tipo: 'sistema', data: '10/04/2026 09:16', texto: 'Status alterado para "Fabricando". Prazo contratual: 10/05/2026.' },
       ],
+      fotos: [],
     },
     {
       id: 'c3',
@@ -55,6 +57,7 @@ export const SEED: DadosObra = {
         { autor: 'Empresa', tipo: 'empresa', data: '18/04/2026 14:10', texto: 'Porta instalada. Testado funcionamento das fechaduras.' },
         { autor: 'Sistema', tipo: 'sistema', data: '18/04/2026 14:12', texto: 'Status movido para "Conclusao". Aguardando aceite final do cliente.' },
       ],
+      fotos: [],
     },
     {
       id: 'c4',
@@ -70,6 +73,7 @@ export const SEED: DadosObra = {
       historico: [
         { autor: 'Cliente', tipo: 'cliente', data: '16/04/2026 16:30', texto: 'Confirmo a mudanca pra aluminio preto fosco na janela da suite master, com acrescimo de R$ 480,00.' },
       ],
+      fotos: [],
     },
   ],
 }

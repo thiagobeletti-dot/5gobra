@@ -16,6 +16,12 @@ import {
 } from '../lib/api'
 import { agora } from '../lib/helpers'
 import type { ItemImportado } from '../lib/alumisoft'
+import {
+  listarAnexosDeVariosCards,
+  uploadFoto,
+  removerAnexo,
+  type Anexo,
+} from '../lib/anexos'
 
 const STORAGE_PREFIX = '5gobra:'
 
@@ -40,6 +46,8 @@ interface UseObraDataResult {
   reabrir: (cardId: string, texto: string, perfil: 'empresa' | 'cliente') => Promise<void>
   criarNovo: (input: NovoCardInput, perfil: 'empresa' | 'cliente') => Promise<AbaId>
   importarItens: (itens: ItemImportado[], perfil: 'empresa' | 'cliente') => Promise<number>
+  adicionarFotos: (cardId: string, arquivos: File[]) => Promise<number>
+  removerFoto: (cardId: string, fotoId: string) => Promise<void>
   resetar: () => void
 }
 
@@ -52,7 +60,11 @@ function carregarDemo(idOrToken: string): DadosObra {
     const raw = localStorage.getItem(STORAGE_PREFIX + idOrToken)
     if (raw) {
       const d = JSON.parse(raw)
-      if (d?.obra && Array.isArray(d.cards)) return d
+      if (d?.obra && Array.isArray(d.cards)) {
+        // Garante fotos: [] mesmo em dados antigos sem o campo
+        d.cards = d.cards.map((c: any) => ({ ...c, fotos: c.fotos ?? [] }))
+        return d
+      }
     }
   } catch {}
   return structuredClone(SEED)
@@ -65,17 +77,20 @@ function salvarDemo(idOrToken: string, dados: DadosObra) {
 async function carregarDoBanco(obraResolvida: ObraRow): Promise<DadosObra> {
   const cardsRows = await listarCardsDaObra(obraResolvida.id)
   const histPorCard: Record<string, HistoricoRow[]> = {}
+  let anexosPorCard: Record<string, Anexo[]> = {}
   if (cardsRows.length > 0 && supabase) {
+    const ids = cardsRows.map((c) => c.id)
     const { data: hists } = await supabase
       .from('historico_card')
       .select('*')
-      .in('card_id', cardsRows.map((c) => c.id))
+      .in('card_id', ids)
       .order('created_at', { ascending: true })
     for (const h of (hists ?? []) as HistoricoRow[]) {
       ;(histPorCard[h.card_id] ??= []).push(h)
     }
+    anexosPorCard = await listarAnexosDeVariosCards(ids)
   }
-  return rowsParaDadosObra(obraResolvida, cardsRows, histPorCard)
+  return rowsParaDadosObra(obraResolvida, cardsRows, histPorCard, anexosPorCard)
 }
 
 export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' = 'id'): UseObraDataResult {
@@ -131,7 +146,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
           ...d,
           cards: d.cards.map((c) => {
             if (c.id !== cardId) return c
-            const hist = [...c.historico, { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: `Status: "${c.statusEmAndamento ?? '-'}" -> "${novoStatus}".` }]
+            const hist = [...c.historico, { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Status: "' + (c.statusEmAndamento ?? '-') + '" -> "' + novoStatus + '".' }]
             if (novoStatus === 'Concluido') {
               hist.push({ autor: 'Sistema', tipo: 'sistema', data: agora(), texto: 'Peca concluida. Movida para aba Conclusao. Aguardando aceite do cliente.' })
               return { ...c, statusEmAndamento: novoStatus, aba: 'conclusao' as AbaId, historico: hist }
@@ -148,7 +163,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     const updates: any = { status_em_andamento: novoStatus }
     if (novoStatus === 'Concluido') updates.aba = 'conclusao'
     await atualizarCard(cardId, updates)
-    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: `Status: "${card.statusEmAndamento ?? '-'}" -> "${novoStatus}".` })
+    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Status: "' + (card.statusEmAndamento ?? '-') + '" -> "' + novoStatus + '".' })
     if (novoStatus === 'Concluido') {
       await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Peca concluida. Movida para aba Conclusao. Aguardando aceite do cliente.' })
     }
@@ -172,7 +187,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
               if (c.aba === 'emandamento') novaAba = perfil === 'empresa' ? 'cliente' : 'empresa'
               else if (c.aba === 'cliente') novaAba = 'empresa'
               else if (c.aba === 'empresa') novaAba = 'cliente'
-              hist.push({ autor: 'Sistema', tipo: 'sistema', data: agora(), texto: `Movido para aba ${novaAba === 'cliente' ? 'Cliente' : novaAba === 'empresa' ? 'Empresa' : novaAba}.` })
+              hist.push({ autor: 'Sistema', tipo: 'sistema', data: agora(), texto: 'Movido para aba ' + (novaAba === 'cliente' ? 'Cliente' : novaAba === 'empresa' ? 'Empresa' : novaAba) + '.' })
             }
             return { ...c, aba: novaAba, historico: hist }
           }),
@@ -191,7 +206,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
       else if (card.aba === 'empresa') novaAba = 'cliente'
       if (novaAba !== card.aba) {
         await atualizarCard(cardId, { aba: novaAba })
-        await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: `Movido para aba ${novaAba === 'cliente' ? 'Cliente' : 'Empresa'}.` })
+        await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Movido para aba ' + (novaAba === 'cliente' ? 'Cliente' : 'Empresa') + '.' })
       }
     }
     const novo = await carregarDoBanco(obraReal)
@@ -274,6 +289,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
         encerrado: false,
         aceiteFinal: null,
         historico: [{ autor, tipo: perfil as AutorTipo, data: agora(), texto: 'Registro criado.' }],
+        fotos: [],
       }
       setDados((d) => d ? ({ ...d, cards: [...d.cards, novo] }) : d)
       return input.destino
@@ -313,6 +329,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
           encerrado: false,
           aceiteFinal: null,
           historico: [{ autor, tipo: perfil as AutorTipo, data: agora(), texto: 'Item importado do Alumisoft (origem: ' + it.origemTipologia + ').' }],
+          fotos: [],
         }))
         return { ...d, cards: [...d.cards, ...novosCards] }
       })
@@ -343,11 +360,58 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     return criados.length
   }, [modo, obraReal])
 
+  const adicionarFotos = useCallback(async (cardId: string, arquivos: File[]): Promise<number> => {
+    if (arquivos.length === 0) return 0
+    if (modo === 'demo' || !obraReal) {
+      throw new Error('Upload de fotos disponivel so com Supabase conectado')
+    }
+    let count = 0
+    for (const arquivo of arquivos) {
+      await uploadFoto({ arquivo, obraId: obraReal.id, cardId })
+      count++
+    }
+    const novo = await carregarDoBanco(obraReal)
+    setDados(novo)
+    return count
+  }, [modo, obraReal])
+
+  const removerFoto = useCallback(async (cardId: string, fotoId: string): Promise<void> => {
+    if (modo === 'demo' || !obraReal || !supabase) {
+      throw new Error('Operacao disponivel so com Supabase conectado')
+    }
+    const { data, error } = await supabase
+      .from('anexos')
+      .select('*')
+      .eq('id', fotoId)
+      .single()
+    if (error) throw error
+    if (!data) return
+    const anexo: Anexo = {
+      id: data.id,
+      card_id: data.card_id,
+      historico_id: data.historico_id ?? null,
+      storage_path: data.storage_path,
+      url: '',
+      nome_arquivo: data.nome_arquivo ?? null,
+      tamanho_bytes: data.tamanho_bytes ?? null,
+      content_type: data.content_type ?? null,
+      created_at: data.created_at,
+    }
+    await removerAnexo(anexo)
+    setDados((d) => {
+      if (!d) return d
+      return {
+        ...d,
+        cards: d.cards.map((c) => c.id === cardId ? { ...c, fotos: c.fotos.filter((f) => f.id !== fotoId) } : c),
+      }
+    })
+  }, [modo, obraReal])
+
   const resetar = useCallback(() => {
     if (modo !== 'demo') return
     localStorage.removeItem(STORAGE_PREFIX + idOrToken)
     setDados(structuredClone(SEED))
   }, [modo, idOrToken])
 
-  return { dados, modo, obraReal, carregando, erro, alterarStatus, registrar, darAceite, reabrir, criarNovo, importarItens, resetar }
+  return { dados, modo, obraReal, carregando, erro, alterarStatus, registrar, darAceite, reabrir, criarNovo, importarItens, adicionarFotos, removerFoto, resetar }
 }

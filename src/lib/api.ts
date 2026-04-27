@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
-import type { Card, DadosObra, ObraInfo, RegistroHistorico, AbaId, TipoCard } from '../types/obra'
+import type { Card, DadosObra, ObraInfo, RegistroHistorico, AbaId, TipoCard, FotoCard } from '../types/obra'
+import type { Anexo } from './anexos'
 
 // =============== Tipos do banco ===============
 export interface ObraRow {
@@ -194,7 +195,12 @@ export async function adicionarHistorico(dados: {
 
 // =============== Helpers de conversao ===============
 
-export function rowsParaDadosObra(obraRow: ObraRow, cardsRows: CardRow[], historicoPorCard: Record<string, HistoricoRow[]>): DadosObra {
+export function rowsParaDadosObra(
+  obraRow: ObraRow,
+  cardsRows: CardRow[],
+  historicoPorCard: Record<string, HistoricoRow[]>,
+  anexosPorCard: Record<string, Anexo[]> = {}
+): DadosObra {
   const obra: ObraInfo = {
     nome: obraRow.nome,
     endereco: obraRow.endereco ?? '',
@@ -218,6 +224,12 @@ export function rowsParaDadosObra(obraRow: ObraRow, cardsRows: CardRow[], histor
       tipo: h.autor_tipo,
       data: new Date(h.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }),
       texto: h.texto,
+    })),
+    fotos: (anexosPorCard[r.id] ?? []).map<FotoCard>((a) => ({
+      id: a.id,
+      url: a.url,
+      nome: a.nome_arquivo,
+      createdAt: a.created_at,
     })),
   }))
   return { obra, cards }

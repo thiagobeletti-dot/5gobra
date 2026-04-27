@@ -7,6 +7,7 @@ import { diasAte, formataData, statusSemantico } from '../lib/helpers'
 import { useObraData } from '../hooks/useObraData'
 import { sair, useAuth } from '../lib/auth'
 import ImportarItens from '../components/ImportarItens'
+import GaleriaFotos from '../components/GaleriaFotos'
 
 export default function Obra() {
   const { obraId = 'demo' } = useParams<{ obraId: string }>()
@@ -170,6 +171,7 @@ export default function Obra() {
         <ModalCard
           card={cardAberto}
           perfil={perfil}
+          podeFotos={data.modo === 'banco'}
           onClose={() => setCardAbertoId(null)}
           onAlterarStatus={async (s) => {
             await data.alterarStatus(cardAberto.id, s)
@@ -191,6 +193,14 @@ export default function Obra() {
             await data.reabrir(cardAberto.id, t, perfil)
             setCardAbertoId(null)
             toast('Card reaberto para a empresa')
+          }}
+          onAdicionarFotos={async (arquivos) => {
+            const n = await data.adicionarFotos(cardAberto.id, arquivos)
+            toast(n + (n === 1 ? ' foto adicionada' : ' fotos adicionadas'))
+          }}
+          onRemoverFoto={async (fotoId) => {
+            await data.removerFoto(cardAberto.id, fotoId)
+            toast('Foto removida')
           }}
         />
       )}
@@ -316,13 +326,15 @@ function CardView({ card, perfil, onClick }: { card: Card; perfil: Perfil; onCli
 }
 
 function ModalCard({
-  card, perfil, onClose, onAlterarStatus, onRegistrar, onAceitar, onReabrir,
+  card, perfil, podeFotos, onClose, onAlterarStatus, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto,
 }: {
-  card: Card; perfil: Perfil; onClose: () => void
+  card: Card; perfil: Perfil; podeFotos: boolean; onClose: () => void
   onAlterarStatus: (s: string) => Promise<void>
   onRegistrar: (texto: string, moveAba: boolean) => Promise<void>
   onAceitar: () => Promise<void>
   onReabrir: (texto: string) => Promise<void>
+  onAdicionarFotos: (arquivos: File[]) => Promise<void>
+  onRemoverFoto: (fotoId: string) => Promise<void>
 }) {
   const [texto, setTexto] = useState('')
   const tipoLabel = { peca: 'Peca', acordo: 'Acordo', reclamacao: 'Reclamacao' }[card.tipo]
@@ -413,6 +425,15 @@ function ModalCard({
                 )}
               </div>
             </div>
+          )}
+
+          {podeFotos && (
+            <GaleriaFotos
+              fotos={card.fotos}
+              podeEditar={!card.encerrado}
+              onAdicionar={onAdicionarFotos}
+              onRemover={async (anexo) => onRemoverFoto(anexo.id)}
+            />
           )}
 
           <div>
