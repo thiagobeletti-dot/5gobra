@@ -424,7 +424,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
 
   const salvarMedicao1Card = useCallback(async (cardId: string, dadosForm: DadosMedicao1, autorNome: string): Promise<Checklist> => {
     if (modo === 'demo' || !obraReal) {
-      throw new Error('Checklist tecnico disponivel so com Supabase conectado')
+      throw new Error('Checklist técnico disponível só com Supabase conectado')
     }
     const novo = await salvarMedicao1({
       cardId,
@@ -432,15 +432,31 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
       autor: autorNome || 'Empresa',
       autorTipo: 'empresa',
     })
-    // Registra no historico que a medicao foi feita
-    const resumo = dadosForm.contra_marco === 'sim'
-      ? 'Medicao 1 preenchida. Decisao: COM contra-marco.'
-      : dadosForm.contra_marco === 'nao'
-        ? 'Medicao 1 preenchida. Decisao: SEM contra-marco.'
-        : 'Medicao 1 preenchida.'
-    try {
-      await adicionarHistorico({ card_id: cardId, autor: autorNome || 'Empresa', autor_tipo: 'empresa', texto: resumo })
-    } catch {}
+
+    // Caso 1: tipologia NÃO executável — empurra card pra empresa com o motivo
+    if (dadosForm.tipologia_executavel === 'nao') {
+      const motivo = dadosForm.tipologia_problema.trim() || '(sem detalhes)'
+      try {
+        await atualizarCard(cardId, { aba: 'empresa' })
+        await adicionarHistorico({
+          card_id: cardId,
+          autor: autorNome || 'Técnico',
+          autor_tipo: 'empresa',
+          texto: '⚠ TIPOLOGIA NÃO EXECUTÁVEL. Motivo: ' + motivo + '. Card devolvido pra empresa avaliar.',
+        })
+      } catch {}
+    } else {
+      // Caso 2: medição feita normalmente — registra com a decisão de contra-marco
+      const resumo = dadosForm.contra_marco === 'sim'
+        ? 'Medição 1 preenchida. Decisão: COM contra-marco.'
+        : dadosForm.contra_marco === 'nao'
+          ? 'Medição 1 preenchida. Decisão: SEM contra-marco.'
+          : 'Medição 1 preenchida.'
+      try {
+        await adicionarHistorico({ card_id: cardId, autor: autorNome || 'Empresa', autor_tipo: 'empresa', texto: resumo })
+      } catch {}
+    }
+
     const dd = await carregarDoBanco(obraReal)
     setDados(dd)
     return novo

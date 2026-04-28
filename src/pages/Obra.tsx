@@ -10,7 +10,7 @@ import ImportarItens from '../components/ImportarItens'
 import GaleriaFotos from '../components/GaleriaFotos'
 import FormMedicao1 from '../components/FormMedicao1'
 import type { DadosMedicao1 } from '../types/checklist'
-import { resumoMedicao1 } from '../types/checklist'
+import { resumoMedicao1, VAZIO_MEDICAO1, ROTULOS_TIPOLOGIA } from '../types/checklist'
 
 export default function Obra() {
   const { obraId = 'demo' } = useParams<{ obraId: string }>()
@@ -215,14 +215,24 @@ export default function Obra() {
         const cardId = formM1Aberto
         const card = dados.cards.find((c) => c.id === cardId)
         const m1 = card?.checklists.find((c) => c.tipo === 'medicao1')
+        // Pré-popula com descrição do card quando ainda não tem M1 salva
+        const inicial: DadosMedicao1 | null = m1
+          ? (m1.dados as DadosMedicao1)
+          : card
+            ? { ...VAZIO_MEDICAO1, descricao: card.descricao || card.nome }
+            : null
         return (
           <FormMedicao1
-            inicial={(m1?.dados as DadosMedicao1) ?? null}
+            inicial={inicial}
             onCancelar={() => setFormM1Aberto(null)}
             onSalvar={async (dadosForm) => {
               await data.salvarMedicao1Card(cardId, dadosForm, user?.email ?? 'Empresa')
               setFormM1Aberto(null)
-              toast('Medicao 1 salva')
+              if (dadosForm.tipologia_executavel === 'nao') {
+                toast('Reportado pra empresa — card devolvido')
+              } else {
+                toast('Medição 1 salva')
+              }
             }}
           />
         )
@@ -501,33 +511,44 @@ function ChecklistTecnico({ card, onAbrirMedicao1 }: { card: Card; onAbrirMedica
   const m1 = card.checklists.find((c) => c.tipo === 'medicao1')
   const dadosM1 = m1?.dados as DadosMedicao1 | undefined
   const resumo = dadosM1 ? resumoMedicao1(dadosM1) : null
+  const tipologiaLabel = dadosM1?.tipologia ? ROTULOS_TIPOLOGIA[dadosM1.tipologia] : null
+  const naoExecutavel = dadosM1?.tipologia_executavel === 'nao'
   return (
     <div>
       <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">
-        Checklist tecnico (so empresa enxerga)
+        Checklist técnico (só empresa enxerga)
       </div>
       {m1 && dadosM1 ? (
-        <div className="bg-slate-50 border border-slate-200 rounded-lg p-3.5 space-y-2.5">
+        <div className={'border rounded-lg p-3.5 space-y-2.5 ' + (naoExecutavel ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200')}>
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="bg-laranja-soft text-laranja-dark border border-laranja-border px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider">Medicao 1</span>
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <span className="bg-laranja-soft text-laranja-dark border border-laranja-border px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider">Medição 1</span>
+                {tipologiaLabel && (
+                  <span className="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider">{tipologiaLabel}</span>
+                )}
                 <span className="text-[11px] text-slate-400">{m1.autor} · {new Date(m1.preenchidoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
               </div>
-              <div className="text-sm text-slate-800 font-medium">{resumo}</div>
-              <div className="text-xs text-slate-500 mt-1">
-                Contra-marco: <strong>{dadosM1.contra_marco === 'sim' ? 'SIM' : dadosM1.contra_marco === 'nao' ? 'NAO' : '-'}</strong>
-                {dadosM1.medida_final_largura && dadosM1.medida_final_altura && (
-                  <> · Medida final: {dadosM1.medida_final_largura} x {dadosM1.medida_final_altura}</>
-                )}
-              </div>
+              <div className={'text-sm font-medium ' + (naoExecutavel ? 'text-red-700' : 'text-slate-800')}>{resumo}</div>
+              {naoExecutavel ? (
+                <div className="text-xs text-red-700 mt-1">
+                  <strong>Motivo:</strong> {dadosM1.tipologia_problema || '(sem detalhes)'}
+                </div>
+              ) : (
+                <div className="text-xs text-slate-500 mt-1">
+                  Contra-marco: <strong>{dadosM1.contra_marco === 'sim' ? 'SIM' : dadosM1.contra_marco === 'nao' ? 'NÃO' : '-'}</strong>
+                  {dadosM1.medida_largura && dadosM1.medida_altura && (
+                    <> · Medida: {dadosM1.medida_largura} x {dadosM1.medida_altura}</>
+                  )}
+                </div>
+              )}
             </div>
             <button onClick={onAbrirMedicao1} className="btn-ghost text-xs px-3 py-1.5">Editar</button>
           </div>
         </div>
       ) : (
         <button onClick={onAbrirMedicao1} className="w-full bg-slate-50 border border-dashed border-slate-300 rounded-lg p-4 text-sm text-slate-600 hover:border-laranja hover:text-laranja-dark hover:bg-laranja-soft transition">
-          + Preencher Medicao 1 (visita tecnica)
+          + Preencher Medição 1 (visita técnica)
         </button>
       )}
     </div>
