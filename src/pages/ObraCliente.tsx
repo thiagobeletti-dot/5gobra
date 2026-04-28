@@ -337,7 +337,7 @@ function ModalCardCliente({
               fotos={card.fotos}
               podeEditar={!card.encerrado}
               onAdicionar={onAdicionarFotos}
-              onRemover={async (anexo) => onRemoverFoto(anexo.id)}
+              onRemover={async (foto) => onRemoverFoto(foto.id)}
             />
           )}
 
@@ -351,24 +351,3 @@ function ModalCardCliente({
                     h.tipo === 'empresa' ? 'border-l-2 border-l-laranja' :
                     h.tipo === 'cliente' ? 'border-l-2 border-l-peca' : 'border-l-2 border-l-slate-300 opacity-90'
                   )}
-                >
-                  <div className="flex justify-between items-center mb-1 gap-2.5">
-                    <span className={'font-bold text-[11px] uppercase tracking-wider ' + (
-                      h.tipo === 'empresa' ? 'text-laranja-dark' :
-                      h.tipo === 'cliente' ? 'text-peca-dark' : 'text-slate-400'
-                    )}>{h.autor}</span>
-                    <span className="text-[11px] text-slate-400">{h.data}</span>
-                  </div>
-                  <div className="text-slate-700 leading-relaxed whitespace-pre-wrap">{h.texto}</div>
-                </div>
-              ))}
-              {(card.historico ?? []).length === 0 && (
-                <div className="bg-slate-50 px-3 py-2.5 rounded-md text-xs text-slate-400">Nenhum registro ainda.</div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}

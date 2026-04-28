@@ -432,7 +432,7 @@ function ModalCard({
               fotos={card.fotos}
               podeEditar={!card.encerrado}
               onAdicionar={onAdicionarFotos}
-              onRemover={async (anexo) => onRemoverFoto(anexo.id)}
+              onRemover={async (foto) => onRemoverFoto(foto.id)}
             />
           )}
 

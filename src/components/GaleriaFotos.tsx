@@ -1,11 +1,11 @@
 import { useState, useRef, ChangeEvent } from 'react'
-import type { Anexo } from '../lib/anexos'
+import type { FotoCard } from '../types/obra'
 
 interface GaleriaFotosProps {
-  fotos: Anexo[]
+  fotos: FotoCard[]
   podeEditar: boolean
   onAdicionar: (arquivos: File[]) => Promise<void>
-  onRemover: (anexo: Anexo) => Promise<void>
+  onRemover: (foto: FotoCard) => Promise<void>
 }
 
 export default function GaleriaFotos({ fotos, podeEditar, onAdicionar, onRemover }: GaleriaFotosProps) {
@@ -30,11 +30,11 @@ export default function GaleriaFotos({ fotos, podeEditar, onAdicionar, onRemover
     }
   }
 
-  async function remover(anexo: Anexo) {
+  async function remover(foto: FotoCard) {
     if (!confirm('Remover essa foto? Essa acao nao pode ser desfeita.')) return
-    setRemovendoId(anexo.id)
+    setRemovendoId(foto.id)
     try {
-      await onRemover(anexo)
+      await onRemover(foto)
     } catch (err: any) {
       setErro(err?.message ?? 'Erro ao remover')
     } finally {
@@ -88,7 +88,7 @@ export default function GaleriaFotos({ fotos, podeEditar, onAdicionar, onRemover
               >
                 <img
                   src={f.url}
-                  alt={f.nome_arquivo ?? 'Foto'}
+                  alt={f.nome ?? 'Foto'}
                   loading="lazy"
                   className="w-full h-full object-cover hover:scale-105 transition"
                 />
@@ -118,7 +118,7 @@ export default function GaleriaFotos({ fotos, podeEditar, onAdicionar, onRemover
   )
 }
 
-function Lightbox({ fotos, indexInicial, onClose }: { fotos: Anexo[]; indexInicial: number; onClose: () => void }) {
+function Lightbox({ fotos, indexInicial, onClose }: { fotos: FotoCard[]; indexInicial: number; onClose: () => void }) {
   const [index, setIndex] = useState(indexInicial)
   const foto = fotos[index]
   if (!foto) return null
@@ -157,7 +157,7 @@ function Lightbox({ fotos, indexInicial, onClose }: { fotos: Anexo[]; indexInici
 
       <img
         src={foto.url}
-        alt={foto.nome_arquivo ?? 'Foto'}
+        alt={foto.nome ?? 'Foto'}
         className="max-w-full max-h-[90vh] object-contain"
         onClick={(e) => e.stopPropagation()}
       />
