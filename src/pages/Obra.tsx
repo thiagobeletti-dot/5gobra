@@ -8,6 +8,9 @@ import { useObraData } from '../hooks/useObraData'
 import { sair, useAuth } from '../lib/auth'
 import ImportarItens from '../components/ImportarItens'
 import GaleriaFotos from '../components/GaleriaFotos'
+import FormMedicao1 from '../components/FormMedicao1'
+import type { DadosMedicao1 } from '../types/checklist'
+import { resumoMedicao1 } from '../types/checklist'
 
 export default function Obra() {
   const { obraId = 'demo' } = useParams<{ obraId: string }>()
@@ -20,6 +23,7 @@ export default function Obra() {
   const [cardAbertoId, setCardAbertoId] = useState<string | null>(null)
   const [novoAberto, setNovoAberto] = useState(false)
   const [importarAberto, setImportarAberto] = useState(false)
+  const [formM1Aberto, setFormM1Aberto] = useState<string | null>(null)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
 
   function toast(msg: string) {
@@ -202,8 +206,26 @@ export default function Obra() {
             await data.removerFoto(cardAberto.id, fotoId)
             toast('Foto removida')
           }}
+          podeChecklist={data.modo === 'banco'}
+          onAbrirMedicao1={() => setFormM1Aberto(cardAberto.id)}
         />
       )}
+
+      {formM1Aberto && (() => {
+        const card = dados.cards.find((c) => c.id === formM1Aberto)
+        const m1 = card?.checklists.find((c) => c.tipo === 'medicao1')
+        return (
+          <FormMedicao1
+            inicial={(m1?.dados as DadosMedicao1) ?? null}
+            onCancelar={() => setFormM1Aberto(null)}
+            onSalvar={async (dadosForm) => {
+              await data.salvarMedicao1Card(formM1Aberto, dadosForm, user?.email ?? 'Empresa')
+              setFormM1Aberto(null)
+              toast('Medicao 1 salva')
+            }}
+          />
+        )
+      })()}
 
       {novoAberto && (
         <ModalNovo
@@ -326,7 +348,7 @@ function CardView({ card, perfil, onClick }: { card: Card; perfil: Perfil; onCli
 }
 
 function ModalCard({
-  card, perfil, podeFotos, onClose, onAlterarStatus, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto,
+  card, perfil, podeFotos, onClose, onAlterarStatus, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto, podeChecklist, onAbrirMedicao1,
 }: {
   card: Card; perfil: Perfil; podeFotos: boolean; onClose: () => void
   onAlterarStatus: (s: string) => Promise<void>
@@ -335,6 +357,8 @@ function ModalCard({
   onReabrir: (texto: string) => Promise<void>
   onAdicionarFotos: (arquivos: File[]) => Promise<void>
   onRemoverFoto: (fotoId: string) => Promise<void>
+  podeChecklist: boolean
+  onAbrirMedicao1: () => void
 }) {
   const [texto, setTexto] = useState('')
   const tipoLabel = { peca: 'Peca', acordo: 'Acordo', reclamacao: 'Reclamacao' }[card.tipo]
@@ -427,6 +451,10 @@ function ModalCard({
             </div>
           )}
 
+          {perfil === 'empresa' && podeChecklist && card.tipo === 'peca' && !card.encerrado && (
+            <ChecklistTecnico card={card} onAbrirMedicao1={onAbrirMedicao1} />
+          )}
+
           {podeFotos && (
             <GaleriaFotos
               fotos={card.fotos}
@@ -464,6 +492,43 @@ function ModalCard({
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+function ChecklistTecnico({ card, onAbrirMedicao1 }: { card: Card; onAbrirMedicao1: () => void }) {
+  const m1 = card.checklists.find((c) => c.tipo === 'medicao1')
+  const dadosM1 = m1?.dados as DadosMedicao1 | undefined
+  const resumo = dadosM1 ? resumoMedicao1(dadosM1) : null
+  return (
+    <div>
+      <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">
+        Checklist tecnico (so empresa enxerga)
+      </div>
+      {m1 && dadosM1 ? (
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-3.5 space-y-2.5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="bg-laranja-soft text-laranja-dark border border-laranja-border px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider">Medicao 1</span>
+                <span className="text-[11px] text-slate-400">{m1.autor} · {new Date(m1.preenchidoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
+              </div>
+              <div className="text-sm text-slate-800 font-medium">{resumo}</div>
+              <div className="text-xs text-slate-500 mt-1">
+                Contra-marco: <strong>{dadosM1.contra_marco === 'sim' ? 'SIM' : dadosM1.contra_marco === 'nao' ? 'NAO' : '-'}</strong>
+                {dadosM1.medida_final_largura && dadosM1.medida_final_altura && (
+                  <> · Medida final: {dadosM1.medida_final_largura} x {dadosM1.medida_final_altura}</>
+                )}
+              </div>
+            </div>
+            <button onClick={onAbrirMedicao1} className="btn-ghost text-xs px-3 py-1.5">Editar</button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={onAbrirMedicao1} className="w-full bg-slate-50 border border-dashed border-slate-300 rounded-lg p-4 text-sm text-slate-600 hover:border-laranja hover:text-laranja-dark hover:bg-laranja-soft transition">
+          + Preencher Medicao 1 (visita tecnica)
+        </button>
+      )}
     </div>
   )
 }

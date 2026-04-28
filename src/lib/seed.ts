@@ -24,6 +24,7 @@ export const SEED: DadosObra = {
         { autor: 'Empresa', tipo: 'empresa', data: '14/03/2026 10:20', texto: 'Primeira medicao realizada. Aguardando instalacao do contramarco pela construcao.' },
       ],
       fotos: [],
+      checklists: [],
     },
     {
       id: 'c2',
@@ -41,6 +42,7 @@ export const SEED: DadosObra = {
         { autor: 'Sistema', tipo: 'sistema', data: '10/04/2026 09:16', texto: 'Status alterado para "Fabricando". Prazo contratual: 10/05/2026.' },
       ],
       fotos: [],
+      checklists: [],
     },
     {
       id: 'c3',
@@ -58,6 +60,7 @@ export const SEED: DadosObra = {
         { autor: 'Sistema', tipo: 'sistema', data: '18/04/2026 14:12', texto: 'Status movido para "Conclusao". Aguardando aceite final do cliente.' },
       ],
       fotos: [],
+      checklists: [],
     },
     {
       id: 'c4',
@@ -74,6 +77,7 @@ export const SEED: DadosObra = {
         { autor: 'Cliente', tipo: 'cliente', data: '16/04/2026 16:30', texto: 'Confirmo a mudanca pra aluminio preto fosco na janela da suite master, com acrescimo de R$ 480,00.' },
       ],
       fotos: [],
+      checklists: [],
     },
   ],
 }

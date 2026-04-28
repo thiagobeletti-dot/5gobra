@@ -1,4 +1,5 @@
 // Tipos do dominio G Obra
+import type { Checklist } from './checklist'
 
 export type Perfil = 'empresa' | 'cliente'
 
@@ -35,6 +36,7 @@ export interface Card {
   aceiteFinal: string | null
   historico: RegistroHistorico[]
   fotos: FotoCard[]
+  checklists: Checklist[]
 }
 
 export interface ObraInfo {

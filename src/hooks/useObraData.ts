@@ -22,6 +22,11 @@ import {
   removerAnexo,
   type Anexo,
 } from '../lib/anexos'
+import {
+  listarChecklistsDeVariosCards,
+  salvarMedicao1,
+} from '../lib/checklist'
+import type { Checklist, DadosMedicao1 } from '../types/checklist'
 
 const STORAGE_PREFIX = '5gobra:'
 
@@ -48,6 +53,7 @@ interface UseObraDataResult {
   importarItens: (itens: ItemImportado[], perfil: 'empresa' | 'cliente') => Promise<number>
   adicionarFotos: (cardId: string, arquivos: File[]) => Promise<number>
   removerFoto: (cardId: string, fotoId: string) => Promise<void>
+  salvarMedicao1Card: (cardId: string, dados: DadosMedicao1, autorNome: string) => Promise<Checklist>
   resetar: () => void
 }
 
@@ -78,6 +84,7 @@ async function carregarDoBanco(obraResolvida: ObraRow): Promise<DadosObra> {
   const cardsRows = await listarCardsDaObra(obraResolvida.id)
   const histPorCard: Record<string, HistoricoRow[]> = {}
   let anexosPorCard: Record<string, Anexo[]> = {}
+  let checklistsPorCard: Record<string, Checklist[]> = {}
   if (cardsRows.length > 0 && supabase) {
     const ids = cardsRows.map((c) => c.id)
     const { data: hists } = await supabase
@@ -89,8 +96,14 @@ async function carregarDoBanco(obraResolvida: ObraRow): Promise<DadosObra> {
       ;(histPorCard[h.card_id] ??= []).push(h)
     }
     anexosPorCard = await listarAnexosDeVariosCards(ids)
+    try {
+      checklistsPorCard = await listarChecklistsDeVariosCards(ids)
+    } catch (e) {
+      // Tabela checklists pode nao existir ainda em ambientes antigos. Toleramos.
+      console.warn('Falha ao carregar checklists:', e)
+    }
   }
-  return rowsParaDadosObra(obraResolvida, cardsRows, histPorCard, anexosPorCard)
+  return rowsParaDadosObra(obraResolvida, cardsRows, histPorCard, anexosPorCard, checklistsPorCard)
 }
 
 export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' = 'id'): UseObraDataResult {
@@ -407,11 +420,35 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     })
   }, [modo, obraReal])
 
+  const salvarMedicao1Card = useCallback(async (cardId: string, dadosForm: DadosMedicao1, autorNome: string): Promise<Checklist> => {
+    if (modo === 'demo' || !obraReal) {
+      throw new Error('Checklist tecnico disponivel so com Supabase conectado')
+    }
+    const novo = await salvarMedicao1({
+      cardId,
+      dados: dadosForm,
+      autor: autorNome || 'Empresa',
+      autorTipo: 'empresa',
+    })
+    // Registra no historico que a medicao foi feita
+    const resumo = dadosForm.contra_marco === 'sim'
+      ? 'Medicao 1 preenchida. Decisao: COM contra-marco.'
+      : dadosForm.contra_marco === 'nao'
+        ? 'Medicao 1 preenchida. Decisao: SEM contra-marco.'
+        : 'Medicao 1 preenchida.'
+    try {
+      await adicionarHistorico({ card_id: cardId, autor: autorNome || 'Empresa', autor_tipo: 'empresa', texto: resumo })
+    } catch {}
+    const dd = await carregarDoBanco(obraReal)
+    setDados(dd)
+    return novo
+  }, [modo, obraReal])
+
   const resetar = useCallback(() => {
     if (modo !== 'demo') return
     localStorage.removeItem(STORAGE_PREFIX + idOrToken)
     setDados(structuredClone(SEED))
   }, [modo, idOrToken])
 
-  return { dados, modo, obraReal, carregando, erro, alterarStatus, registrar, darAceite, reabrir, criarNovo, importarItens, adicionarFotos, removerFoto, resetar }
+  return { dados, modo, obraReal, carregando, erro, alterarStatus, registrar, darAceite, reabrir, criarNovo, importarItens, adicionarFotos, removerFoto, salvarMedicao1Card, resetar }
 }

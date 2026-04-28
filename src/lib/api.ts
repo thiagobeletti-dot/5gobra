@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import type { Card, DadosObra, ObraInfo, RegistroHistorico, AbaId, TipoCard, FotoCard } from '../types/obra'
+import type { Checklist } from '../types/checklist'
 import type { Anexo } from './anexos'
 
 // =============== Tipos do banco ===============
@@ -199,7 +200,8 @@ export function rowsParaDadosObra(
   obraRow: ObraRow,
   cardsRows: CardRow[],
   historicoPorCard: Record<string, HistoricoRow[]>,
-  anexosPorCard: Record<string, Anexo[]> = {}
+  anexosPorCard: Record<string, Anexo[]> = {},
+  checklistsPorCard: Record<string, Checklist[]> = {}
 ): DadosObra {
   const obra: ObraInfo = {
     nome: obraRow.nome,
@@ -231,6 +233,7 @@ export function rowsParaDadosObra(
       nome: a.nome_arquivo,
       createdAt: a.created_at,
     })),
+    checklists: checklistsPorCard[r.id] ?? [],
   }))
   return { obra, cards }
 }
