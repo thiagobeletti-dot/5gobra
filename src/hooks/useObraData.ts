@@ -303,6 +303,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
         aceiteFinal: null,
         historico: [{ autor, tipo: perfil as AutorTipo, data: agora(), texto: 'Registro criado.' }],
         fotos: [],
+        checklists: [],
       }
       setDados((d) => d ? ({ ...d, cards: [...d.cards, novo] }) : d)
       return input.destino
@@ -343,6 +344,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
           aceiteFinal: null,
           historico: [{ autor, tipo: perfil as AutorTipo, data: agora(), texto: 'Item importado do Alumisoft (origem: ' + it.origemTipologia + ').' }],
           fotos: [],
+          checklists: [],
         }))
         return { ...d, cards: [...d.cards, ...novosCards] }
       })

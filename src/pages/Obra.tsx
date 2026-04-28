@@ -212,14 +212,15 @@ export default function Obra() {
       )}
 
       {formM1Aberto && (() => {
-        const card = dados.cards.find((c) => c.id === formM1Aberto)
+        const cardId = formM1Aberto
+        const card = dados.cards.find((c) => c.id === cardId)
         const m1 = card?.checklists.find((c) => c.tipo === 'medicao1')
         return (
           <FormMedicao1
             inicial={(m1?.dados as DadosMedicao1) ?? null}
             onCancelar={() => setFormM1Aberto(null)}
             onSalvar={async (dadosForm) => {
-              await data.salvarMedicao1Card(formM1Aberto, dadosForm, user?.email ?? 'Empresa')
+              await data.salvarMedicao1Card(cardId, dadosForm, user?.email ?? 'Empresa')
               setFormM1Aberto(null)
               toast('Medicao 1 salva')
             }}
