@@ -95,7 +95,7 @@ function TextoArea({ valor, onChange, placeholder }: { valor: string; onChange: 
   )
 }
 
-const TIPOLOGIAS: Tipologia[] = ['fixo', 'correr', 'giro', 'maxim_ar']
+const TIPOLOGIAS: Exclude<Tipologia, ''>[] = ['fixo', 'correr', 'giro', 'maxim_ar']
 
 // Formulário principal
 

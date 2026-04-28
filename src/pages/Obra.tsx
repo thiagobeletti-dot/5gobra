@@ -511,7 +511,8 @@ function ChecklistTecnico({ card, onAbrirMedicao1 }: { card: Card; onAbrirMedica
   const m1 = card.checklists.find((c) => c.tipo === 'medicao1')
   const dadosM1 = m1?.dados as DadosMedicao1 | undefined
   const resumo = dadosM1 ? resumoMedicao1(dadosM1) : null
-  const tipologiaLabel = dadosM1?.tipologia ? ROTULOS_TIPOLOGIA[dadosM1.tipologia] : null
+  const tipologiaKey = dadosM1?.tipologia ? dadosM1.tipologia : null
+  const tipologiaLabel = tipologiaKey ? ROTULOS_TIPOLOGIA[tipologiaKey] : null
   const naoExecutavel = dadosM1?.tipologia_executavel === 'nao'
   return (
     <div>
@@ -662,3 +663,4 @@ function ModalNovo({
     </div>
   )
 }
+
