@@ -3,7 +3,7 @@ import type { Checklist } from './checklist'
 
 export type Perfil = 'empresa' | 'cliente'
 
-export type AbaId = 'cliente' | 'empresa' | 'emandamento' | 'conclusao'
+export type AbaId = 'cliente' | 'empresa' | 'tecnica' | 'emandamento' | 'conclusao'
 
 export type TipoCard = 'peca' | 'acordo' | 'reclamacao'
 
@@ -53,18 +53,21 @@ export interface DadosObra {
   cards: Card[]
 }
 
+// Em Andamento — agora simplificado em 3 fases + transição pra Conclusão.
+// (Valores antigos como 'Aguardando fabricacao' / 'Fabricando' / 'Entregue em obra' /
+// 'Aguardando instalacao' / 'Instalando' continuam funcionando se já estiverem no banco —
+// só não aparecem no dropdown novo.)
 export const STATUS_EM_ANDAMENTO = [
-  'Aguardando fabricacao',
-  'Fabricando',
-  'Entregue em obra',
-  'Aguardando instalacao',
-  'Instalando',
-  'Concluido',
+  'Em Produção',
+  'Entregue',
+  'Em Instalação',
+  'Concluído',
 ] as const
 
 export const ABAS: { id: AbaId; rotulo: string; descricao: string }[] = [
   { id: 'cliente', rotulo: 'Cliente', descricao: 'Acoes pendentes do lado do cliente. Pode aguardar dias, semanas ou meses - obra parada ate aqui ser resolvido.' },
   { id: 'empresa', rotulo: 'Empresa', descricao: 'Acoes pendentes do lado da empresa. Qualquer registro joga a bola pro campo oposto.' },
+  { id: 'tecnica', rotulo: 'Técnica', descricao: 'Itens aguardando visita técnica. Empresa precisa ir na obra preencher a Medição 1.' },
   { id: 'emandamento', rotulo: 'Em andamento', descricao: 'Pecas com processo ativo e prazo contratual. 15, 30, 60 ou 90 dias conforme o combinado.' },
   { id: 'conclusao', rotulo: 'Conclusao', descricao: 'Pecas instaladas aguardando aceite final. Aceite inicia a garantia.' },
 ]

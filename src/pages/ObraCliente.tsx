@@ -90,6 +90,7 @@ export default function ObraCliente() {
         <div className="max-w-4xl mx-auto">
           {abaAtiva === 'cliente' && 'Itens aguardando voce - confirme, responda ou pergunte.'}
           {abaAtiva === 'empresa' && 'Itens com a empresa - aguardando resposta deles.'}
+          {abaAtiva === 'tecnica' && 'Itens aguardando visita técnica da empresa para medição.'}
           {abaAtiva === 'emandamento' && 'Itens em fabricacao ou instalacao.'}
           {abaAtiva === 'conclusao' && 'Itens instalados aguardando seu aceite final.'}
         </div>
@@ -120,9 +121,9 @@ export default function ObraCliente() {
           podeFotos={data.modo === 'banco'}
           onClose={() => setCardAbertoId(null)}
           onConfirmar={async () => {
-            await data.registrar(cardAberto.id, 'Cliente confirmou o item.', 'cliente', true)
+            await data.confirmarItem(cardAberto.id)
             setCardAbertoId(null)
-            toast('Item confirmado - enviado pra empresa')
+            toast('Item confirmado - aguardando visita técnica')
           }}
           onRegistrar={async (texto, mover) => {
             if (!texto.trim()) { toast('Escreva algo antes de registrar'); return }
@@ -169,7 +170,7 @@ function CardClienteView({ card, onClick }: { card: Card; onClick: () => void })
   const labelStatus =
     subClienteVisivel
     ? subClienteVisivel
-    : s === 'aguarda' ? (card.aba === 'cliente' ? 'Aguardando sua acao' : card.aba === 'empresa' ? 'Aguardando empresa' : 'Aguardando')
+    : s === 'aguarda' ? (card.aba === 'cliente' ? 'Aguardando sua acao' : card.aba === 'empresa' ? 'Aguardando empresa' : card.aba === 'tecnica' ? 'Aguardando visita técnica' : 'Aguardando')
     : s === 'andamento' ? 'Em andamento na fabrica'
     : s === 'instalado' ? 'Instalado'
     : s === 'concluido' ? (card.aceiteFinal ? 'Aceite concluido' : 'Aguardando seu aceite')

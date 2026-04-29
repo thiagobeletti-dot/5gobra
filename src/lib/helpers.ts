@@ -23,8 +23,13 @@ export type StatusSemantico = 'aguarda' | 'andamento' | 'instalado' | 'concluido
 export function statusSemantico(card: Card): StatusSemantico {
   if (card.aba === 'conclusao' && card.aceiteFinal) return 'concluido'
   if (card.aba === 'emandamento') {
-    if (card.statusEmAndamento === 'Concluido') return 'concluido'
-    if (card.statusEmAndamento === 'Instalando' || card.statusEmAndamento === 'Entregue em obra') return 'instalado'
+    if (card.statusEmAndamento === 'Concluído' || card.statusEmAndamento === 'Concluido') return 'concluido'
+    if (
+      card.statusEmAndamento === 'Em Instalação' ||
+      card.statusEmAndamento === 'Instalando' ||
+      card.statusEmAndamento === 'Entregue' ||
+      card.statusEmAndamento === 'Entregue em obra'
+    ) return 'instalado'
     return 'andamento'
   }
   return 'aguarda'

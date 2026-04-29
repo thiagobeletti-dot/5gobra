@@ -298,7 +298,7 @@ function CardView({ card, perfil, onClick }: { card: Card; perfil: Perfil; onCli
   const labelStatus =
     card.subStatus
     ? card.subStatus
-    : s === 'aguarda' ? (card.aba === 'cliente' ? 'Aguardando cliente' : card.aba === 'empresa' ? 'Aguardando empresa' : 'Aguardando')
+    : s === 'aguarda' ? (card.aba === 'cliente' ? 'Aguardando cliente' : card.aba === 'empresa' ? 'Aguardando empresa' : card.aba === 'tecnica' ? 'Aguardando visita técnica' : 'Aguardando')
     : s === 'andamento' ? 'Em andamento'
     : s === 'instalado' ? 'Instalado'
     : s === 'concluido' ? (card.aceiteFinal ? 'Aceite concluido' : 'Aguardando aceite')
