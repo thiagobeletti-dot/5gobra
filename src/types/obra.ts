@@ -31,6 +31,7 @@ export interface Card {
   descricao: string
   aba: AbaId
   statusEmAndamento: string | null
+  subStatus: string | null
   prazoContrato: string | null
   encerrado: boolean
   aceiteFinal: string | null

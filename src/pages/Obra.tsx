@@ -294,9 +294,11 @@ function NavItem({ children, ativo, onClick }: { children: React.ReactNode; ativ
 
 function CardView({ card, perfil, onClick }: { card: Card; perfil: Perfil; onClick: () => void }) {
   const s = statusSemantico(card)
-  const tipoLabel = { peca: 'Peca', acordo: 'Acordo', reclamacao: 'Reclamacao' }[card.tipo]
+  const tipoLabel = { peca: 'Peça', acordo: 'Acordo', reclamacao: 'Reclamação' }[card.tipo]
   const labelStatus =
-    s === 'aguarda' ? (card.aba === 'cliente' ? 'Aguardando cliente' : card.aba === 'empresa' ? 'Aguardando empresa' : 'Aguardando')
+    card.subStatus
+    ? card.subStatus
+    : s === 'aguarda' ? (card.aba === 'cliente' ? 'Aguardando cliente' : card.aba === 'empresa' ? 'Aguardando empresa' : 'Aguardando')
     : s === 'andamento' ? 'Em andamento'
     : s === 'instalado' ? 'Instalado'
     : s === 'concluido' ? (card.aceiteFinal ? 'Aceite concluido' : 'Aguardando aceite')
@@ -663,4 +665,3 @@ function ModalNovo({
     </div>
   )
 }
-

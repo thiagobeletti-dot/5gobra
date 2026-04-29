@@ -27,6 +27,7 @@ export interface CardRow {
   descricao: string | null
   aba: AbaId
   status_em_andamento: string | null
+  sub_status: string | null
   prazo_contrato: string | null
   encerrado: boolean
   aceite_final_at: string | null
@@ -218,6 +219,7 @@ export function rowsParaDadosObra(
     descricao: r.descricao ?? '',
     aba: r.aba,
     statusEmAndamento: r.status_em_andamento,
+    subStatus: r.sub_status ?? null,
     prazoContrato: r.prazo_contrato,
     encerrado: r.encerrado,
     aceiteFinal: r.aceite_final_at,

@@ -298,6 +298,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
         descricao: input.descricao,
         aba: input.destino,
         statusEmAndamento: input.destino === 'emandamento' ? 'Aguardando fabricacao' : null,
+        subStatus: null,
         prazoContrato: input.destino === 'emandamento' ? input.prazoContrato : null,
         encerrado: false,
         aceiteFinal: null,
@@ -339,6 +340,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
           descricao: it.descricao,
           aba: 'cliente' as AbaId,
           statusEmAndamento: null,
+          subStatus: null,
           prazoContrato: null,
           encerrado: false,
           aceiteFinal: null,
@@ -433,29 +435,63 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
       autorTipo: 'empresa',
     })
 
-    // Caso 1: tipologia NÃO executável — empurra card pra empresa com o motivo
+    // Auto-move pós-M1 — decide pra qual aba o card vai e qual sub-status setar
+    let novaAba: AbaId | null = null
+    let novoSubStatus: string | null = null
+    let mensagemHistorico = 'Medição 1 preenchida.'
+
     if (dadosForm.tipologia_executavel === 'nao') {
+      // Regra 1: tipologia não executável → volta pra empresa decidir
       const motivo = dadosForm.tipologia_problema.trim() || '(sem detalhes)'
-      try {
-        await atualizarCard(cardId, { aba: 'empresa' })
-        await adicionarHistorico({
-          card_id: cardId,
-          autor: autorNome || 'Técnico',
-          autor_tipo: 'empresa',
-          texto: '⚠ TIPOLOGIA NÃO EXECUTÁVEL. Motivo: ' + motivo + '. Card devolvido pra empresa avaliar.',
-        })
-      } catch {}
-    } else {
-      // Caso 2: medição feita normalmente — registra com a decisão de contra-marco
-      const resumo = dadosForm.contra_marco === 'sim'
-        ? 'Medição 1 preenchida. Decisão: COM contra-marco.'
-        : dadosForm.contra_marco === 'nao'
-          ? 'Medição 1 preenchida. Decisão: SEM contra-marco.'
-          : 'Medição 1 preenchida.'
-      try {
-        await adicionarHistorico({ card_id: cardId, autor: autorNome || 'Empresa', autor_tipo: 'empresa', texto: resumo })
-      } catch {}
+      novaAba = 'empresa'
+      novoSubStatus = 'Tipologia não executável'
+      mensagemHistorico = '⚠ TIPOLOGIA NÃO EXECUTÁVEL. Motivo: ' + motivo + '. Card devolvido pra empresa avaliar.'
+    } else if (dadosForm.contra_marco === 'sim') {
+      // Regra 2: com contra-marco → fica na empresa fabricar contra-marco
+      novaAba = 'empresa'
+      novoSubStatus = 'Fabricando contra-marco'
+      mensagemHistorico = 'Medição 1 preenchida. Decisão: COM contra-marco. Empresa vai fabricar e entregar contra-marco em obra.'
+    } else if (dadosForm.contra_marco === 'nao') {
+      // Regra 3 ou 4: sem contra-marco — depende do estado do vão
+      const vaoTudoOk =
+        dadosForm.vao_chao_ok === 'sim' &&
+        dadosForm.vao_esquadro_ok === 'sim' &&
+        dadosForm.vao_nivel_ok === 'sim' &&
+        !dadosForm.precisa_correcao.trim()
+      if (vaoTudoOk) {
+        // Regra 4: vão pronto → vai produzir
+        novaAba = 'emandamento'
+        novoSubStatus = 'Em Produção'
+        mensagemHistorico = 'Medição 1 preenchida. Decisão: SEM contra-marco, vão pronto. Card movido para Em Andamento (produção).'
+      } else {
+        // Regra 3: vão precisa correção → volta pro cliente
+        novaAba = 'cliente'
+        novoSubStatus = 'Aguardando finalizar vão'
+        mensagemHistorico = 'Medição 1 preenchida. Decisão: SEM contra-marco. Vão precisa de correção pelo cliente antes da próxima visita.'
+      }
     }
+
+    // Aplica a movimentação no banco
+    if (novaAba !== null) {
+      try {
+        const updates: any = { aba: novaAba, sub_status: novoSubStatus }
+        if (novaAba === 'emandamento') {
+          updates.status_em_andamento = 'Aguardando fabricacao'
+        }
+        await atualizarCard(cardId, updates)
+      } catch (e) {
+        console.warn('Falha ao mover card pós-M1:', e)
+      }
+    }
+
+    try {
+      await adicionarHistorico({
+        card_id: cardId,
+        autor: autorNome || 'Empresa',
+        autor_tipo: 'empresa',
+        texto: mensagemHistorico,
+      })
+    } catch {}
 
     const dd = await carregarDoBanco(obraReal)
     setDados(dd)

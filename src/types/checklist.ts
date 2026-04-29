@@ -22,11 +22,8 @@ export interface DadosMedicao1 {
   tecnico: string
   responsavel_obra: string
 
-  // Identificação do item (pré-populada do card)
+  // Identificação do item (pré-populada do card; linha/cor/vidro vêm do contrato, não são responsabilidade do técnico)
   descricao: string
-  linha: string
-  cor: string
-  vidro: string
   observacao: string
 
   // Tipologia contratada é executável?
@@ -85,9 +82,6 @@ export const VAZIO_MEDICAO1: DadosMedicao1 = {
   tecnico: '',
   responsavel_obra: '',
   descricao: '',
-  linha: '',
-  cor: '',
-  vidro: '',
   observacao: '',
   tipologia_executavel: '',
   tipologia_problema: '',

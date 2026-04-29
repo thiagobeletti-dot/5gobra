@@ -195,13 +195,11 @@ export default function FormMedicao1({ inicial, onSalvar, onCancelar }: Props) {
           </Secao>
 
           <Secao titulo="Identificação do item (do contrato)">
-            <Campo label="Descrição"><Texto valor={d.descricao} onChange={(v) => up('descricao', v)} placeholder="O que foi confirmado pelo cliente" /></Campo>
-            <div className="grid md:grid-cols-3 gap-3">
-              <Campo label="Linha (perfil)"><Texto valor={d.linha} onChange={(v) => up('linha', v)} placeholder="Ex: Suprema" /></Campo>
-              <Campo label="Cor"><Texto valor={d.cor} onChange={(v) => up('cor', v)} placeholder="Ex: RAL9005F" /></Campo>
-              <Campo label="Vidro"><Texto valor={d.vidro} onChange={(v) => up('vidro', v)} placeholder="Ex: Temperado 6mm" /></Campo>
+            <div className="bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-md text-sm text-slate-700">
+              <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-0.5">Descrição (do contrato)</div>
+              <div className="font-medium leading-snug whitespace-pre-wrap">{d.descricao || <span className="text-slate-400 italic">Sem descrição</span>}</div>
             </div>
-            <Campo label="Observação"><TextoArea valor={d.observacao} onChange={(v) => up('observacao', v)} placeholder="Observação livre sobre o item" /></Campo>
+            <Campo label="Observação do técnico"><TextoArea valor={d.observacao} onChange={(v) => up('observacao', v)} placeholder="Observação livre sobre a peça (cor diferente, vidro, peculiaridades vistas em obra)" /></Campo>
 
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-2">
               <GrupoRadio
