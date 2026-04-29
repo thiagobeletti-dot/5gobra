@@ -117,21 +117,34 @@ export default function FormMedicao1({ inicial, onSalvar, onCancelar }: Props) {
 
   async function salvar() {
     setErro(null)
-    if (!d.tipologia) {
-      setErro('Escolha a tipologia da peça antes de salvar.')
-      return
-    }
+    // Pergunta crítica primeiro: dá pra executar a tipologia contratada?
     if (!d.tipologia_executavel) {
       setErro('Confirme se conseguimos executar a tipologia contratada.')
       return
     }
-    if (d.tipologia_executavel === 'nao' && !d.tipologia_problema.trim()) {
-      setErro('Descreva o problema da tipologia pra empresa avaliar.')
-      return
-    }
-    if (d.tipologia_executavel === 'sim' && !d.contra_marco) {
-      setErro('Decida se vai ter contra-marco antes de salvar (essa decisão define o próximo passo da obra).')
-      return
+    if (d.tipologia_executavel === 'nao') {
+      // Caminho não-executável: só exige o motivo, pula o resto do form
+      if (!d.tipologia_problema.trim()) {
+        setErro('Descreva o problema da tipologia pra empresa avaliar.')
+        return
+      }
+    } else {
+      // Caminho executável: exige tipologia + decisão de contra-marco + diagnóstico do vão completo
+      if (!d.tipologia) {
+        setErro('Escolha a tipologia da peça antes de salvar.')
+        return
+      }
+      if (!d.contra_marco) {
+        setErro('Decida se vai ter contra-marco antes de salvar (essa decisão define o próximo passo da obra).')
+        return
+      }
+      // Sem contra-marco: técnico precisa avaliar o vão antes de o card ir pra produção ou voltar pro cliente
+      if (d.contra_marco === 'nao') {
+        if (!d.vao_chao_ok || !d.vao_esquadro_ok || !d.vao_nivel_ok) {
+          setErro('Marque OK ou Não no Chão, Esquadro e Nível do diagnóstico do vão (todos os 3). Sem isso o sistema não sabe se o vão tá pronto pra produção.')
+          return
+        }
+      }
     }
     // Aplica a regra de meia cana interna antes de salvar
     const dadosFinais: DadosMedicao1 = {
