@@ -349,7 +349,7 @@ function ModalCardCliente({
           <div>
             <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">Historico</div>
             <div className="space-y-2.5">
-              {(card.historico ?? []).slice().reverse().map((h, i) => (
+              {(card.historico ?? []).filter((h) => !h.interno).slice().reverse().map((h, i) => (
                 <div
                   key={i}
                   className={'bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-md text-xs ' + (
@@ -367,7 +367,7 @@ function ModalCardCliente({
                   <div className="text-slate-700 leading-relaxed whitespace-pre-wrap">{h.texto}</div>
                 </div>
               ))}
-              {(card.historico ?? []).length === 0 && (
+              {(card.historico ?? []).filter((h) => !h.interno).length === 0 && (
                 <div className="bg-slate-50 px-3 py-2.5 rounded-md text-xs text-slate-400">Nenhum registro ainda.</div>
               )}
             </div>

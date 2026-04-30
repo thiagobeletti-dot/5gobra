@@ -14,6 +14,7 @@ export interface RegistroHistorico {
   tipo: AutorTipo
   data: string
   texto: string
+  interno: boolean
 }
 
 export interface FotoCard {

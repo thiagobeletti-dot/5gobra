@@ -42,6 +42,7 @@ export interface HistoricoRow {
   autor: string
   autor_tipo: 'empresa' | 'cliente' | 'sistema'
   texto: string
+  interno: boolean
   ip: string | null
   user_agent: string | null
   created_at: string
@@ -188,9 +189,11 @@ export async function adicionarHistorico(dados: {
   autor: string
   autor_tipo: 'empresa' | 'cliente' | 'sistema'
   texto: string
+  interno?: boolean
 }) {
   if (!supabase) throw new Error('Supabase nao configurado')
-  const { data, error } = await supabase.from('historico_card').insert(dados).select().single()
+  const payload = { ...dados, interno: dados.interno ?? false }
+  const { data, error } = await supabase.from('historico_card').insert(payload).select().single()
   if (error) throw error
   return data as HistoricoRow
 }
@@ -228,6 +231,7 @@ export function rowsParaDadosObra(
       tipo: h.autor_tipo,
       data: new Date(h.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }),
       texto: h.texto,
+      interno: h.interno ?? false,
     })),
     fotos: (anexosPorCard[r.id] ?? []).map<FotoCard>((a) => ({
       id: a.id,

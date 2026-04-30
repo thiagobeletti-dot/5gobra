@@ -160,9 +160,9 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
           ...d,
           cards: d.cards.map((c) => {
             if (c.id !== cardId) return c
-            const hist = [...c.historico, { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Status: "' + (c.statusEmAndamento ?? '-') + '" -> "' + novoStatus + '".' }]
+            const hist = [...c.historico, { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Status: "' + (c.statusEmAndamento ?? '-') + '" -> "' + novoStatus + '".', interno: true }]
             if (novoStatus === 'Concluido' || novoStatus === 'Concluído') {
-              hist.push({ autor: 'Sistema', tipo: 'sistema', data: agora(), texto: 'Peça concluída. Movida para aba Conclusão. Aguardando aceite do cliente.' })
+              hist.push({ autor: 'Sistema', tipo: 'sistema', data: agora(), texto: 'Peça concluída. Movida para aba Conclusão. Aguardando aceite do cliente.', interno: false })
               return { ...c, statusEmAndamento: novoStatus, aba: 'conclusao' as AbaId, historico: hist }
             }
             return { ...c, statusEmAndamento: novoStatus, historico: hist }
@@ -177,7 +177,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     const updates: any = { status_em_andamento: novoStatus }
     if (novoStatus === 'Concluido' || novoStatus === 'Concluído') updates.aba = 'conclusao'
     await atualizarCard(cardId, updates)
-    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Status: "' + (card.statusEmAndamento ?? '-') + '" -> "' + novoStatus + '".' })
+    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Status: "' + (card.statusEmAndamento ?? '-') + '" -> "' + novoStatus + '".', interno: true })
     if (novoStatus === 'Concluido' || novoStatus === 'Concluído') {
       await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Peça concluída. Movida para aba Conclusão. Aguardando aceite do cliente.' })
     }
@@ -195,13 +195,13 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
           ...d,
           cards: d.cards.map((c) => {
             if (c.id !== cardId) return c
-            const hist = [...c.historico, { autor, tipo: perfil as AutorTipo, data: agora(), texto }]
+            const hist = [...c.historico, { autor, tipo: perfil as AutorTipo, data: agora(), texto, interno: false }]
             let novaAba = c.aba
             if (moveAba) {
               if (c.aba === 'emandamento') novaAba = perfil === 'empresa' ? 'cliente' : 'empresa'
               else if (c.aba === 'cliente') novaAba = 'empresa'
               else if (c.aba === 'empresa') novaAba = 'cliente'
-              hist.push({ autor: 'Sistema', tipo: 'sistema', data: agora(), texto: 'Movido para aba ' + (novaAba === 'cliente' ? 'Cliente' : novaAba === 'empresa' ? 'Empresa' : novaAba) + '.' })
+              hist.push({ autor: 'Sistema', tipo: 'sistema', data: agora(), texto: 'Movido para aba ' + (novaAba === 'cliente' ? 'Cliente' : novaAba === 'empresa' ? 'Empresa' : novaAba) + '.', interno: true })
             }
             return { ...c, aba: novaAba, historico: hist }
           }),
@@ -220,7 +220,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
       else if (card.aba === 'empresa') novaAba = 'cliente'
       if (novaAba !== card.aba) {
         await atualizarCard(cardId, { aba: novaAba })
-        await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Movido para aba ' + (novaAba === 'cliente' ? 'Cliente' : 'Empresa') + '.' })
+        await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Movido para aba ' + (novaAba === 'cliente' ? 'Cliente' : 'Empresa') + '.', interno: true })
       }
     }
     const novo = await carregarDoBanco(obraReal)
@@ -241,8 +241,8 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
             if (c.id !== cardId) return c
             const hist = [
               ...c.historico,
-              { autor: 'Cliente', tipo: 'cliente' as AutorTipo, data: agora(), texto },
-              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Card movido para aba Técnica. Empresa precisa agendar visita técnica para Medição 1.' },
+              { autor: 'Cliente', tipo: 'cliente' as AutorTipo, data: agora(), texto, interno: false },
+              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Card movido para aba Técnica. Empresa precisa agendar visita técnica para Medição 1.', interno: true },
             ]
             return { ...c, aba: 'tecnica' as AbaId, subStatus: 'Aguardando visita técnica', historico: hist }
           }),
@@ -253,7 +253,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     if (!obraReal) return
     await adicionarHistorico({ card_id: cardId, autor: 'Cliente', autor_tipo: 'cliente', texto })
     await atualizarCard(cardId, { aba: 'tecnica', sub_status: 'Aguardando visita técnica' })
-    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Card movido para aba Técnica. Empresa precisa agendar visita técnica para Medição 1.' })
+    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Card movido para aba Técnica. Empresa precisa agendar visita técnica para Medição 1.', interno: true })
     const novo = await carregarDoBanco(obraReal)
     setDados(novo)
   }, [dados, modo, obraReal])
@@ -270,8 +270,8 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
             if (c.id !== cardId) return c
             const hist = [
               ...c.historico,
-              { autor: 'Cliente', tipo: 'cliente' as AutorTipo, data: quando, texto: 'Aceite final confirmado. Peca oficialmente entregue e garantia iniciada.' },
-              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: quando, texto: 'Card encerrado. Inicio de garantia registrado.' },
+              { autor: 'Cliente', tipo: 'cliente' as AutorTipo, data: quando, texto: 'Aceite final confirmado. Peca oficialmente entregue e garantia iniciada.', interno: false },
+              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: quando, texto: 'Card encerrado. Inicio de garantia registrado.', interno: false },
             ]
             return { ...c, aceiteFinal: quando, encerrado: true, historico: hist }
           }),
@@ -302,8 +302,8 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
             if (c.id !== cardId) return c
             const hist = [
               ...c.historico,
-              { autor: 'Cliente', tipo: 'cliente' as AutorTipo, data: agora(), texto },
-              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Cliente identificou problema. Card reaberto e enviado para Empresa.' },
+              { autor: 'Cliente', tipo: 'cliente' as AutorTipo, data: agora(), texto, interno: false },
+              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Cliente identificou problema. Card reaberto e enviado para Empresa.', interno: true },
             ]
             return { ...c, aba: 'empresa' as AbaId, historico: hist }
           }),
@@ -313,7 +313,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     }
     if (!obraReal) return
     await adicionarHistorico({ card_id: cardId, autor: 'Cliente', autor_tipo: perfil, texto })
-    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Cliente identificou problema. Card reaberto e enviado para Empresa.' })
+    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Cliente identificou problema. Card reaberto e enviado para Empresa.', interno: true })
     await atualizarCard(cardId, { aba: 'empresa' })
     const novo = await carregarDoBanco(obraReal)
     setDados(novo)
@@ -334,7 +334,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
         prazoContrato: input.destino === 'emandamento' ? input.prazoContrato : null,
         encerrado: false,
         aceiteFinal: null,
-        historico: [{ autor, tipo: perfil as AutorTipo, data: agora(), texto: 'Registro criado.' }],
+        historico: [{ autor, tipo: perfil as AutorTipo, data: agora(), texto: 'Registro criado.', interno: false }],
         fotos: [],
         checklists: [],
       }
@@ -376,7 +376,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
           prazoContrato: null,
           encerrado: false,
           aceiteFinal: null,
-          historico: [{ autor, tipo: perfil as AutorTipo, data: agora(), texto: 'Item importado do Alumisoft (origem: ' + it.origemTipologia + ').' }],
+          historico: [{ autor, tipo: perfil as AutorTipo, data: agora(), texto: 'Item importado do Alumisoft (origem: ' + it.origemTipologia + ').', interno: false }],
           fotos: [],
           checklists: [],
         }))
@@ -517,11 +517,14 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     }
 
     try {
+      // Marca como interno — registro técnico não deve aparecer pro cliente.
+      // Empresa decide o que publicar pro cliente via mensagem regular.
       await adicionarHistorico({
         card_id: cardId,
         autor: autorNome || 'Empresa',
         autor_tipo: 'empresa',
         texto: mensagemHistorico,
+        interno: true,
       })
     } catch {}
 

@@ -22,7 +22,7 @@ export const SEED: DadosObra = {
       encerrado: false,
       aceiteFinal: null,
       historico: [
-        { autor: 'Empresa', tipo: 'empresa', data: '14/03/2026 10:20', texto: 'Primeira medicao realizada. Aguardando instalacao do contramarco pela construcao.' },
+        { autor: 'Empresa', tipo: 'empresa', data: '14/03/2026 10:20', texto: 'Primeira medicao realizada. Aguardando instalacao do contramarco pela construcao.', interno: false },
       ],
       fotos: [],
       checklists: [],
@@ -40,8 +40,8 @@ export const SEED: DadosObra = {
       encerrado: false,
       aceiteFinal: null,
       historico: [
-        { autor: 'Empresa', tipo: 'empresa', data: '10/04/2026 09:15', texto: 'Contramarco conferido. Medidas confirmadas. Iniciando fabricacao.' },
-        { autor: 'Sistema', tipo: 'sistema', data: '10/04/2026 09:16', texto: 'Status alterado para "Fabricando". Prazo contratual: 10/05/2026.' },
+        { autor: 'Empresa', tipo: 'empresa', data: '10/04/2026 09:15', texto: 'Contramarco conferido. Medidas confirmadas. Iniciando fabricacao.', interno: false },
+        { autor: 'Sistema', tipo: 'sistema', data: '10/04/2026 09:16', texto: 'Status alterado para "Fabricando". Prazo contratual: 10/05/2026.', interno: true },
       ],
       fotos: [],
       checklists: [],
@@ -59,8 +59,8 @@ export const SEED: DadosObra = {
       encerrado: false,
       aceiteFinal: null,
       historico: [
-        { autor: 'Empresa', tipo: 'empresa', data: '18/04/2026 14:10', texto: 'Porta instalada. Testado funcionamento das fechaduras.' },
-        { autor: 'Sistema', tipo: 'sistema', data: '18/04/2026 14:12', texto: 'Status movido para "Conclusao". Aguardando aceite final do cliente.' },
+        { autor: 'Empresa', tipo: 'empresa', data: '18/04/2026 14:10', texto: 'Porta instalada. Testado funcionamento das fechaduras.', interno: false },
+        { autor: 'Sistema', tipo: 'sistema', data: '18/04/2026 14:12', texto: 'Status movido para "Conclusao". Aguardando aceite final do cliente.', interno: false },
       ],
       fotos: [],
       checklists: [],
@@ -78,7 +78,7 @@ export const SEED: DadosObra = {
       encerrado: false,
       aceiteFinal: null,
       historico: [
-        { autor: 'Cliente', tipo: 'cliente', data: '16/04/2026 16:30', texto: 'Confirmo a mudanca pra aluminio preto fosco na janela da suite master, com acrescimo de R$ 480,00.' },
+        { autor: 'Cliente', tipo: 'cliente', data: '16/04/2026 16:30', texto: 'Confirmo a mudanca pra aluminio preto fosco na janela da suite master, com acrescimo de R$ 480,00.', interno: false },
       ],
       fotos: [],
       checklists: [],

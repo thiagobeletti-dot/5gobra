@@ -483,7 +483,9 @@ function ModalCard({
               {(card.historico ?? []).slice().reverse().map((h, i) => (
                 <div
                   key={i}
-                  className={'bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-md text-xs ' + (
+                  className={'border px-3 py-2.5 rounded-md text-xs ' + (
+                    h.interno ? 'bg-slate-100 border-slate-300 border-dashed' : 'bg-slate-50 border-slate-200'
+                  ) + ' ' + (
                     h.tipo === 'empresa' ? 'border-l-2 border-l-laranja' :
                     h.tipo === 'cliente' ? 'border-l-2 border-l-peca' : 'border-l-2 border-l-slate-300 opacity-90'
                   )}
@@ -493,7 +495,12 @@ function ModalCard({
                       h.tipo === 'empresa' ? 'text-laranja-dark' :
                       h.tipo === 'cliente' ? 'text-peca-dark' : 'text-slate-400'
                     )}>{h.autor}</span>
-                    <span className="text-[11px] text-slate-400">{h.data}</span>
+                    <div className="flex items-center gap-1.5">
+                      {h.interno && (
+                        <span className="bg-slate-300 text-slate-700 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">Só empresa</span>
+                      )}
+                      <span className="text-[11px] text-slate-400">{h.data}</span>
+                    </div>
                   </div>
                   <div className="text-slate-700 leading-relaxed">{h.texto}</div>
                 </div>

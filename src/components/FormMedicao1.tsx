@@ -146,11 +146,13 @@ export default function FormMedicao1({ inicial, onSalvar, onCancelar }: Props) {
         }
       }
     }
-    // Aplica a regra de meia cana interna antes de salvar
+    // Se vão tudo OK, limpa qualquer texto stale em "Lista de correções" pra não confundir o auto-move
+    const todoVaoOk = d.vao_chao_ok === 'sim' && d.vao_esquadro_ok === 'sim' && d.vao_nivel_ok === 'sim'
+    // Aplica regra de meia cana interna antes de salvar + limpa campos de tipologia não escolhida
     const dadosFinais: DadosMedicao1 = {
       ...d,
       meia_cana_interna: podeMeiaCanaInterna ? d.meia_cana_interna : false,
-      // Limpa campos da tipologia não escolhida
+      precisa_correcao: todoVaoOk ? '' : d.precisa_correcao,
       ...(d.tipologia !== 'giro' ? {
         giro_macaneta_lado: '' as const,
         giro_chave_posicao: '' as const,
@@ -396,9 +398,16 @@ export default function FormMedicao1({ inicial, onSalvar, onCancelar }: Props) {
                   obs={d.vao_nivel_obs}
                   onChangeObs={(v) => up('vao_nivel_obs', v)}
                 />
-                <Campo label="Precisa correção? (descrever)">
-                  <TextoArea valor={d.precisa_correcao} onChange={(v) => up('precisa_correcao', v)} placeholder="O que cliente precisa corrigir antes da medição final" />
-                </Campo>
+                {(d.vao_chao_ok === 'nao' || d.vao_esquadro_ok === 'nao' || d.vao_nivel_ok === 'nao') && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <Campo label="Lista de correções pendentes (cliente precisa fazer)">
+                      <TextoArea valor={d.precisa_correcao} onChange={(v) => up('precisa_correcao', v)} placeholder="O que cliente precisa corrigir antes da próxima visita técnica. Ex: nivelar contra-piso, refazer requadro, etc." />
+                    </Campo>
+                    <div className="text-[11px] text-red-700 mt-1.5">
+                      Vão NÃO está pronto. Card vai voltar pro cliente quando você salvar.
+                    </div>
+                  </div>
+                )}
               </Secao>
 
               <Secao titulo={labelMedida}>
