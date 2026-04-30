@@ -138,21 +138,21 @@ export default function FormMedicao1({ inicial, onSalvar, onCancelar }: Props) {
         setErro('Decida se vai ter contra-marco antes de salvar (essa decisão define o próximo passo da obra).')
         return
       }
-      // Sem contra-marco: técnico precisa avaliar o vão antes de o card ir pra produção ou voltar pro cliente
-      if (d.contra_marco === 'nao') {
-        if (!d.vao_chao_ok || !d.vao_esquadro_ok || !d.vao_nivel_ok) {
-          setErro('Marque OK ou Não no Chão, Esquadro e Nível do diagnóstico do vão (todos os 3). Sem isso o sistema não sabe se o vão tá pronto pra produção.')
-          return
-        }
+      // M1 é triagem: técnico precisa dizer se o vão tá pronto pra tirar medida final
+      if (!d.vao_pronto) {
+        setErro('Responda se o vão está pronto pra tirar a medida final.')
+        return
+      }
+      if (d.vao_pronto === 'nao' && !d.precisa_correcao.trim()) {
+        setErro('Liste o que falta no vão pra ele ficar pronto. Empresa vai usar essa lista pra orientar o cliente.')
+        return
       }
     }
-    // Se vão tudo OK, limpa qualquer texto stale em "Lista de correções" pra não confundir o auto-move
-    const todoVaoOk = d.vao_chao_ok === 'sim' && d.vao_esquadro_ok === 'sim' && d.vao_nivel_ok === 'sim'
-    // Aplica regra de meia cana interna antes de salvar + limpa campos de tipologia não escolhida
+    // Se vão pronto, limpa lista de correções (não faz sentido)
     const dadosFinais: DadosMedicao1 = {
       ...d,
       meia_cana_interna: podeMeiaCanaInterna ? d.meia_cana_interna : false,
-      precisa_correcao: todoVaoOk ? '' : d.precisa_correcao,
+      precisa_correcao: d.vao_pronto === 'sim' ? '' : d.precisa_correcao,
       ...(d.tipologia !== 'giro' ? {
         giro_macaneta_lado: '' as const,
         giro_chave_posicao: '' as const,
@@ -373,38 +373,23 @@ export default function FormMedicao1({ inicial, onSalvar, onCancelar }: Props) {
                 </div>
               </Secao>
 
-              <Secao titulo="Diagnóstico do vão">
+              <Secao titulo="Estado do vão (triagem)">
+                <div className="text-xs text-slate-500 mb-2">
+                  Esta é uma triagem rápida: o vão está suficientemente pronto pra tirar a medida final agora? Detalhamento fino vem depois, na Medição 2.
+                </div>
                 <GrupoRadio
-                  label="Chão"
-                  valor={d.vao_chao_ok}
-                  opcoes={[{ v: 'sim', l: 'OK' }, { v: 'nao', l: 'Não' }]}
-                  onChange={(v) => up('vao_chao_ok', v)}
-                  obs={d.vao_chao_obs}
-                  onChangeObs={(v) => up('vao_chao_obs', v)}
+                  label="Vão está pronto pra tirar medida final?"
+                  valor={d.vao_pronto}
+                  opcoes={[{ v: 'sim', l: 'Sim, pronto' }, { v: 'nao', l: 'Não, falta acabar' }]}
+                  onChange={(v) => up('vao_pronto', v)}
                 />
-                <GrupoRadio
-                  label="Esquadro"
-                  valor={d.vao_esquadro_ok}
-                  opcoes={[{ v: 'sim', l: 'OK' }, { v: 'nao', l: 'Não' }]}
-                  onChange={(v) => up('vao_esquadro_ok', v)}
-                  obs={d.vao_esquadro_obs}
-                  onChangeObs={(v) => up('vao_esquadro_obs', v)}
-                />
-                <GrupoRadio
-                  label="Nível"
-                  valor={d.vao_nivel_ok}
-                  opcoes={[{ v: 'sim', l: 'OK' }, { v: 'nao', l: 'Não' }]}
-                  onChange={(v) => up('vao_nivel_ok', v)}
-                  obs={d.vao_nivel_obs}
-                  onChangeObs={(v) => up('vao_nivel_obs', v)}
-                />
-                {(d.vao_chao_ok === 'nao' || d.vao_esquadro_ok === 'nao' || d.vao_nivel_ok === 'nao') && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                    <Campo label="Lista de correções pendentes (cliente precisa fazer)">
-                      <TextoArea valor={d.precisa_correcao} onChange={(v) => up('precisa_correcao', v)} placeholder="O que cliente precisa corrigir antes da próxima visita técnica. Ex: nivelar contra-piso, refazer requadro, etc." />
+                {d.vao_pronto === 'nao' && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-2">
+                    <Campo label="Lista de pendências (orientação pra obra)">
+                      <TextoArea valor={d.precisa_correcao} onChange={(v) => up('precisa_correcao', v)} placeholder="Ex: nivelar contra-piso, instalar soleira, requadrar vão, deixar ponto de energia. Empresa vai usar essa lista pra orientar o cliente." />
                     </Campo>
                     <div className="text-[11px] text-red-700 mt-1.5">
-                      Vão NÃO está pronto. Card vai voltar pro cliente quando você salvar.
+                      Vão NÃO está pronto. Card vai pra Empresa redigir orientação ao cliente.
                     </div>
                   </div>
                 )}

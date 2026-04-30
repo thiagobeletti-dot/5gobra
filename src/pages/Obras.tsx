@@ -96,7 +96,7 @@ export default function Obras() {
           <div className="bg-white border border-slate-200 rounded-xl p-10 text-center">
             <div className="text-4xl mb-3 opacity-40">+</div>
             <h2 className="font-semibold mb-1">Nenhuma obra ainda</h2>
-            <p className="text-sm text-slate-500 mb-5">Crie a primeira obra pra comecar a registrar pecas, acordos e o historico.</p>
+            <p className="text-sm text-slate-500 mb-5">Crie a primeira obra pra comecar a registrar itens, acordos e o historico.</p>
             <button className="btn-primary" onClick={() => setNovoAberto(true)}>+ Criar primeira obra</button>
           </div>
         ) : (

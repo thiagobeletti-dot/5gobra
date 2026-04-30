@@ -48,6 +48,8 @@ interface UseObraDataResult {
   alterarStatus: (cardId: string, novoStatus: string) => Promise<void>
   registrar: (cardId: string, texto: string, perfil: 'empresa' | 'cliente', moveAba: boolean) => Promise<void>
   confirmarItem: (cardId: string) => Promise<void>
+  marcarContraMarcoEntregue: (cardId: string) => Promise<void>
+  marcarVaoPronto: (cardId: string, perfil: 'empresa' | 'cliente') => Promise<void>
   darAceite: (cardId: string) => Promise<void>
   reabrir: (cardId: string, texto: string, perfil: 'empresa' | 'cliente') => Promise<void>
   criarNovo: (input: NovoCardInput, perfil: 'empresa' | 'cliente') => Promise<AbaId>
@@ -162,7 +164,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
             if (c.id !== cardId) return c
             const hist = [...c.historico, { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Status: "' + (c.statusEmAndamento ?? '-') + '" -> "' + novoStatus + '".', interno: true }]
             if (novoStatus === 'Concluido' || novoStatus === 'Concluído') {
-              hist.push({ autor: 'Sistema', tipo: 'sistema', data: agora(), texto: 'Peça concluída. Movida para aba Conclusão. Aguardando aceite do cliente.', interno: false })
+              hist.push({ autor: 'Sistema', tipo: 'sistema', data: agora(), texto: 'Item concluído. Movido para aba Conclusão. Aguardando aceite do cliente.', interno: false })
               return { ...c, statusEmAndamento: novoStatus, aba: 'conclusao' as AbaId, historico: hist }
             }
             return { ...c, statusEmAndamento: novoStatus, historico: hist }
@@ -179,7 +181,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     await atualizarCard(cardId, updates)
     await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Status: "' + (card.statusEmAndamento ?? '-') + '" -> "' + novoStatus + '".', interno: true })
     if (novoStatus === 'Concluido' || novoStatus === 'Concluído') {
-      await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Peça concluída. Movida para aba Conclusão. Aguardando aceite do cliente.' })
+      await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Item concluído. Movido para aba Conclusão. Aguardando aceite do cliente.' })
     }
     const novo = await carregarDoBanco(obraReal)
     setDados(novo)
@@ -258,6 +260,73 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     setDados(novo)
   }, [dados, modo, obraReal])
 
+  // Empresa marca contra-marco entregue em obra — card vai pro Cliente esperando ele instalar.
+  const marcarContraMarcoEntregue = useCallback(async (cardId: string) => {
+    if (!dados) return
+    const textoMsg = 'Contra-marco entregue em obra. Aguardamos você instalar e deixar o vão pronto pra próxima visita técnica.'
+    if (modo === 'demo') {
+      setDados((d) => {
+        if (!d) return d
+        return {
+          ...d,
+          cards: d.cards.map((c) => {
+            if (c.id !== cardId) return c
+            const hist = [
+              ...c.historico,
+              { autor: 'Empresa', tipo: 'empresa' as AutorTipo, data: agora(), texto: textoMsg, interno: false },
+              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Contra-marco entregue. Card movido para o Cliente.', interno: true },
+            ]
+            return { ...c, aba: 'cliente' as AbaId, subStatus: 'Aguardando instalação do contra-marco e vão pronto', historico: hist }
+          }),
+        }
+      })
+      return
+    }
+    if (!obraReal) return
+    await adicionarHistorico({ card_id: cardId, autor: 'Empresa', autor_tipo: 'empresa', texto: textoMsg })
+    await atualizarCard(cardId, { aba: 'cliente', sub_status: 'Aguardando instalação do contra-marco e vão pronto' })
+    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Contra-marco entregue. Card movido para o Cliente.', interno: true })
+    const novo = await carregarDoBanco(obraReal)
+    setDados(novo)
+  }, [dados, modo, obraReal])
+
+  // Cliente (ou empresa em nome do cliente) marca vão como pronto — card vai pra Técnica esperando M2.
+  const marcarVaoPronto = useCallback(async (cardId: string, perfil: 'empresa' | 'cliente') => {
+    if (!dados) return
+    const card = dados.cards.find((c) => c.id === cardId)
+    if (!card) return
+    // Texto adapta ao contexto: contra-marco instalado vs vão finalizado
+    const tinhaContraMarco = card.subStatus?.toLowerCase().includes('contra-marco')
+    const textoMsg = tinhaContraMarco
+      ? 'Contra-marco instalado e vão pronto. Aguardando 2ª medição (M2).'
+      : 'Vão finalizado, pronto pra 2ª medição (M2).'
+    const autor = perfil === 'empresa' ? 'Empresa' : 'Cliente'
+    if (modo === 'demo') {
+      setDados((d) => {
+        if (!d) return d
+        return {
+          ...d,
+          cards: d.cards.map((c) => {
+            if (c.id !== cardId) return c
+            const hist = [
+              ...c.historico,
+              { autor, tipo: perfil as AutorTipo, data: agora(), texto: textoMsg, interno: false },
+              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Card movido para aba Técnica. Empresa precisa agendar visita para Medição 2.', interno: true },
+            ]
+            return { ...c, aba: 'tecnica' as AbaId, subStatus: 'Aguardando 2ª medição (M2)', historico: hist }
+          }),
+        }
+      })
+      return
+    }
+    if (!obraReal) return
+    await adicionarHistorico({ card_id: cardId, autor, autor_tipo: perfil, texto: textoMsg })
+    await atualizarCard(cardId, { aba: 'tecnica', sub_status: 'Aguardando 2ª medição (M2)' })
+    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Card movido para aba Técnica. Empresa precisa agendar visita para Medição 2.', interno: true })
+    const novo = await carregarDoBanco(obraReal)
+    setDados(novo)
+  }, [dados, modo, obraReal])
+
   const darAceite = useCallback(async (cardId: string) => {
     if (!dados) return
     const quando = agora()
@@ -270,7 +339,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
             if (c.id !== cardId) return c
             const hist = [
               ...c.historico,
-              { autor: 'Cliente', tipo: 'cliente' as AutorTipo, data: quando, texto: 'Aceite final confirmado. Peca oficialmente entregue e garantia iniciada.', interno: false },
+              { autor: 'Cliente', tipo: 'cliente' as AutorTipo, data: quando, texto: 'Aceite final confirmado. Item oficialmente entregue e garantia iniciada.', interno: false },
               { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: quando, texto: 'Card encerrado. Inicio de garantia registrado.', interno: false },
             ]
             return { ...c, aceiteFinal: quando, encerrado: true, historico: hist }
@@ -285,7 +354,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
       aceite_final_user_agent: navigator.userAgent,
       encerrado: true,
     })
-    await adicionarHistorico({ card_id: cardId, autor: 'Cliente', autor_tipo: 'cliente', texto: 'Aceite final confirmado. Peca oficialmente entregue e garantia iniciada.' })
+    await adicionarHistorico({ card_id: cardId, autor: 'Cliente', autor_tipo: 'cliente', texto: 'Aceite final confirmado. Item oficialmente entregue e garantia iniciada.' })
     await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Card encerrado. Inicio de garantia registrado.' })
     const novo = await carregarDoBanco(obraReal)
     setDados(novo)
@@ -485,21 +554,18 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
       mensagemHistorico = 'Medição 1 preenchida. Decisão: COM contra-marco. Empresa vai fabricar e entregar contra-marco em obra.'
     } else if (dadosForm.contra_marco === 'nao') {
       // Regra 3 ou 4: sem contra-marco — depende do estado do vão
-      const vaoTudoOk =
-        dadosForm.vao_chao_ok === 'sim' &&
-        dadosForm.vao_esquadro_ok === 'sim' &&
-        dadosForm.vao_nivel_ok === 'sim' &&
-        !dadosForm.precisa_correcao.trim()
-      if (vaoTudoOk) {
+      if (dadosForm.vao_pronto === 'sim') {
         // Regra 4: vão pronto → vai produzir
         novaAba = 'emandamento'
         novoSubStatus = 'Em Produção'
         mensagemHistorico = 'Medição 1 preenchida. Decisão: SEM contra-marco, vão pronto. Card movido para Em Andamento (produção).'
-      } else {
-        // Regra 3: vão precisa correção → volta pro cliente
-        novaAba = 'cliente'
-        novoSubStatus = 'Aguardando finalizar vão'
-        mensagemHistorico = 'Medição 1 preenchida. Decisão: SEM contra-marco. Vão precisa de correção pelo cliente antes da próxima visita.'
+      } else if (dadosForm.vao_pronto === 'nao') {
+        // Regra 3: vão precisa correção → volta pra EMPRESA pra empresa redigir orientação ao cliente
+        // (princípio: cliente não vê info técnica crua)
+        novaAba = 'empresa'
+        novoSubStatus = 'Vão não pronto — comunicar cliente'
+        const pendencias = dadosForm.precisa_correcao.trim() || '(sem detalhes)'
+        mensagemHistorico = 'Medição 1 preenchida. Decisão: SEM contra-marco, vão NÃO está pronto. Pendências para empresa orientar cliente: ' + pendencias
       }
     }
 
@@ -539,5 +605,5 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     setDados(structuredClone(SEED))
   }, [modo, idOrToken])
 
-  return { dados, modo, obraReal, carregando, erro, alterarStatus, registrar, confirmarItem, darAceite, reabrir, criarNovo, importarItens, adicionarFotos, removerFoto, salvarMedicao1Card, resetar }
+  return { dados, modo, obraReal, carregando, erro, alterarStatus, registrar, confirmarItem, marcarContraMarcoEntregue, marcarVaoPronto, darAceite, reabrir, criarNovo, importarItens, adicionarFotos, removerFoto, salvarMedicao1Card, resetar }
 }

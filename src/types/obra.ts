@@ -69,6 +69,6 @@ export const ABAS: { id: AbaId; rotulo: string; descricao: string }[] = [
   { id: 'cliente', rotulo: 'Cliente', descricao: 'Acoes pendentes do lado do cliente. Pode aguardar dias, semanas ou meses - obra parada ate aqui ser resolvido.' },
   { id: 'empresa', rotulo: 'Empresa', descricao: 'Acoes pendentes do lado da empresa. Qualquer registro joga a bola pro campo oposto.' },
   { id: 'tecnica', rotulo: 'Técnica', descricao: 'Itens aguardando visita técnica. Empresa precisa ir na obra preencher a Medição 1.' },
-  { id: 'emandamento', rotulo: 'Em andamento', descricao: 'Pecas com processo ativo e prazo contratual. 15, 30, 60 ou 90 dias conforme o combinado.' },
-  { id: 'conclusao', rotulo: 'Conclusao', descricao: 'Pecas instaladas aguardando aceite final. Aceite inicia a garantia.' },
+  { id: 'emandamento', rotulo: 'Em andamento', descricao: 'Itens com processo ativo e prazo contratual. 15, 30, 60 ou 90 dias conforme o combinado.' },
+  { id: 'conclusao', rotulo: 'Conclusao', descricao: 'Itens instalados aguardando aceite final. Aceite inicia a garantia.' },
 ]

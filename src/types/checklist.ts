@@ -63,14 +63,9 @@ export interface DadosMedicao1 {
   arremate_externo_tipo: 'cantoneira' | 'meia_cana' | ''
   meia_cana_interna: boolean // só se contra-marco=nao + instalacao=eixo
 
-  // Diagnóstico do vão
-  vao_chao_ok: 'sim' | 'nao' | ''
-  vao_chao_obs: string
-  vao_esquadro_ok: 'sim' | 'nao' | ''
-  vao_esquadro_obs: string
-  vao_nivel_ok: 'sim' | 'nao' | ''
-  vao_nivel_obs: string
-  precisa_correcao: string
+  // Diagnóstico do vão (M1 = triagem; detalhe fino fica no M2)
+  vao_pronto: 'sim' | 'nao' | ''
+  precisa_correcao: string // pendências/orientações pra obra (só usado quando vao_pronto=nao)
 
   // Medidas (1 par, label dinâmico baseado em contra-marco)
   medida_largura: string
@@ -104,12 +99,7 @@ export const VAZIO_MEDICAO1: DadosMedicao1 = {
   arremate_externo: false,
   arremate_externo_tipo: '',
   meia_cana_interna: false,
-  vao_chao_ok: '',
-  vao_chao_obs: '',
-  vao_esquadro_ok: '',
-  vao_esquadro_obs: '',
-  vao_nivel_ok: '',
-  vao_nivel_obs: '',
+  vao_pronto: '',
   precisa_correcao: '',
   medida_largura: '',
   medida_altura: '',
@@ -133,9 +123,8 @@ export function resumoMedicao1(d: DadosMedicao1): string {
   if (d.tipologia_executavel === 'nao') partes.push('TIPOLOGIA NÃO EXECUTÁVEL')
   if (d.contra_marco === 'sim') partes.push('com contra-marco')
   else if (d.contra_marco === 'nao') partes.push('sem contra-marco')
-  if (d.vao_esquadro_ok === 'nao') partes.push('vão fora de esquadro')
-  if (d.vao_nivel_ok === 'nao') partes.push('vão fora de nível')
-  if (d.precisa_correcao && d.precisa_correcao.trim()) partes.push('precisa correção')
+  if (d.vao_pronto === 'sim') partes.push('vão pronto')
+  else if (d.vao_pronto === 'nao') partes.push('vão pendente de correções')
   if (partes.length === 0) return 'Medição realizada'
   return 'Medição realizada — ' + partes.join(', ')
 }

@@ -43,7 +43,7 @@ export default function Landing() {
               <div className="card-base">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="bg-peca-soft text-peca-dark border border-peca-border px-2 py-0.5 rounded-md text-xs font-bold">J1</span>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Peca</span>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Item</span>
                 </div>
                 <div className="font-semibold mb-1">Janela sala 1</div>
                 <div className="text-xs text-slate-500">Janela aluminio branco 1,20 x 1,00m, 2 folhas de correr.</div>
@@ -64,7 +64,7 @@ export default function Landing() {
           <div className="max-w-6xl mx-auto px-6 py-16 grid md:grid-cols-3 gap-8">
             <Feature
               titulo="Tudo em um lugar"
-              texto="Cada item da obra vira um card. Pecas, acordos, reclamacoes — todo o historico salvo, com fotos, datas e responsaveis."
+              texto="Cada item da obra vira um card. Itens, acordos, reclamacoes — todo o historico salvo, com fotos, datas e responsaveis."
             />
             <Feature
               titulo="Quem deve fazer o que"

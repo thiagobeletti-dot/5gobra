@@ -179,7 +179,7 @@ export default function Obra() {
           onClose={() => setCardAbertoId(null)}
           onAlterarStatus={async (s) => {
             await data.alterarStatus(cardAberto.id, s)
-            if (s === 'Concluido') toast('Peca concluida - aguardando aceite do cliente')
+            if (s === 'Concluido' || s === 'Concluído') toast('Item concluído - aguardando aceite do cliente')
             else toast('Status atualizado')
           }}
           onRegistrar={async (t, mover) => {
@@ -208,6 +208,16 @@ export default function Obra() {
           }}
           podeChecklist={data.modo === 'banco'}
           onAbrirMedicao1={() => setFormM1Aberto(cardAberto.id)}
+          onMarcarContraMarcoEntregue={async () => {
+            await data.marcarContraMarcoEntregue(cardAberto.id)
+            setCardAbertoId(null)
+            toast('Contra-marco marcado como entregue')
+          }}
+          onMarcarVaoPronto={async () => {
+            await data.marcarVaoPronto(cardAberto.id, 'empresa')
+            setCardAbertoId(null)
+            toast('Vão marcado como pronto — aguardando M2')
+          }}
         />
       )}
 
@@ -294,7 +304,7 @@ function NavItem({ children, ativo, onClick }: { children: React.ReactNode; ativ
 
 function CardView({ card, perfil, onClick }: { card: Card; perfil: Perfil; onClick: () => void }) {
   const s = statusSemantico(card)
-  const tipoLabel = { peca: 'Peça', acordo: 'Acordo', reclamacao: 'Reclamação' }[card.tipo]
+  const tipoLabel = { peca: 'Item', acordo: 'Acordo', reclamacao: 'Reclamação' }[card.tipo]
   const labelStatus =
     card.subStatus
     ? card.subStatus
@@ -361,7 +371,7 @@ function CardView({ card, perfil, onClick }: { card: Card; perfil: Perfil; onCli
 }
 
 function ModalCard({
-  card, perfil, podeFotos, onClose, onAlterarStatus, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto, podeChecklist, onAbrirMedicao1,
+  card, perfil, podeFotos, onClose, onAlterarStatus, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto, podeChecklist, onAbrirMedicao1, onMarcarContraMarcoEntregue, onMarcarVaoPronto,
 }: {
   card: Card; perfil: Perfil; podeFotos: boolean; onClose: () => void
   onAlterarStatus: (s: string) => Promise<void>
@@ -372,9 +382,11 @@ function ModalCard({
   onRemoverFoto: (fotoId: string) => Promise<void>
   podeChecklist: boolean
   onAbrirMedicao1: () => void
+  onMarcarContraMarcoEntregue: () => Promise<void>
+  onMarcarVaoPronto: () => Promise<void>
 }) {
   const [texto, setTexto] = useState('')
-  const tipoLabel = { peca: 'Peca', acordo: 'Acordo', reclamacao: 'Reclamacao' }[card.tipo]
+  const tipoLabel = { peca: 'Item', acordo: 'Acordo', reclamacao: 'Reclamação' }[card.tipo]
   const abaLabel = ABAS.find((a) => a.id === card.aba)?.rotulo
   const siglaCls = card.tipo === 'peca'
     ? 'bg-peca-soft text-peca-dark border-peca-border'
@@ -403,6 +415,23 @@ function ModalCard({
               </>
             )}
           </div>
+
+          {/* Botões contextuais de transição (só Visão Empresa) */}
+          {perfil === 'empresa' && !card.encerrado && card.subStatus === 'Fabricando contra-marco' && (
+            <div className="bg-laranja-soft border border-laranja-border rounded-lg px-4 py-4">
+              <div className="font-bold text-sm text-laranja-dark mb-1">🛠 Em fabricação do contra-marco</div>
+              <p className="text-xs text-slate-700 mb-3">Quando o contra-marco for fabricado e entregue na obra, marque abaixo. O card vai pra cliente esperar a instalação.</p>
+              <button className="btn-primary" onClick={async () => { if (confirm('Marcar contra-marco como entregue em obra?')) await onMarcarContraMarcoEntregue() }}>Marcar como entregue →</button>
+            </div>
+          )}
+
+          {perfil === 'empresa' && !card.encerrado && (card.subStatus === 'Aguardando instalação do contra-marco e vão pronto' || card.subStatus === 'Aguardando finalizar vão') && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-4">
+              <div className="font-bold text-sm text-emerald-700 mb-1">📋 {card.subStatus}</div>
+              <p className="text-xs text-slate-700 mb-3">Se o cliente já confirmou que o vão tá pronto pra próxima medição, você pode marcar em nome dele:</p>
+              <button className="btn-primary" onClick={async () => { if (confirm('Marcar vão como pronto?')) await onMarcarVaoPronto() }}>Marcar vão pronto → vai pra Técnica (M2)</button>
+            </div>
+          )}
 
           {card.aba === 'conclusao' && (
             <div>
@@ -617,7 +646,7 @@ function ModalNovo({
                     onClick={() => setTipo(t)}
                     className={'flex-1 min-w-[100px] border px-3 py-2.5 rounded-md font-semibold text-xs text-center transition ' + cls}
                   >
-                    {t === 'peca' ? 'Peca' : t === 'acordo' ? 'Acordo' : 'Reclamacao'}
+                    {t === 'peca' ? 'Item' : t === 'acordo' ? 'Acordo' : 'Reclamação'}
                   </button>
                 )
               })}

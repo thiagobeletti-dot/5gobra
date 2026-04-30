@@ -149,6 +149,11 @@ export default function ObraCliente() {
             await data.removerFoto(cardAberto.id, fotoId)
             toast('Foto removida')
           }}
+          onMarcarVaoPronto={async () => {
+            await data.marcarVaoPronto(cardAberto.id, 'cliente')
+            setCardAbertoId(null)
+            toast('Vão marcado como pronto — empresa vai agendar a próxima visita')
+          }}
         />
       )}
 
@@ -164,7 +169,7 @@ export default function ObraCliente() {
 
 function CardClienteView({ card, onClick }: { card: Card; onClick: () => void }) {
   const s = statusSemantico(card)
-  const tipoLabel = { peca: 'Peca', acordo: 'Acordo', reclamacao: 'Reclamacao' }[card.tipo]
+  const tipoLabel = { peca: 'Item', acordo: 'Acordo', reclamacao: 'Reclamação' }[card.tipo]
   // Cliente só vê sub-status quando card está na aba dele (ex: "Aguardando finalizar vão"). Sub-status interno da empresa fica oculto.
   const subClienteVisivel = card.aba === 'cliente' && card.subStatus ? card.subStatus : null
   const labelStatus =
@@ -229,7 +234,7 @@ function CardClienteView({ card, onClick }: { card: Card; onClick: () => void })
 }
 
 function ModalCardCliente({
-  card, podeFotos, onClose, onConfirmar, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto,
+  card, podeFotos, onClose, onConfirmar, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto, onMarcarVaoPronto,
 }: {
   card: Card
   podeFotos: boolean
@@ -240,10 +245,11 @@ function ModalCardCliente({
   onReabrir: (texto: string) => Promise<void>
   onAdicionarFotos: (arquivos: File[]) => Promise<void>
   onRemoverFoto: (fotoId: string) => Promise<void>
+  onMarcarVaoPronto: () => Promise<void>
 }) {
   const [texto, setTexto] = useState('')
   const [salvando, setSalvando] = useState(false)
-  const tipoLabel = { peca: 'Peca', acordo: 'Acordo', reclamacao: 'Reclamacao' }[card.tipo]
+  const tipoLabel = { peca: 'Item', acordo: 'Acordo', reclamacao: 'Reclamação' }[card.tipo]
   const abaLabel = ABAS.find((a) => a.id === card.aba)?.rotulo
   const siglaCls = card.tipo === 'peca'
     ? 'bg-peca-soft text-peca-dark border-peca-border'
@@ -295,7 +301,31 @@ function ModalCardCliente({
             </div>
           )}
 
-          {card.aba === 'cliente' && !card.encerrado && (
+          {card.aba === 'cliente' && !card.encerrado && card.subStatus === 'Aguardando instalação do contra-marco e vão pronto' && (
+            <div className="bg-emerald-50 border border-emerald-200 px-4 py-4 rounded-lg">
+              <div className="font-bold text-sm text-emerald-700 mb-1">📋 Você precisa instalar o contra-marco</div>
+              <p className="text-xs text-slate-600 mb-3">A empresa entregou o contra-marco em obra. Quando você terminar a instalação e o vão estiver pronto (paredes acabadas, contra-piso regularizado), avise pra empresa agendar a próxima visita técnica.</p>
+              <button
+                className="btn-primary w-full md:w-auto"
+                disabled={salvando}
+                onClick={async () => { setSalvando(true); try { await onMarcarVaoPronto() } finally { setSalvando(false) } }}
+              >Contra-marco instalado, vão pronto</button>
+            </div>
+          )}
+
+          {card.aba === 'cliente' && !card.encerrado && card.subStatus === 'Aguardando finalizar vão' && (
+            <div className="bg-emerald-50 border border-emerald-200 px-4 py-4 rounded-lg">
+              <div className="font-bold text-sm text-emerald-700 mb-1">📋 Vão precisa ser finalizado</div>
+              <p className="text-xs text-slate-600 mb-3">A empresa identificou que o vão ainda não tá pronto pra medição final. Quando você terminar (veja a mensagem da empresa abaixo), avise pra agendar a próxima visita.</p>
+              <button
+                className="btn-primary w-full md:w-auto"
+                disabled={salvando}
+                onClick={async () => { setSalvando(true); try { await onMarcarVaoPronto() } finally { setSalvando(false) } }}
+              >Vão finalizado, pode visitar</button>
+            </div>
+          )}
+
+          {card.aba === 'cliente' && !card.encerrado && !card.subStatus && (
             <div className="bg-emerald-50 border border-emerald-200 px-4 py-4 rounded-lg">
               <div className="font-bold text-sm text-emerald-700 mb-1">Está tudo certo com este item?</div>
               <p className="text-xs text-slate-600 mb-3">Se este item está como combinado, é só confirmar. Sua confirmação fica registrada com data e hora — vale como prova oficial.</p>
