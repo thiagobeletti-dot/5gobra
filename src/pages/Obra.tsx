@@ -226,6 +226,14 @@ export default function Obra() {
             setCardAbertoId(null)
             toast('Item encerrado')
           }}
+          onResolverApontamento={async () => {
+            const resolucao = prompt('O que foi feito pra resolver? (vai aparecer pro cliente)')
+            if (!resolucao || !resolucao.trim()) { toast('Resolução cancelada'); return }
+            if (!confirm('Confirma marcar como resolvido?')) return
+            await data.marcarApontamentoResolvido(cardAberto.id, resolucao)
+            setCardAbertoId(null)
+            toast('Apontamento resolvido')
+          }}
         />
       )}
 
@@ -312,7 +320,7 @@ function NavItem({ children, ativo, onClick }: { children: React.ReactNode; ativ
 
 function CardView({ card, perfil, onClick }: { card: Card; perfil: Perfil; onClick: () => void }) {
   const s = statusSemantico(card)
-  const tipoLabel = { peca: 'Item', acordo: 'Acordo', reclamacao: 'Reclamação' }[card.tipo]
+  const tipoLabel = { peca: 'Item', acordo: 'Acordo', reclamacao: 'Apontamento' }[card.tipo]
   const labelStatus =
     card.subStatus
     ? card.subStatus
@@ -379,7 +387,7 @@ function CardView({ card, perfil, onClick }: { card: Card; perfil: Perfil; onCli
 }
 
 function ModalCard({
-  card, perfil, podeFotos, onClose, onAlterarStatus, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto, podeChecklist, onAbrirMedicao1, onMarcarContraMarcoEntregue, onMarcarVaoPronto, onEncerrar,
+  card, perfil, podeFotos, onClose, onAlterarStatus, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto, podeChecklist, onAbrirMedicao1, onMarcarContraMarcoEntregue, onMarcarVaoPronto, onEncerrar, onResolverApontamento,
 }: {
   card: Card; perfil: Perfil; podeFotos: boolean; onClose: () => void
   onAlterarStatus: (s: string) => Promise<void>
@@ -393,9 +401,10 @@ function ModalCard({
   onMarcarContraMarcoEntregue: () => Promise<void>
   onMarcarVaoPronto: () => Promise<void>
   onEncerrar: () => Promise<void>
+  onResolverApontamento: () => Promise<void>
 }) {
   const [texto, setTexto] = useState('')
-  const tipoLabel = { peca: 'Item', acordo: 'Acordo', reclamacao: 'Reclamação' }[card.tipo]
+  const tipoLabel = { peca: 'Item', acordo: 'Acordo', reclamacao: 'Apontamento' }[card.tipo]
   const abaLabel = ABAS.find((a) => a.id === card.aba)?.rotulo
   const siglaCls = card.tipo === 'peca'
     ? 'bg-peca-soft text-peca-dark border-peca-border'
@@ -424,6 +433,15 @@ function ModalCard({
               </>
             )}
           </div>
+
+          {/* Apontamento aberto — empresa pode marcar como resolvido */}
+          {perfil === 'empresa' && !card.encerrado && card.tipo === 'reclamacao' && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-4">
+              <div className="font-bold text-sm text-amber-800 mb-1">📌 Apontamento aberto</div>
+              <p className="text-xs text-slate-700 mb-3">Quando a empresa atender o que foi pedido, marque como resolvido. O item vai pra Conclusão e o cliente é notificado.</p>
+              <button className="btn-primary" onClick={onResolverApontamento}>Marcar como resolvido</button>
+            </div>
+          )}
 
           {/* Botões contextuais de transição (só Visão Empresa) */}
           {perfil === 'empresa' && !card.encerrado && card.subStatus === 'Fabricando contra-marco' && (
@@ -664,7 +682,7 @@ function ModalNovo({
                     onClick={() => setTipo(t)}
                     className={'flex-1 min-w-[100px] border px-3 py-2.5 rounded-md font-semibold text-xs text-center transition ' + cls}
                   >
-                    {t === 'peca' ? 'Item' : t === 'acordo' ? 'Acordo' : 'Reclamação'}
+                    {t === 'peca' ? 'Item' : t === 'acordo' ? 'Acordo' : 'Apontamento'}
                   </button>
                 )
               })}

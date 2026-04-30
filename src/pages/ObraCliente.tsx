@@ -169,7 +169,7 @@ export default function ObraCliente() {
 
 function CardClienteView({ card, onClick }: { card: Card; onClick: () => void }) {
   const s = statusSemantico(card)
-  const tipoLabel = { peca: 'Item', acordo: 'Acordo', reclamacao: 'Reclamação' }[card.tipo]
+  const tipoLabel = { peca: 'Item', acordo: 'Acordo', reclamacao: 'Apontamento' }[card.tipo]
   // Cliente vê QUALQUER sub-status, exceto os internos da empresa (marcados como "comunicar cliente" ou nomes específicos).
   const subStatusInterno = card.subStatus && (
     card.subStatus.includes('comunicar cliente') ||
@@ -253,7 +253,7 @@ function ModalCardCliente({
 }) {
   const [texto, setTexto] = useState('')
   const [salvando, setSalvando] = useState(false)
-  const tipoLabel = { peca: 'Item', acordo: 'Acordo', reclamacao: 'Reclamação' }[card.tipo]
+  const tipoLabel = { peca: 'Item', acordo: 'Acordo', reclamacao: 'Apontamento' }[card.tipo]
   const abaLabel = ABAS.find((a) => a.id === card.aba)?.rotulo
   const siglaCls = card.tipo === 'peca'
     ? 'bg-peca-soft text-peca-dark border-peca-border'
@@ -329,7 +329,7 @@ function ModalCardCliente({
             </div>
           )}
 
-          {card.aba === 'cliente' && !card.encerrado && !card.subStatus && (
+          {card.aba === 'cliente' && !card.encerrado && !card.subStatus && card.tipo === 'peca' && (
             <div className="bg-emerald-50 border border-emerald-200 px-4 py-4 rounded-lg">
               <div className="font-bold text-sm text-emerald-700 mb-1">Está tudo certo com este item?</div>
               <p className="text-xs text-slate-600 mb-3">Se este item está como combinado, é só confirmar. Sua confirmação fica registrada com data e hora — vale como prova oficial.</p>
@@ -338,6 +338,25 @@ function ModalCardCliente({
                 disabled={salvando}
                 onClick={async () => { setSalvando(true); try { await onConfirmar() } finally { setSalvando(false) } }}
               >Confirmar item</button>
+            </div>
+          )}
+
+          {card.aba === 'cliente' && !card.encerrado && !card.subStatus && card.tipo === 'acordo' && (
+            <div className="bg-emerald-50 border border-emerald-200 px-4 py-4 rounded-lg">
+              <div className="font-bold text-sm text-emerald-700 mb-1">Aceitar este acordo?</div>
+              <p className="text-xs text-slate-600 mb-3">Ao aceitar, este acordo é registrado oficialmente como combinado entre você e a empresa. Fica como prova permanente, com data e hora.</p>
+              <button
+                className="btn-primary w-full md:w-auto"
+                disabled={salvando}
+                onClick={async () => { setSalvando(true); try { await onConfirmar() } finally { setSalvando(false) } }}
+              >Aceitar acordo</button>
+            </div>
+          )}
+
+          {card.aba === 'cliente' && !card.encerrado && !card.subStatus && card.tipo === 'reclamacao' && (
+            <div className="bg-amber-50 border border-amber-200 px-4 py-4 rounded-lg">
+              <div className="font-bold text-sm text-amber-800 mb-1">📌 Apontamento aberto</div>
+              <p className="text-xs text-slate-600">Use o campo abaixo pra dialogar com a empresa sobre este apontamento. A empresa vai marcar como resolvido quando atender o que foi pedido.</p>
             </div>
           )}
 

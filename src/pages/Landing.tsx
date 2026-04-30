@@ -64,7 +64,7 @@ export default function Landing() {
           <div className="max-w-6xl mx-auto px-6 py-16 grid md:grid-cols-3 gap-8">
             <Feature
               titulo="Tudo em um lugar"
-              texto="Cada item da obra vira um card. Itens, acordos, reclamacoes — todo o historico salvo, com fotos, datas e responsaveis."
+              texto="Cada item da obra vira um card. Itens, acordos, apontamentos — todo o historico salvo, com fotos, datas e responsaveis."
             />
             <Feature
               titulo="Quem deve fazer o que"

@@ -50,6 +50,7 @@ interface UseObraDataResult {
   confirmarItem: (cardId: string) => Promise<void>
   marcarContraMarcoEntregue: (cardId: string) => Promise<void>
   marcarVaoPronto: (cardId: string, perfil: 'empresa' | 'cliente') => Promise<void>
+  marcarApontamentoResolvido: (cardId: string, resolucao: string) => Promise<void>
   encerrarCard: (cardId: string, motivo: string) => Promise<void>
   darAceite: (cardId: string) => Promise<void>
   reabrir: (cardId: string, texto: string, perfil: 'empresa' | 'cliente') => Promise<void>
@@ -250,10 +251,46 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     setDados(novo)
   }, [dados, modo, obraReal])
 
-  // Cliente confirma item — manda card pra aba "Técnica" (aguardando visita técnica),
-  // diferente de uma mensagem normal que vai pra Empresa.
+  // Cliente confirma item — fluxo varia por tipo:
+  //  - peca: vai pra aba Técnica esperando visita técnica (M1)
+  //  - acordo: vai direto pra Conclusão como encerrado (acordo aceito = fim)
+  //  - reclamacao (apontamento): não usa esse fluxo (cliente não "confirma" apontamento)
   const confirmarItem = useCallback(async (cardId: string) => {
     if (!dados) return
+    const card = dados.cards.find((c) => c.id === cardId)
+    if (!card) return
+
+    if (card.tipo === 'acordo') {
+      // Acordo aceito → vai pra Conclusão encerrado
+      const texto = 'Acordo aceito pelo cliente. Registrado oficialmente.'
+      if (modo === 'demo') {
+        setDados((d) => {
+          if (!d) return d
+          return {
+            ...d,
+            cards: d.cards.map((c) => {
+              if (c.id !== cardId) return c
+              const hist = [
+                ...c.historico,
+                { autor: 'Cliente', tipo: 'cliente' as AutorTipo, data: agora(), texto, interno: false },
+                { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Acordo encerrado. Registro permanente na obra.', interno: false },
+              ]
+              return { ...c, aba: 'conclusao' as AbaId, encerrado: true, subStatus: 'Acordo aceito', historico: hist }
+            }),
+          }
+        })
+        return
+      }
+      if (!obraReal) return
+      await adicionarHistorico({ card_id: cardId, autor: 'Cliente', autor_tipo: 'cliente', texto })
+      await atualizarCard(cardId, { aba: 'conclusao', encerrado: true, sub_status: 'Acordo aceito' })
+      await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Acordo encerrado. Registro permanente na obra.', interno: false })
+      const novo = await carregarDoBanco(obraReal)
+      setDados(novo)
+      return
+    }
+
+    // Default: peça vai pra Técnica
     const texto = 'Cliente confirmou o item. Aguardando visita técnica para medição.'
     if (modo === 'demo') {
       setDados((d) => {
@@ -344,6 +381,38 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     await adicionarHistorico({ card_id: cardId, autor, autor_tipo: perfil, texto: textoMsg })
     await atualizarCard(cardId, { aba: 'tecnica', sub_status: 'Aguardando 2ª medição (M2)' })
     await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Card movido para aba Técnica. Empresa precisa agendar visita para Medição 2.', interno: true })
+    const novo = await carregarDoBanco(obraReal)
+    setDados(novo)
+  }, [dados, modo, obraReal])
+
+  // Empresa marca apontamento como resolvido — vai pra Conclusão encerrado.
+  // Diferente de encerrarCard porque o "espírito" é positivo (problema atendido), não cancelamento.
+  const marcarApontamentoResolvido = useCallback(async (cardId: string, resolucao: string) => {
+    if (!dados) return
+    const detalhe = resolucao.trim() || '(sem detalhes da resolução)'
+    const textoCliente = 'Apontamento resolvido pela empresa. Detalhe: ' + detalhe
+    if (modo === 'demo') {
+      setDados((d) => {
+        if (!d) return d
+        return {
+          ...d,
+          cards: d.cards.map((c) => {
+            if (c.id !== cardId) return c
+            const hist = [
+              ...c.historico,
+              { autor: 'Empresa', tipo: 'empresa' as AutorTipo, data: agora(), texto: textoCliente, interno: false },
+              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Apontamento resolvido. Card encerrado.', interno: true },
+            ]
+            return { ...c, aba: 'conclusao' as AbaId, encerrado: true, subStatus: 'Apontamento resolvido', historico: hist }
+          }),
+        }
+      })
+      return
+    }
+    if (!obraReal) return
+    await adicionarHistorico({ card_id: cardId, autor: 'Empresa', autor_tipo: 'empresa', texto: textoCliente })
+    await atualizarCard(cardId, { aba: 'conclusao', encerrado: true, sub_status: 'Apontamento resolvido' })
+    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Apontamento resolvido. Card encerrado.', interno: true })
     const novo = await carregarDoBanco(obraReal)
     setDados(novo)
   }, [dados, modo, obraReal])
@@ -668,5 +737,5 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     setDados(structuredClone(SEED))
   }, [modo, idOrToken])
 
-  return { dados, modo, obraReal, carregando, erro, alterarStatus, registrar, confirmarItem, marcarContraMarcoEntregue, marcarVaoPronto, encerrarCard, darAceite, reabrir, criarNovo, importarItens, adicionarFotos, removerFoto, salvarMedicao1Card, resetar }
+  return { dados, modo, obraReal, carregando, erro, alterarStatus, registrar, confirmarItem, marcarContraMarcoEntregue, marcarVaoPronto, marcarApontamentoResolvido, encerrarCard, darAceite, reabrir, criarNovo, importarItens, adicionarFotos, removerFoto, salvarMedicao1Card, resetar }
 }
