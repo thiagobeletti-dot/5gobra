@@ -50,6 +50,7 @@ interface UseObraDataResult {
   confirmarItem: (cardId: string) => Promise<void>
   marcarContraMarcoEntregue: (cardId: string) => Promise<void>
   marcarVaoPronto: (cardId: string, perfil: 'empresa' | 'cliente') => Promise<void>
+  encerrarCard: (cardId: string, motivo: string) => Promise<void>
   darAceite: (cardId: string) => Promise<void>
   reabrir: (cardId: string, texto: string, perfil: 'empresa' | 'cliente') => Promise<void>
   criarNovo: (input: NovoCardInput, perfil: 'empresa' | 'cliente') => Promise<AbaId>
@@ -187,6 +188,16 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     setDados(novo)
   }, [dados, modo, obraReal])
 
+  // Quando empresa move card pra cliente, traduz sub-status interno em algo amigável.
+  // Mantém nulo se a empresa só quer comunicar e não tem ação esperada do cliente.
+  function traduzirSubStatusParaCliente(atual: string | null): string | null {
+    if (!atual) return null
+    if (atual.includes('Vão não pronto') && atual.includes('comunicar')) return 'Aguardando finalizar vão'
+    if (atual.includes('Vão M2 reprovado') && atual.includes('comunicar')) return 'Aguardando finalizar vão'
+    if (atual === 'Tipologia não executável') return null
+    return atual // sub-status já amigável, mantém
+  }
+
   const registrar = useCallback(async (cardId: string, texto: string, perfil: 'empresa' | 'cliente', moveAba: boolean) => {
     if (!dados || !texto.trim()) return
     const autor = perfil === 'empresa' ? 'Empresa' : 'Cliente'
@@ -199,13 +210,18 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
             if (c.id !== cardId) return c
             const hist = [...c.historico, { autor, tipo: perfil as AutorTipo, data: agora(), texto, interno: false }]
             let novaAba = c.aba
+            let novoSubStatus = c.subStatus
             if (moveAba) {
               if (c.aba === 'emandamento') novaAba = perfil === 'empresa' ? 'cliente' : 'empresa'
               else if (c.aba === 'cliente') novaAba = 'empresa'
               else if (c.aba === 'empresa') novaAba = 'cliente'
               hist.push({ autor: 'Sistema', tipo: 'sistema', data: agora(), texto: 'Movido para aba ' + (novaAba === 'cliente' ? 'Cliente' : novaAba === 'empresa' ? 'Empresa' : novaAba) + '.', interno: true })
+              // Se empresa move pra cliente e tem sub-status interno, traduz
+              if (perfil === 'empresa' && novaAba === 'cliente') {
+                novoSubStatus = traduzirSubStatusParaCliente(c.subStatus)
+              }
             }
-            return { ...c, aba: novaAba, historico: hist }
+            return { ...c, aba: novaAba, subStatus: novoSubStatus, historico: hist }
           }),
         }
       })
@@ -221,7 +237,12 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
       else if (card.aba === 'cliente') novaAba = 'empresa'
       else if (card.aba === 'empresa') novaAba = 'cliente'
       if (novaAba !== card.aba) {
-        await atualizarCard(cardId, { aba: novaAba })
+        const updates: any = { aba: novaAba }
+        // Quando empresa empurra pro cliente, traduz sub-status interno em algo amigável
+        if (perfil === 'empresa' && novaAba === 'cliente') {
+          updates.sub_status = traduzirSubStatusParaCliente(card.subStatus)
+        }
+        await atualizarCard(cardId, updates)
         await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Movido para aba ' + (novaAba === 'cliente' ? 'Cliente' : 'Empresa') + '.', interno: true })
       }
     }
@@ -323,6 +344,38 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     await adicionarHistorico({ card_id: cardId, autor, autor_tipo: perfil, texto: textoMsg })
     await atualizarCard(cardId, { aba: 'tecnica', sub_status: 'Aguardando 2ª medição (M2)' })
     await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Card movido para aba Técnica. Empresa precisa agendar visita para Medição 2.', interno: true })
+    const novo = await carregarDoBanco(obraReal)
+    setDados(novo)
+  }, [dados, modo, obraReal])
+
+  // Empresa encerra/cancela card (ex: tipologia mudou, item descontinuado, divergência grande).
+  // Card vai pra Conclusão com encerrado=true. Registro do motivo aparece pro cliente.
+  const encerrarCard = useCallback(async (cardId: string, motivo: string) => {
+    if (!dados) return
+    const motivoLimpo = motivo.trim() || '(sem motivo informado)'
+    const textoCliente = 'Item encerrado pela empresa. Motivo: ' + motivoLimpo
+    if (modo === 'demo') {
+      setDados((d) => {
+        if (!d) return d
+        return {
+          ...d,
+          cards: d.cards.map((c) => {
+            if (c.id !== cardId) return c
+            const hist = [
+              ...c.historico,
+              { autor: 'Empresa', tipo: 'empresa' as AutorTipo, data: agora(), texto: textoCliente, interno: false },
+              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Card encerrado pela empresa. Removido do fluxo ativo.', interno: true },
+            ]
+            return { ...c, encerrado: true, aba: 'conclusao' as AbaId, subStatus: 'Encerrado pela empresa', historico: hist }
+          }),
+        }
+      })
+      return
+    }
+    if (!obraReal) return
+    await adicionarHistorico({ card_id: cardId, autor: 'Empresa', autor_tipo: 'empresa', texto: textoCliente })
+    await atualizarCard(cardId, { encerrado: true, aba: 'conclusao', sub_status: 'Encerrado pela empresa' })
+    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Card encerrado pela empresa. Removido do fluxo ativo.', interno: true })
     const novo = await carregarDoBanco(obraReal)
     setDados(novo)
   }, [dados, modo, obraReal])
@@ -592,6 +645,16 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
         texto: mensagemHistorico,
         interno: true,
       })
+      // Registro público amigável quando card vai pra Em Andamento (cliente entende o pulo)
+      if (novaAba === 'emandamento') {
+        await adicionarHistorico({
+          card_id: cardId,
+          autor: autorNome || 'Empresa',
+          autor_tipo: 'empresa',
+          texto: 'Visita técnica realizada. Vão está pronto. Item aprovado para produção.',
+          interno: false,
+        })
+      }
     } catch {}
 
     const dd = await carregarDoBanco(obraReal)
@@ -605,5 +668,5 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     setDados(structuredClone(SEED))
   }, [modo, idOrToken])
 
-  return { dados, modo, obraReal, carregando, erro, alterarStatus, registrar, confirmarItem, marcarContraMarcoEntregue, marcarVaoPronto, darAceite, reabrir, criarNovo, importarItens, adicionarFotos, removerFoto, salvarMedicao1Card, resetar }
+  return { dados, modo, obraReal, carregando, erro, alterarStatus, registrar, confirmarItem, marcarContraMarcoEntregue, marcarVaoPronto, encerrarCard, darAceite, reabrir, criarNovo, importarItens, adicionarFotos, removerFoto, salvarMedicao1Card, resetar }
 }

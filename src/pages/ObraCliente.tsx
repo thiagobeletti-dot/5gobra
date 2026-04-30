@@ -170,8 +170,12 @@ export default function ObraCliente() {
 function CardClienteView({ card, onClick }: { card: Card; onClick: () => void }) {
   const s = statusSemantico(card)
   const tipoLabel = { peca: 'Item', acordo: 'Acordo', reclamacao: 'Reclamação' }[card.tipo]
-  // Cliente só vê sub-status quando card está na aba dele (ex: "Aguardando finalizar vão"). Sub-status interno da empresa fica oculto.
-  const subClienteVisivel = card.aba === 'cliente' && card.subStatus ? card.subStatus : null
+  // Cliente vê QUALQUER sub-status, exceto os internos da empresa (marcados como "comunicar cliente" ou nomes específicos).
+  const subStatusInterno = card.subStatus && (
+    card.subStatus.includes('comunicar cliente') ||
+    card.subStatus === 'Tipologia não executável'
+  )
+  const subClienteVisivel = card.subStatus && !subStatusInterno ? card.subStatus : null
   const labelStatus =
     subClienteVisivel
     ? subClienteVisivel

@@ -138,14 +138,16 @@ export default function FormMedicao1({ inicial, onSalvar, onCancelar }: Props) {
         setErro('Decida se vai ter contra-marco antes de salvar (essa decisão define o próximo passo da obra).')
         return
       }
-      // M1 é triagem: técnico precisa dizer se o vão tá pronto pra tirar medida final
-      if (!d.vao_pronto) {
-        setErro('Responda se o vão está pronto pra tirar a medida final.')
-        return
-      }
-      if (d.vao_pronto === 'nao' && !d.precisa_correcao.trim()) {
-        setErro('Liste o que falta no vão pra ele ficar pronto. Empresa vai usar essa lista pra orientar o cliente.')
-        return
+      // M1 é triagem: técnico precisa dizer se o vão tá pronto, exceto quando vai ter contra-marco (irrelevante)
+      if (d.contra_marco === 'nao') {
+        if (!d.vao_pronto) {
+          setErro('Responda se o vão está pronto pra tirar a medida final.')
+          return
+        }
+        if (d.vao_pronto === 'nao' && !d.precisa_correcao.trim()) {
+          setErro('Liste o que falta no vão pra ele ficar pronto. Empresa vai usar essa lista pra orientar o cliente.')
+          return
+        }
       }
     }
     // Se vão pronto, limpa lista de correções (não faz sentido)
@@ -373,27 +375,36 @@ export default function FormMedicao1({ inicial, onSalvar, onCancelar }: Props) {
                 </div>
               </Secao>
 
-              <Secao titulo="Estado do vão (triagem)">
-                <div className="text-xs text-slate-500 mb-2">
-                  Esta é uma triagem rápida: o vão está suficientemente pronto pra tirar a medida final agora? Detalhamento fino vem depois, na Medição 2.
-                </div>
-                <GrupoRadio
-                  label="Vão está pronto pra tirar medida final?"
-                  valor={d.vao_pronto}
-                  opcoes={[{ v: 'sim', l: 'Sim, pronto' }, { v: 'nao', l: 'Não, falta acabar' }]}
-                  onChange={(v) => up('vao_pronto', v)}
-                />
-                {d.vao_pronto === 'nao' && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-2">
-                    <Campo label="Lista de pendências (orientação pra obra)">
-                      <TextoArea valor={d.precisa_correcao} onChange={(v) => up('precisa_correcao', v)} placeholder="Ex: nivelar contra-piso, instalar soleira, requadrar vão, deixar ponto de energia. Empresa vai usar essa lista pra orientar o cliente." />
-                    </Campo>
-                    <div className="text-[11px] text-red-700 mt-1.5">
-                      Vão NÃO está pronto. Card vai pra Empresa redigir orientação ao cliente.
-                    </div>
+              {/* "Vão pronto?" só faz sentido SEM contra-marco. Com contra-marco, o vão sempre tá bruto na M1 — vai ser conferido na M2 depois do contra-marco instalado. */}
+              {d.contra_marco !== 'sim' && (
+                <Secao titulo="Estado do vão (triagem)">
+                  <div className="text-xs text-slate-500 mb-2">
+                    Triagem rápida: o vão está suficientemente pronto pra tirar a medida final agora? Detalhamento fino vem depois, na Medição 2.
                   </div>
-                )}
-              </Secao>
+                  <GrupoRadio
+                    label="Vão está pronto pra tirar medida final?"
+                    valor={d.vao_pronto}
+                    opcoes={[{ v: 'sim', l: 'Sim, pronto' }, { v: 'nao', l: 'Não, falta acabar' }]}
+                    onChange={(v) => up('vao_pronto', v)}
+                  />
+                  {d.vao_pronto === 'nao' && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-2">
+                      <Campo label="Lista de pendências (orientação pra obra)">
+                        <TextoArea valor={d.precisa_correcao} onChange={(v) => up('precisa_correcao', v)} placeholder="Ex: nivelar contra-piso, instalar soleira, requadrar vão, deixar ponto de energia. Empresa vai usar essa lista pra orientar o cliente." />
+                      </Campo>
+                      <div className="text-[11px] text-red-700 mt-1.5">
+                        Vão NÃO está pronto. Card vai pra Empresa redigir orientação ao cliente.
+                      </div>
+                    </div>
+                  )}
+                </Secao>
+              )}
+
+              {d.contra_marco === 'sim' && (
+                <div className="bg-slate-50 border border-slate-200 rounded-md p-3 text-xs text-slate-600">
+                  <strong>Estado do vão</strong> não é avaliado nesta etapa. Com contra-marco, o vão será conferido na <strong>Medição 2</strong> depois que cliente instalar o contra-marco e o vão estiver acabado.
+                </div>
+              )}
 
               <Secao titulo={labelMedida}>
                 <div className="text-xs text-slate-500 mb-2">

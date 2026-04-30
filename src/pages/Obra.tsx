@@ -218,6 +218,14 @@ export default function Obra() {
             setCardAbertoId(null)
             toast('Vão marcado como pronto — aguardando M2')
           }}
+          onEncerrar={async () => {
+            const motivo = prompt('Motivo do encerramento (vai aparecer pro cliente):')
+            if (!motivo || !motivo.trim()) { toast('Encerramento cancelado'); return }
+            if (!confirm('Confirma encerrar este item? Essa ação remove o item do fluxo ativo.')) return
+            await data.encerrarCard(cardAberto.id, motivo)
+            setCardAbertoId(null)
+            toast('Item encerrado')
+          }}
         />
       )}
 
@@ -371,7 +379,7 @@ function CardView({ card, perfil, onClick }: { card: Card; perfil: Perfil; onCli
 }
 
 function ModalCard({
-  card, perfil, podeFotos, onClose, onAlterarStatus, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto, podeChecklist, onAbrirMedicao1, onMarcarContraMarcoEntregue, onMarcarVaoPronto,
+  card, perfil, podeFotos, onClose, onAlterarStatus, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto, podeChecklist, onAbrirMedicao1, onMarcarContraMarcoEntregue, onMarcarVaoPronto, onEncerrar,
 }: {
   card: Card; perfil: Perfil; podeFotos: boolean; onClose: () => void
   onAlterarStatus: (s: string) => Promise<void>
@@ -384,6 +392,7 @@ function ModalCard({
   onAbrirMedicao1: () => void
   onMarcarContraMarcoEntregue: () => Promise<void>
   onMarcarVaoPronto: () => Promise<void>
+  onEncerrar: () => Promise<void>
 }) {
   const [texto, setTexto] = useState('')
   const tipoLabel = { peca: 'Item', acordo: 'Acordo', reclamacao: 'Reclamação' }[card.tipo]
@@ -539,6 +548,15 @@ function ModalCard({
               )}
             </div>
           </div>
+
+          {perfil === 'empresa' && !card.encerrado && (
+            <div className="pt-3 border-t border-slate-200 flex justify-end">
+              <button
+                onClick={onEncerrar}
+                className="text-xs text-slate-400 hover:text-red-600 underline-offset-2 hover:underline transition"
+              >Encerrar este item</button>
+            </div>
+          )}
         </div>
       </div>
     </div>
