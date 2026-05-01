@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Checklist, ChecklistTipo, ChecklistAutorTipo, DadosMedicao1 } from '../types/checklist'
+import type { Checklist, ChecklistTipo, ChecklistAutorTipo, DadosMedicao1, DadosMedicao2 } from '../types/checklist'
 
 interface ChecklistRow {
   id: string
@@ -66,6 +66,30 @@ export async function salvarMedicao1(args: {
   const payload = {
     card_id: args.cardId,
     tipo: 'medicao1' as ChecklistTipo,
+    dados: args.dados,
+    autor: args.autor,
+    autor_tipo: args.autorTipo,
+    preenchido_em: new Date().toISOString(),
+  }
+  const { data, error } = await supabase
+    .from('checklists')
+    .upsert(payload, { onConflict: 'card_id,tipo' })
+    .select()
+    .single()
+  if (error) throw error
+  return rowParaChecklist(data as ChecklistRow)
+}
+
+export async function salvarMedicao2(args: {
+  cardId: string
+  dados: DadosMedicao2
+  autor: string
+  autorTipo: ChecklistAutorTipo
+}): Promise<Checklist> {
+  if (!supabase) throw new Error('Supabase nao configurado')
+  const payload = {
+    card_id: args.cardId,
+    tipo: 'medicao2' as ChecklistTipo,
     dados: args.dados,
     autor: args.autor,
     autor_tipo: args.autorTipo,

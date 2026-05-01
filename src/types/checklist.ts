@@ -105,12 +105,60 @@ export const VAZIO_MEDICAO1: DadosMedicao1 = {
   medida_altura: '',
 }
 
+// =============== Medição 2 ===============
+// Conferência fina pós contra-marco/vão acabado: avalia se vão tá pronto pra produção.
+// Só aplica quando M1 disse contra-marco=SIM OU vão não pronto. Pula direto se M1 já liberou pra produção.
+export interface DadosMedicao2 {
+  // Cabeçalho
+  data: string
+  tecnico: string
+  responsavel_obra: string
+
+  // Estado do vão pronto
+  contra_marco_instalado: 'sim' | 'nao' | '' // só visível se M1 contra-marco=SIM
+  soleira_instalada: 'sim' | 'nao' | '' // só visível se M1 soleira=SIM
+  contra_piso_regularizado: 'sim' | 'nao' | 'na' | ''
+  base_trilho_correta: 'sim' | 'nao' | ''
+  vao_acabado: 'sim' | 'nao' | '' // paredes/teto
+  ponto_energia: 'sim_esquerda' | 'sim_direita' | 'nao' | '' // só visível se M1 motor=SIM
+  esquadro_ok: 'sim' | 'nao' | ''
+  esquadro_obs: string
+  nivel_prumo_ok: 'sim' | 'nao' | ''
+  nivel_prumo_obs: string
+
+  // Resultado
+  liberado_producao: 'sim' | 'nao' | ''
+  pendencias: string // só usado se liberado=nao
+  medida_largura: string
+  medida_altura: string
+}
+
+export const VAZIO_MEDICAO2: DadosMedicao2 = {
+  data: new Date().toISOString().slice(0, 10),
+  tecnico: '',
+  responsavel_obra: '',
+  contra_marco_instalado: '',
+  soleira_instalada: '',
+  contra_piso_regularizado: '',
+  base_trilho_correta: '',
+  vao_acabado: '',
+  ponto_energia: '',
+  esquadro_ok: '',
+  esquadro_obs: '',
+  nivel_prumo_ok: '',
+  nivel_prumo_obs: '',
+  liberado_producao: '',
+  pendencias: '',
+  medida_largura: '',
+  medida_altura: '',
+}
+
 // =============== Checklist genérico ===============
 export interface Checklist {
   id: string
   cardId: string
   tipo: ChecklistTipo
-  dados: DadosMedicao1 | Record<string, any> // M2 e Item virão depois
+  dados: DadosMedicao1 | DadosMedicao2 | Record<string, any> // Item virá depois
   autor: string
   autorTipo: ChecklistAutorTipo
   preenchidoEm: string
@@ -127,4 +175,13 @@ export function resumoMedicao1(d: DadosMedicao1): string {
   else if (d.vao_pronto === 'nao') partes.push('vão pendente de correções')
   if (partes.length === 0) return 'Medição realizada'
   return 'Medição realizada — ' + partes.join(', ')
+}
+
+export function resumoMedicao2(d: DadosMedicao2): string {
+  if (d.liberado_producao === 'sim') {
+    if (d.medida_largura && d.medida_altura) return 'Vão liberado. Medida final: ' + d.medida_largura + ' x ' + d.medida_altura
+    return 'Vão liberado para produção'
+  }
+  if (d.liberado_producao === 'nao') return 'Vão reprovado — pendências para o cliente'
+  return 'M2 em andamento'
 }

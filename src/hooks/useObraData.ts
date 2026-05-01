@@ -25,8 +25,9 @@ import {
 import {
   listarChecklistsDeVariosCards,
   salvarMedicao1,
+  salvarMedicao2,
 } from '../lib/checklist'
-import type { Checklist, DadosMedicao1 } from '../types/checklist'
+import type { Checklist, DadosMedicao1, DadosMedicao2 } from '../types/checklist'
 
 const STORAGE_PREFIX = '5gobra:'
 
@@ -60,6 +61,7 @@ interface UseObraDataResult {
   adicionarFotos: (cardId: string, arquivos: File[]) => Promise<number>
   removerFoto: (cardId: string, fotoId: string) => Promise<void>
   salvarMedicao1Card: (cardId: string, dados: DadosMedicao1, autorNome: string) => Promise<Checklist>
+  salvarMedicao2Card: (cardId: string, dados: DadosMedicao2, autorNome: string) => Promise<Checklist>
   resetar: () => void
 }
 
@@ -763,11 +765,78 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     return novo
   }, [modo, obraReal])
 
+  const salvarMedicao2Card = useCallback(async (cardId: string, dadosForm: DadosMedicao2, autorNome: string): Promise<Checklist> => {
+    if (modo === 'demo' || !obraReal) {
+      throw new Error('Checklist técnico disponível só com Supabase conectado')
+    }
+    const novo = await salvarMedicao2({
+      cardId,
+      dados: dadosForm,
+      autor: autorNome || 'Empresa',
+      autorTipo: 'empresa',
+    })
+
+    // Auto-move pós-M2
+    let novaAba: AbaId | null = null
+    let novoSubStatus: string | null = null
+    let mensagemHistoricoInterno = 'Medição 2 preenchida.'
+    let mensagemHistoricoPublico: string | null = null
+
+    if (dadosForm.liberado_producao === 'sim') {
+      novaAba = 'emandamento'
+      novoSubStatus = 'Em Produção'
+      mensagemHistoricoInterno = 'Medição 2 preenchida. Vão liberado. Card movido para Em Andamento (produção). Medida final: ' + dadosForm.medida_largura + ' x ' + dadosForm.medida_altura
+      mensagemHistoricoPublico = '2ª medição realizada. Vão está pronto. Item aprovado para produção.'
+    } else if (dadosForm.liberado_producao === 'nao') {
+      novaAba = 'empresa'
+      novoSubStatus = 'Vão M2 reprovado — comunicar cliente'
+      const pendencias = dadosForm.pendencias.trim() || '(sem detalhes)'
+      mensagemHistoricoInterno = 'Medição 2 preenchida. Vão NÃO liberado. Pendências para empresa orientar cliente: ' + pendencias
+    }
+
+    if (novaAba !== null) {
+      try {
+        const updates: any = { aba: novaAba, sub_status: novoSubStatus }
+        if (novaAba === 'emandamento') {
+          updates.status_em_andamento = 'Em Produção'
+        }
+        await atualizarCard(cardId, updates)
+      } catch (e) {
+        console.warn('Falha ao mover card pós-M2:', e)
+      }
+    }
+
+    try {
+      // Registro técnico interno (cliente não vê o detalhe cru)
+      await adicionarHistorico({
+        card_id: cardId,
+        autor: autorNome || 'Empresa',
+        autor_tipo: 'empresa',
+        texto: mensagemHistoricoInterno,
+        interno: true,
+      })
+      // Registro público quando vai pra produção
+      if (mensagemHistoricoPublico) {
+        await adicionarHistorico({
+          card_id: cardId,
+          autor: autorNome || 'Empresa',
+          autor_tipo: 'empresa',
+          texto: mensagemHistoricoPublico,
+          interno: false,
+        })
+      }
+    } catch {}
+
+    const dd = await carregarDoBanco(obraReal)
+    setDados(dd)
+    return novo
+  }, [modo, obraReal])
+
   const resetar = useCallback(() => {
     if (modo !== 'demo') return
     localStorage.removeItem(STORAGE_PREFIX + idOrToken)
     setDados(structuredClone(SEED))
   }, [modo, idOrToken])
 
-  return { dados, modo, obraReal, carregando, erro, alterarStatus, registrar, confirmarItem, marcarContraMarcoEntregue, marcarVaoPronto, marcarApontamentoResolvido, marcarApontamentoCiente, encerrarCard, darAceite, reabrir, criarNovo, importarItens, adicionarFotos, removerFoto, salvarMedicao1Card, resetar }
+  return { dados, modo, obraReal, carregando, erro, alterarStatus, registrar, confirmarItem, marcarContraMarcoEntregue, marcarVaoPronto, marcarApontamentoResolvido, marcarApontamentoCiente, encerrarCard, darAceite, reabrir, criarNovo, importarItens, adicionarFotos, removerFoto, salvarMedicao1Card, salvarMedicao2Card, resetar }
 }

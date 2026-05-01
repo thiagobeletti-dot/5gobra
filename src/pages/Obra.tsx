@@ -9,8 +9,9 @@ import { sair, useAuth } from '../lib/auth'
 import ImportarItens from '../components/ImportarItens'
 import GaleriaFotos from '../components/GaleriaFotos'
 import FormMedicao1 from '../components/FormMedicao1'
-import type { DadosMedicao1 } from '../types/checklist'
-import { resumoMedicao1, VAZIO_MEDICAO1, ROTULOS_TIPOLOGIA } from '../types/checklist'
+import FormMedicao2 from '../components/FormMedicao2'
+import type { DadosMedicao1, DadosMedicao2 } from '../types/checklist'
+import { resumoMedicao1, resumoMedicao2, VAZIO_MEDICAO1, VAZIO_MEDICAO2, ROTULOS_TIPOLOGIA } from '../types/checklist'
 
 export default function Obra() {
   const { obraId = 'demo' } = useParams<{ obraId: string }>()
@@ -24,6 +25,7 @@ export default function Obra() {
   const [novoAberto, setNovoAberto] = useState(false)
   const [importarAberto, setImportarAberto] = useState(false)
   const [formM1Aberto, setFormM1Aberto] = useState<string | null>(null)
+  const [formM2Aberto, setFormM2Aberto] = useState<string | null>(null)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
 
   function toast(msg: string) {
@@ -208,6 +210,7 @@ export default function Obra() {
           }}
           podeChecklist={data.modo === 'banco'}
           onAbrirMedicao1={() => setFormM1Aberto(cardAberto.id)}
+          onAbrirMedicao2={() => setFormM2Aberto(cardAberto.id)}
           onMarcarContraMarcoEntregue={async () => {
             await data.marcarContraMarcoEntregue(cardAberto.id)
             setCardAbertoId(null)
@@ -258,6 +261,33 @@ export default function Obra() {
                 toast('Reportado pra empresa — card devolvido')
               } else {
                 toast('Medição 1 salva')
+              }
+            }}
+          />
+        )
+      })()}
+
+      {formM2Aberto && (() => {
+        const cardId = formM2Aberto
+        const card = dados.cards.find((c) => c.id === cardId)
+        const m1 = card?.checklists.find((c) => c.tipo === 'medicao1')
+        const m2 = card?.checklists.find((c) => c.tipo === 'medicao2')
+        const m1Dados = (m1?.dados as DadosMedicao1) ?? null
+        const inicial: DadosMedicao2 | null = m2
+          ? (m2.dados as DadosMedicao2)
+          : VAZIO_MEDICAO2
+        return (
+          <FormMedicao2
+            inicial={inicial}
+            m1={m1Dados}
+            onCancelar={() => setFormM2Aberto(null)}
+            onSalvar={async (dadosForm) => {
+              await data.salvarMedicao2Card(cardId, dadosForm, user?.email ?? 'Empresa')
+              setFormM2Aberto(null)
+              if (dadosForm.liberado_producao === 'sim') {
+                toast('Medição 2 aprovada — card movido para produção')
+              } else {
+                toast('Medição 2 reprovada — card devolvido pra empresa')
               }
             }}
           />
@@ -387,7 +417,7 @@ function CardView({ card, perfil, onClick }: { card: Card; perfil: Perfil; onCli
 }
 
 function ModalCard({
-  card, perfil, podeFotos, onClose, onAlterarStatus, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto, podeChecklist, onAbrirMedicao1, onMarcarContraMarcoEntregue, onMarcarVaoPronto, onEncerrar, onResolverApontamento,
+  card, perfil, podeFotos, onClose, onAlterarStatus, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto, podeChecklist, onAbrirMedicao1, onAbrirMedicao2, onMarcarContraMarcoEntregue, onMarcarVaoPronto, onEncerrar, onResolverApontamento,
 }: {
   card: Card; perfil: Perfil; podeFotos: boolean; onClose: () => void
   onAlterarStatus: (s: string) => Promise<void>
@@ -398,6 +428,7 @@ function ModalCard({
   onRemoverFoto: (fotoId: string) => Promise<void>
   podeChecklist: boolean
   onAbrirMedicao1: () => void
+  onAbrirMedicao2: () => void
   onMarcarContraMarcoEntregue: () => Promise<void>
   onMarcarVaoPronto: () => Promise<void>
   onEncerrar: () => Promise<void>
@@ -521,7 +552,7 @@ function ModalCard({
           )}
 
           {perfil === 'empresa' && podeChecklist && card.tipo === 'peca' && !card.encerrado && (
-            <ChecklistTecnico card={card} onAbrirMedicao1={onAbrirMedicao1} />
+            <ChecklistTecnico card={card} onAbrirMedicao1={onAbrirMedicao1} onAbrirMedicao2={onAbrirMedicao2} />
           )}
 
           {podeFotos && (
@@ -581,18 +612,28 @@ function ModalCard({
   )
 }
 
-function ChecklistTecnico({ card, onAbrirMedicao1 }: { card: Card; onAbrirMedicao1: () => void }) {
+function ChecklistTecnico({ card, onAbrirMedicao1, onAbrirMedicao2 }: { card: Card; onAbrirMedicao1: () => void; onAbrirMedicao2: () => void }) {
   const m1 = card.checklists.find((c) => c.tipo === 'medicao1')
+  const m2 = card.checklists.find((c) => c.tipo === 'medicao2')
   const dadosM1 = m1?.dados as DadosMedicao1 | undefined
+  const dadosM2 = m2?.dados as DadosMedicao2 | undefined
   const resumo = dadosM1 ? resumoMedicao1(dadosM1) : null
+  const resumoM2 = dadosM2 ? resumoMedicao2(dadosM2) : null
   const tipologiaKey = dadosM1?.tipologia ? dadosM1.tipologia : null
   const tipologiaLabel = tipologiaKey ? ROTULOS_TIPOLOGIA[tipologiaKey] : null
   const naoExecutavel = dadosM1?.tipologia_executavel === 'nao'
+
+  // M2 só faz sentido se M1 existe + tipologia executável + (contra-marco SIM ou vão NÃO pronto na M1)
+  const m2Aplicavel = !!dadosM1 && !naoExecutavel && (dadosM1.contra_marco === 'sim' || dadosM1.vao_pronto === 'nao')
+  const m2Reprovado = dadosM2?.liberado_producao === 'nao'
+
   return (
-    <div>
-      <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">
+    <div className="space-y-3">
+      <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
         Checklist técnico (só empresa enxerga)
       </div>
+
+      {/* Medição 1 */}
       {m1 && dadosM1 ? (
         <div className={'border rounded-lg p-3.5 space-y-2.5 ' + (naoExecutavel ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200')}>
           <div className="flex items-start justify-between gap-3">
@@ -625,6 +666,33 @@ function ChecklistTecnico({ card, onAbrirMedicao1 }: { card: Card; onAbrirMedica
         <button onClick={onAbrirMedicao1} className="w-full bg-slate-50 border border-dashed border-slate-300 rounded-lg p-4 text-sm text-slate-600 hover:border-laranja hover:text-laranja-dark hover:bg-laranja-soft transition">
           + Preencher Medição 1 (visita técnica)
         </button>
+      )}
+
+      {/* Medição 2 — só aparece se aplicável */}
+      {m2Aplicavel && (
+        m2 && dadosM2 ? (
+          <div className={'border rounded-lg p-3.5 space-y-2.5 ' + (m2Reprovado ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200')}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className="bg-laranja-soft text-laranja-dark border border-laranja-border px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider">Medição 2</span>
+                  <span className="text-[11px] text-slate-400">{m2.autor} · {new Date(m2.preenchidoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                </div>
+                <div className={'text-sm font-medium ' + (m2Reprovado ? 'text-red-700' : 'text-slate-800')}>{resumoM2}</div>
+                {m2Reprovado && (
+                  <div className="text-xs text-red-700 mt-1">
+                    <strong>Pendências:</strong> {dadosM2.pendencias || '(sem detalhes)'}
+                  </div>
+                )}
+              </div>
+              <button onClick={onAbrirMedicao2} className="btn-ghost text-xs px-3 py-1.5">Editar</button>
+            </div>
+          </div>
+        ) : (
+          <button onClick={onAbrirMedicao2} className="w-full bg-slate-50 border border-dashed border-slate-300 rounded-lg p-4 text-sm text-slate-600 hover:border-laranja hover:text-laranja-dark hover:bg-laranja-soft transition">
+            + Preencher Medição 2 (conferência final do vão)
+          </button>
+        )
       )}
     </div>
   )
@@ -660,7 +728,7 @@ function ModalNovo({
         <div className="px-6 py-5 border-b border-slate-200 flex items-start gap-4">
           <div className="flex-1">
             <div className="text-lg font-bold mb-1">+ Novo registro</div>
-            <div className="text-sm text-slate-500">Crie uma peca, acordo ou reclamacao nesta obra.</div>
+            <div className="text-sm text-slate-500">Crie um item, acordo ou apontamento nesta obra.</div>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-md bg-slate-100 text-slate-500 grid place-items-center hover:bg-slate-200 hover:text-slate-900 transition">x</button>
         </div>
