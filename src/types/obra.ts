@@ -54,11 +54,12 @@ export interface DadosObra {
   cards: Card[]
 }
 
-// Em Andamento — agora simplificado em 3 fases + transição pra Conclusão.
+// Em Andamento — fases do ciclo de produção, com "Aguardando lote" como início (empresa precisa fechar o lote pra produção realmente começar).
 // (Valores antigos como 'Aguardando fabricacao' / 'Fabricando' / 'Entregue em obra' /
 // 'Aguardando instalacao' / 'Instalando' continuam funcionando se já estiverem no banco —
 // só não aparecem no dropdown novo.)
 export const STATUS_EM_ANDAMENTO = [
+  'Aguardando lote',
   'Em Produção',
   'Entregue',
   'Em Instalação',

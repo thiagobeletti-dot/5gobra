@@ -554,7 +554,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
         nome: input.nome,
         descricao: input.descricao,
         aba: input.destino,
-        statusEmAndamento: input.destino === 'emandamento' ? 'Em Produção' : null,
+        statusEmAndamento: input.destino === 'emandamento' ? 'Aguardando lote' : null,
         subStatus: null,
         prazoContrato: input.destino === 'emandamento' ? input.prazoContrato : null,
         encerrado: false,
@@ -574,7 +574,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
       nome: input.nome,
       descricao: input.descricao,
       aba: input.destino,
-      status_em_andamento: input.destino === 'emandamento' ? 'Em Produção' : null,
+      status_em_andamento: input.destino === 'emandamento' ? 'Aguardando lote' : null,
       prazo_contrato: input.destino === 'emandamento' ? input.prazoContrato : null,
     })
     await adicionarHistorico({ card_id: cardRow.id, autor, autor_tipo: perfil, texto: 'Registro criado.' })
@@ -713,8 +713,8 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
       if (dadosForm.vao_pronto === 'sim') {
         // Regra 4: vão pronto → vai produzir
         novaAba = 'emandamento'
-        novoSubStatus = 'Em Produção'
-        mensagemHistorico = 'Medição 1 preenchida. Decisão: SEM contra-marco, vão pronto. Card movido para Em Andamento (produção).'
+        novoSubStatus = 'Aguardando lote'
+        mensagemHistorico = 'Medição 1 preenchida. Decisão: SEM contra-marco, vão pronto. Card movido para Em Andamento aguardando lote de produção.'
       } else if (dadosForm.vao_pronto === 'nao') {
         // Regra 3: vão precisa correção → volta pra EMPRESA pra empresa redigir orientação ao cliente
         // (princípio: cliente não vê info técnica crua)
@@ -730,7 +730,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
       try {
         const updates: any = { aba: novaAba, sub_status: novoSubStatus }
         if (novaAba === 'emandamento') {
-          updates.status_em_andamento = 'Em Produção'
+          updates.status_em_andamento = 'Aguardando lote'
         }
         await atualizarCard(cardId, updates)
       } catch (e) {
@@ -784,9 +784,9 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
 
     if (dadosForm.liberado_producao === 'sim') {
       novaAba = 'emandamento'
-      novoSubStatus = 'Em Produção'
-      mensagemHistoricoInterno = 'Medição 2 preenchida. Vão liberado. Card movido para Em Andamento (produção). Medida final: ' + dadosForm.medida_largura + ' x ' + dadosForm.medida_altura
-      mensagemHistoricoPublico = '2ª medição realizada. Vão está pronto. Item aprovado para produção.'
+      novoSubStatus = 'Aguardando lote'
+      mensagemHistoricoInterno = 'Medição 2 preenchida. Vão liberado. Card movido para Em Andamento aguardando lote. Medida final: ' + dadosForm.medida_largura + ' x ' + dadosForm.medida_altura
+      mensagemHistoricoPublico = '2ª medição realizada. Vão está pronto. Item aprovado e aguardando lote de produção.'
     } else if (dadosForm.liberado_producao === 'nao') {
       novaAba = 'empresa'
       novoSubStatus = 'Vão M2 reprovado — comunicar cliente'
@@ -798,7 +798,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
       try {
         const updates: any = { aba: novaAba, sub_status: novoSubStatus }
         if (novaAba === 'emandamento') {
-          updates.status_em_andamento = 'Em Produção'
+          updates.status_em_andamento = 'Aguardando lote'
         }
         await atualizarCard(cardId, updates)
       } catch (e) {

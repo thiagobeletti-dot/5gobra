@@ -1,16 +1,16 @@
 import { useState } from 'react'
-import type { DadosMedicao1, DadosMedicao2 } from '../types/checklist'
-import { VAZIO_MEDICAO2 } from '../types/checklist'
+import type { DadosMedicao1, DadosMedicao2, Tipologia } from '../types/checklist'
+import { VAZIO_MEDICAO2, ROTULOS_TIPOLOGIA } from '../types/checklist'
 
 interface Props {
   inicial?: DadosMedicao2 | null
-  // Dados do M1 pra condicionar campos (contra-marco, soleira, motor)
+  // Dados do M1 pra condicionar campos (precisamos saber se contra-marco era SIM)
   m1?: DadosMedicao1 | null
   onSalvar: (dados: DadosMedicao2) => Promise<void>
   onCancelar: () => void
 }
 
-// ===== Helpers de UI (iguais ao M1) =====
+// ===== Helpers de UI =====
 
 function Secao({ titulo, children, aberta = true, destaque = false }: { titulo: string; children: any; aberta?: boolean; destaque?: boolean }) {
   return (
@@ -76,6 +76,15 @@ function GrupoRadio<T extends string>({ label, valor, opcoes, onChange, obs, onC
   )
 }
 
+function Check({ label, valor, onChange }: { label: string; valor: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="inline-flex items-center gap-2 cursor-pointer select-none px-3 py-1.5 rounded-md border bg-white border-slate-200 hover:border-slate-400">
+      <input type="checkbox" checked={valor} onChange={(e) => onChange(e.target.checked)} className="w-4 h-4 rounded border-slate-300 text-laranja focus:ring-laranja/30" />
+      <span className="text-xs font-medium text-slate-700">{label}</span>
+    </label>
+  )
+}
+
 function Texto({ valor, onChange, placeholder, type = 'text' }: { valor: string; onChange: (v: string) => void; placeholder?: string; type?: string }) {
   return <input type={type} className="input text-sm" placeholder={placeholder} value={valor} onChange={(e) => onChange(e.target.value)} />
 }
@@ -83,6 +92,8 @@ function Texto({ valor, onChange, placeholder, type = 'text' }: { valor: string;
 function TextoArea({ valor, onChange, placeholder }: { valor: string; onChange: (v: string) => void; placeholder?: string }) {
   return <textarea className="input text-sm min-h-[60px]" placeholder={placeholder} value={valor} onChange={(e) => onChange(e.target.value)} />
 }
+
+const TIPOLOGIAS: Exclude<Tipologia, ''>[] = ['fixo', 'correr', 'giro', 'maxim_ar']
 
 // ===== Form principal =====
 
@@ -96,9 +107,7 @@ export default function FormMedicao2({ inicial, m1, onSalvar, onCancelar }: Prop
   }
 
   // Condicionais baseadas no M1
-  const mostraContraMarco = m1?.contra_marco === 'sim'
-  const mostraSoleira = m1?.soleira === 'sim'
-  const mostraEnergia = m1?.tem_motor === true
+  const m1Cm = m1?.contra_marco === 'sim'
 
   async function salvar() {
     setErro(null)
@@ -107,6 +116,10 @@ export default function FormMedicao2({ inicial, m1, onSalvar, onCancelar }: Prop
       return
     }
     if (d.liberado_producao === 'sim') {
+      if (!d.tipologia) {
+        setErro('Escolha a tipologia da peça antes de liberar pra produção.')
+        return
+      }
       if (!d.medida_largura.trim() || !d.medida_altura.trim()) {
         setErro('Preencha a medida final (largura e altura) pra liberar pra produção.')
         return
@@ -117,9 +130,27 @@ export default function FormMedicao2({ inicial, m1, onSalvar, onCancelar }: Prop
         return
       }
     }
+
+    // Limpa campos da tipologia não escolhida
+    const dadosFinais: DadosMedicao2 = {
+      ...d,
+      ...(d.tipologia !== 'giro' ? {
+        giro_macaneta_lado: '' as const,
+        giro_chave_posicao: '' as const,
+        giro_somente_puxador: false,
+        giro_abertura_lado: '' as const,
+        giro_abertura_posicao: '' as const,
+      } : {}),
+      ...(d.tipologia !== 'correr' ? {
+        correr_abertura_lado: '' as const,
+        correr_fecho: '' as const,
+        correr_trilho: '' as const,
+      } : {}),
+    }
+
     setSalvando(true)
     try {
-      await onSalvar(d)
+      await onSalvar(dadosFinais)
     } catch (e: any) {
       setErro(e?.message ?? 'Erro ao salvar')
     } finally {
@@ -134,7 +165,7 @@ export default function FormMedicao2({ inicial, m1, onSalvar, onCancelar }: Prop
           <div className="flex-1 min-w-0">
             <span className="inline-block px-2.5 py-1 rounded-md text-xs font-bold border mb-2 bg-laranja-soft text-laranja-dark border-laranja-border">Medição 2 — Conferência final</span>
             <div className="text-base md:text-lg font-bold">Vão pronto pra produção?</div>
-            <div className="text-xs text-slate-500 mt-0.5">Esta é a conferência fina. Se o vão estiver liberado, sai a medida pra fabricação. Se não, volta pra empresa orientar o cliente.</div>
+            <div className="text-xs text-slate-500 mt-0.5">Confere o estado do vão e captura as especificações finais da peça pra fabricação.</div>
           </div>
           <button onClick={onCancelar} className="w-8 h-8 rounded-md bg-slate-100 text-slate-500 grid place-items-center hover:bg-slate-200 hover:text-slate-900 transition">x</button>
         </div>
@@ -153,33 +184,19 @@ export default function FormMedicao2({ inicial, m1, onSalvar, onCancelar }: Prop
           </Secao>
 
           <Secao titulo="Estado do vão">
-            {mostraContraMarco && (
+            {m1Cm && (
               <GrupoRadio
-                label="Contra-marco instalado"
+                label="Contra-marco instalado corretamente"
                 valor={d.contra_marco_instalado}
                 opcoes={[{ v: 'sim', l: 'Sim' }, { v: 'nao', l: 'Não' }]}
                 onChange={(v) => up('contra_marco_instalado', v)}
               />
             )}
-            {mostraSoleira && (
-              <GrupoRadio
-                label="Soleira / pingadeira instalada"
-                valor={d.soleira_instalada}
-                opcoes={[{ v: 'sim', l: 'Sim' }, { v: 'nao', l: 'Não' }]}
-                onChange={(v) => up('soleira_instalada', v)}
-              />
-            )}
             <GrupoRadio
-              label="Contra-piso regularizado"
-              valor={d.contra_piso_regularizado}
-              opcoes={[{ v: 'sim', l: 'Sim' }, { v: 'nao', l: 'Não' }, { v: 'na', l: 'N.A.' }]}
-              onChange={(v) => up('contra_piso_regularizado', v)}
-            />
-            <GrupoRadio
-              label="Base do trilho correta"
-              valor={d.base_trilho_correta}
+              label="Piso acabado"
+              valor={d.piso_acabado}
               opcoes={[{ v: 'sim', l: 'Sim' }, { v: 'nao', l: 'Não' }]}
-              onChange={(v) => up('base_trilho_correta', v)}
+              onChange={(v) => up('piso_acabado', v)}
             />
             <GrupoRadio
               label="Vão acabado (paredes/teto)"
@@ -187,35 +204,132 @@ export default function FormMedicao2({ inicial, m1, onSalvar, onCancelar }: Prop
               opcoes={[{ v: 'sim', l: 'Sim' }, { v: 'nao', l: 'Não' }]}
               onChange={(v) => up('vao_acabado', v)}
             />
-            {mostraEnergia && (
-              <GrupoRadio
-                label="Ponto de energia"
-                valor={d.ponto_energia}
-                opcoes={[{ v: 'sim_esquerda', l: 'Sim, esquerda' }, { v: 'sim_direita', l: 'Sim, direita' }, { v: 'nao', l: 'Não' }]}
-                onChange={(v) => up('ponto_energia', v)}
-              />
+            <GrupoRadio
+              label="Nível"
+              valor={d.nivel_ok}
+              opcoes={[{ v: 'sim', l: 'OK' }, { v: 'nao', l: 'Não' }]}
+              onChange={(v) => up('nivel_ok', v)}
+              obs={d.nivel_obs}
+              onChangeObs={(v) => up('nivel_obs', v)}
+            />
+            <GrupoRadio
+              label="Prumo"
+              valor={d.prumo_ok}
+              opcoes={[{ v: 'sim', l: 'OK' }, { v: 'nao', l: 'Não' }]}
+              onChange={(v) => up('prumo_ok', v)}
+              obs={d.prumo_obs}
+              onChangeObs={(v) => up('prumo_obs', v)}
+            />
+          </Secao>
+
+          <Secao titulo="Especificações finais (pra fabricar a peça)">
+            <div className="text-xs text-slate-500 mb-2">
+              Captura as especificações da peça que serão fabricadas. Tipologia já decidida no contrato — confirma e detalha.
+            </div>
+            <div>
+              <span className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1.5">Tipologia</span>
+              <div className="flex gap-2 flex-wrap">
+                {TIPOLOGIAS.map((t) => {
+                  const ativo = d.tipologia === t
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => up('tipologia', t)}
+                      className={'px-4 py-2 rounded-md text-sm font-semibold border transition ' + (ativo
+                        ? 'bg-laranja text-white border-laranja'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400')}
+                    >
+                      {ROTULOS_TIPOLOGIA[t]}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {d.tipologia === 'giro' && (
+              <div className="space-y-3 pt-2 border-t border-slate-200">
+                <div className="grid md:grid-cols-2 gap-3">
+                  <GrupoRadio label="Maçaneta — lado" valor={d.giro_macaneta_lado} opcoes={[{ v: 'esquerda', l: 'Esquerda' }, { v: 'direita', l: 'Direita' }]} onChange={(v) => up('giro_macaneta_lado', v)} />
+                  <GrupoRadio label="Chave — posição" valor={d.giro_chave_posicao} opcoes={[{ v: 'interna', l: 'Interna' }, { v: 'externa', l: 'Externa' }]} onChange={(v) => up('giro_chave_posicao', v)} />
+                </div>
+                <Check label="Somente puxador (sem chave)" valor={d.giro_somente_puxador} onChange={(v) => up('giro_somente_puxador', v)} />
+                <div className="grid md:grid-cols-2 gap-3">
+                  <GrupoRadio label="Abertura — lado" valor={d.giro_abertura_lado} opcoes={[{ v: 'esquerda', l: 'Esquerda' }, { v: 'direita', l: 'Direita' }]} onChange={(v) => up('giro_abertura_lado', v)} />
+                  <GrupoRadio label="Abertura — posição" valor={d.giro_abertura_posicao} opcoes={[{ v: 'interna', l: 'Interna' }, { v: 'externa', l: 'Externa' }]} onChange={(v) => up('giro_abertura_posicao', v)} />
+                </div>
+              </div>
             )}
-            <GrupoRadio
-              label="Esquadro"
-              valor={d.esquadro_ok}
-              opcoes={[{ v: 'sim', l: 'OK' }, { v: 'nao', l: 'Não' }]}
-              onChange={(v) => up('esquadro_ok', v)}
-              obs={d.esquadro_obs}
-              onChangeObs={(v) => up('esquadro_obs', v)}
-            />
-            <GrupoRadio
-              label="Nível e prumo"
-              valor={d.nivel_prumo_ok}
-              opcoes={[{ v: 'sim', l: 'OK' }, { v: 'nao', l: 'Não' }]}
-              onChange={(v) => up('nivel_prumo_ok', v)}
-              obs={d.nivel_prumo_obs}
-              onChangeObs={(v) => up('nivel_prumo_obs', v)}
-            />
+
+            {d.tipologia === 'correr' && (
+              <div className="space-y-3 pt-2 border-t border-slate-200">
+                <GrupoRadio
+                  label="Lado de abertura"
+                  valor={d.correr_abertura_lado}
+                  opcoes={[{ v: 'esquerda', l: 'Esquerda' }, { v: 'direita', l: 'Direita' }, { v: 'ambos', l: 'Ambos' }]}
+                  onChange={(v) => up('correr_abertura_lado', v)}
+                />
+                <GrupoRadio
+                  label="Fecho"
+                  valor={d.correr_fecho}
+                  opcoes={[{ v: 'fechadura', l: 'Fechadura' }, { v: 'cremona', l: 'Cremona' }, { v: 'concha', l: 'Concha' }]}
+                  onChange={(v) => up('correr_fecho', v)}
+                />
+                <GrupoRadio
+                  label="Tipo de trilho"
+                  valor={d.correr_trilho}
+                  opcoes={[
+                    { v: 'convencional', l: 'Convencional' },
+                    { v: 'embutido_u', l: 'Embutido U' },
+                    { v: 'embutido_concavo', l: 'Embutido côncavo' },
+                    { v: 'na', l: 'N.A.' },
+                  ]}
+                  onChange={(v) => up('correr_trilho', v)}
+                />
+              </div>
+            )}
+
+            <div className="space-y-3 pt-2 border-t border-slate-200">
+              <GrupoRadio
+                label="Soleira"
+                valor={d.soleira}
+                opcoes={[{ v: 'sim', l: 'Sim' }, { v: 'nao', l: 'Não' }]}
+                onChange={(v) => up('soleira', v)}
+              />
+              <Check label="Esquadria motorizada" valor={d.tem_motor} onChange={(v) => up('tem_motor', v)} />
+              {d.tem_motor && (
+                <div className="grid md:grid-cols-2 gap-3 pl-3 border-l-2 border-laranja-soft">
+                  <GrupoRadio label="Motor — lado" valor={d.motor_lado} opcoes={[{ v: 'esquerda', l: 'Esquerda' }, { v: 'direita', l: 'Direita' }]} onChange={(v) => up('motor_lado', v)} />
+                  <GrupoRadio label="Motor — tensão" valor={d.motor_tensao} opcoes={[{ v: '110V', l: '110V' }, { v: '220V', l: '220V' }]} onChange={(v) => up('motor_tensao', v)} />
+                </div>
+              )}
+
+              <div>
+                <span className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1.5">Acabamento</span>
+                <div className="flex flex-col gap-2">
+                  <Check label="Arremate Interno (guarnição) — padrão" valor={d.arremate_interno} onChange={(v) => up('arremate_interno', v)} />
+                  <Check label="Arremate Externo" valor={d.arremate_externo} onChange={(v) => {
+                    up('arremate_externo', v)
+                    if (!v) up('arremate_externo_tipo', '')
+                  }} />
+                  {d.arremate_externo && (
+                    <div className="pl-6">
+                      <GrupoRadio
+                        label="Tipo do externo"
+                        valor={d.arremate_externo_tipo}
+                        opcoes={[{ v: 'cantoneira', l: 'Cantoneira' }, { v: 'meia_cana', l: 'Meia Cana' }]}
+                        onChange={(v) => up('arremate_externo_tipo', v)}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </Secao>
 
           <Secao titulo="Resultado" destaque>
             <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-900 mb-2">
-              <strong>Decisão final:</strong> liberar pra produção significa que a peça vai ser fabricada. Se reprovado, card volta pra empresa redigir orientação ao cliente.
+              <strong>Decisão final:</strong> liberar pra produção significa que a peça vai entrar na fila de fabricação. Se reprovado, card volta pra empresa redigir orientação ao cliente.
             </div>
             <GrupoRadio
               label="Vão liberado pra produção?"
@@ -238,7 +352,7 @@ export default function FormMedicao2({ inicial, m1, onSalvar, onCancelar }: Prop
             {d.liberado_producao === 'nao' && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-3">
                 <Campo label="Lista de pendências (orientação pra obra)">
-                  <TextoArea valor={d.pendencias} onChange={(v) => up('pendencias', v)} placeholder="Ex: nivelar contra-piso, ajustar requadro, refazer ponto de energia. Empresa vai usar essa lista pra orientar o cliente." />
+                  <TextoArea valor={d.pendencias} onChange={(v) => up('pendencias', v)} placeholder="Ex: nivelar contra-piso, ajustar requadro. Empresa vai usar essa lista pra orientar o cliente." />
                 </Campo>
                 <div className="text-[11px] text-red-700 mt-1.5">
                   Vão NÃO está liberado. Card vai voltar pra Empresa redigir orientação ao cliente.

@@ -107,24 +107,41 @@ export const VAZIO_MEDICAO1: DadosMedicao1 = {
 
 // =============== Medição 2 ===============
 // Conferência fina pós contra-marco/vão acabado: avalia se vão tá pronto pra produção.
-// Só aplica quando M1 disse contra-marco=SIM OU vão não pronto. Pula direto se M1 já liberou pra produção.
+// Só acontece quando M1 disse contra-marco=SIM OU vão não pronto.
+// IMPORTANTE: como o M1 nesses casos é minimal (não captura tipologia/specs), a M2
+// também captura essas specs — esse é o momento certo (técnico em obra com vão pronto).
 export interface DadosMedicao2 {
   // Cabeçalho
   data: string
   tecnico: string
   responsavel_obra: string
 
-  // Estado do vão pronto
-  contra_marco_instalado: 'sim' | 'nao' | '' // só visível se M1 contra-marco=SIM
-  soleira_instalada: 'sim' | 'nao' | '' // só visível se M1 soleira=SIM
-  contra_piso_regularizado: 'sim' | 'nao' | 'na' | ''
-  base_trilho_correta: 'sim' | 'nao' | ''
+  // Estado do vão (5 campos)
+  contra_marco_instalado: 'sim' | 'nao' | '' // só visível/preenchível se M1 contra-marco=SIM
+  piso_acabado: 'sim' | 'nao' | ''
   vao_acabado: 'sim' | 'nao' | '' // paredes/teto
-  ponto_energia: 'sim_esquerda' | 'sim_direita' | 'nao' | '' // só visível se M1 motor=SIM
-  esquadro_ok: 'sim' | 'nao' | ''
-  esquadro_obs: string
-  nivel_prumo_ok: 'sim' | 'nao' | ''
-  nivel_prumo_obs: string
+  nivel_ok: 'sim' | 'nao' | ''
+  nivel_obs: string
+  prumo_ok: 'sim' | 'nao' | ''
+  prumo_obs: string
+
+  // Especificações finais (captura sempre, pois M1 não captura quando CM=SIM nem quando vão=NÃO)
+  tipologia: Tipologia
+  giro_macaneta_lado: 'esquerda' | 'direita' | ''
+  giro_chave_posicao: 'interna' | 'externa' | ''
+  giro_somente_puxador: boolean
+  giro_abertura_lado: 'esquerda' | 'direita' | ''
+  giro_abertura_posicao: 'interna' | 'externa' | ''
+  correr_abertura_lado: 'esquerda' | 'direita' | 'ambos' | ''
+  correr_fecho: 'fechadura' | 'cremona' | 'concha' | ''
+  correr_trilho: 'convencional' | 'embutido_u' | 'embutido_concavo' | 'na' | ''
+  soleira: 'sim' | 'nao' | ''
+  tem_motor: boolean
+  motor_lado: 'esquerda' | 'direita' | ''
+  motor_tensao: '110V' | '220V' | ''
+  arremate_interno: boolean
+  arremate_externo: boolean
+  arremate_externo_tipo: 'cantoneira' | 'meia_cana' | ''
 
   // Resultado
   liberado_producao: 'sim' | 'nao' | ''
@@ -138,15 +155,28 @@ export const VAZIO_MEDICAO2: DadosMedicao2 = {
   tecnico: '',
   responsavel_obra: '',
   contra_marco_instalado: '',
-  soleira_instalada: '',
-  contra_piso_regularizado: '',
-  base_trilho_correta: '',
+  piso_acabado: '',
   vao_acabado: '',
-  ponto_energia: '',
-  esquadro_ok: '',
-  esquadro_obs: '',
-  nivel_prumo_ok: '',
-  nivel_prumo_obs: '',
+  nivel_ok: '',
+  nivel_obs: '',
+  prumo_ok: '',
+  prumo_obs: '',
+  tipologia: '',
+  giro_macaneta_lado: '',
+  giro_chave_posicao: '',
+  giro_somente_puxador: false,
+  giro_abertura_lado: '',
+  giro_abertura_posicao: '',
+  correr_abertura_lado: '',
+  correr_fecho: '',
+  correr_trilho: '',
+  soleira: '',
+  tem_motor: false,
+  motor_lado: '',
+  motor_tensao: '',
+  arremate_interno: true,
+  arremate_externo: false,
+  arremate_externo_tipo: '',
   liberado_producao: '',
   pendencias: '',
   medida_largura: '',

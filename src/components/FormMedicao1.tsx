@@ -8,7 +8,7 @@ interface Props {
   onCancelar: () => void
 }
 
-// Componentes auxiliares de UI
+// ===== Helpers de UI =====
 
 function Secao({ titulo, children, aberta = true, destaque = false }: { titulo: string; children: any; aberta?: boolean; destaque?: boolean }) {
   return (
@@ -84,20 +84,27 @@ function Check({ label, valor, onChange }: { label: string; valor: boolean; onCh
 }
 
 function Texto({ valor, onChange, placeholder, type = 'text' }: { valor: string; onChange: (v: string) => void; placeholder?: string; type?: string }) {
-  return (
-    <input type={type} className="input text-sm" placeholder={placeholder} value={valor} onChange={(e) => onChange(e.target.value)} />
-  )
+  return <input type={type} className="input text-sm" placeholder={placeholder} value={valor} onChange={(e) => onChange(e.target.value)} />
 }
 
 function TextoArea({ valor, onChange, placeholder }: { valor: string; onChange: (v: string) => void; placeholder?: string }) {
-  return (
-    <textarea className="input text-sm min-h-[60px]" placeholder={placeholder} value={valor} onChange={(e) => onChange(e.target.value)} />
-  )
+  return <textarea className="input text-sm min-h-[60px]" placeholder={placeholder} value={valor} onChange={(e) => onChange(e.target.value)} />
 }
 
 const TIPOLOGIAS: Exclude<Tipologia, ''>[] = ['fixo', 'correr', 'giro', 'maxim_ar']
 
-// Formulário principal
+// ===== Form principal com progressive disclosure =====
+//
+// Fluxo:
+//   1. Cabeçalho + Identificação (sempre)
+//   2. Conseguimos executar a tipologia? (sempre)
+//      → SIM segue, NÃO encerra com motivo
+//   3. Contra-marco? SIM/NÃO
+//      → SIM: só medida do contra-marco (form minimal)
+//      → NÃO: continua perguntando vão acabado?
+//   4. Vão acabado? SIM/NÃO (só quando CM=NÃO)
+//      → NÃO: lista de pendências (form minimal)
+//      → SIM: tipologia + specs + estrutura completa + medida final
 
 export default function FormMedicao1({ inicial, onSalvar, onCancelar }: Props) {
   const [d, setD] = useState<DadosMedicao1>(inicial ?? VAZIO_MEDICAO1)
@@ -108,53 +115,92 @@ export default function FormMedicao1({ inicial, onSalvar, onCancelar }: Props) {
     setD((s) => ({ ...s, [k]: v }))
   }
 
+  // Estados do progressive disclosure
+  const naoExecutavel = d.tipologia_executavel === 'nao'
+  const cmDecidido = !!d.contra_marco
+  const cmSim = d.contra_marco === 'sim'
+  const cmNao = d.contra_marco === 'nao'
+  const vaoDecidido = !!d.vao_pronto
+  const vaoNao = d.vao_pronto === 'nao'
+  const vaoSim = d.vao_pronto === 'sim'
+
+  // Mostrar form completo (tipologia + specs + acabamento + medida final) só se CM=NÃO + vão=SIM
+  const mostraFormCompleto = cmNao && vaoSim
+
   // Regra: meia cana interna só vale se sem contra-marco + montagem no eixo
-  const podeMeiaCanaInterna = d.contra_marco === 'nao' && d.instalacao === 'eixo'
-  // Mantém estado coerente — se a regra mudou e a flag tava ligada, desliga
-  if (d.meia_cana_interna && !podeMeiaCanaInterna) {
-    // Não disparo setState dentro do render — só ignoro no salvamento (a regra é aplicada lá também)
-  }
+  const podeMeiaCanaInterna = cmNao && d.instalacao === 'eixo'
 
   async function salvar() {
     setErro(null)
-    // Pergunta crítica primeiro: dá pra executar a tipologia contratada?
     if (!d.tipologia_executavel) {
       setErro('Confirme se conseguimos executar a tipologia contratada.')
       return
     }
-    if (d.tipologia_executavel === 'nao') {
-      // Caminho não-executável: só exige o motivo, pula o resto do form
+    if (naoExecutavel) {
       if (!d.tipologia_problema.trim()) {
         setErro('Descreva o problema da tipologia pra empresa avaliar.')
         return
       }
     } else {
-      // Caminho executável: exige tipologia + decisão de contra-marco + diagnóstico do vão completo
-      if (!d.tipologia) {
-        setErro('Escolha a tipologia da peça antes de salvar.')
-        return
-      }
       if (!d.contra_marco) {
         setErro('Decida se vai ter contra-marco antes de salvar (essa decisão define o próximo passo da obra).')
         return
       }
-      // M1 é triagem: técnico precisa dizer se o vão tá pronto, exceto quando vai ter contra-marco (irrelevante)
-      if (d.contra_marco === 'nao') {
-        if (!d.vao_pronto) {
-          setErro('Responda se o vão está pronto pra tirar a medida final.')
+      if (cmSim) {
+        if (!d.medida_largura.trim() || !d.medida_altura.trim()) {
+          setErro('Preencha a medida do vão pra fabricar o contra-marco.')
           return
         }
-        if (d.vao_pronto === 'nao' && !d.precisa_correcao.trim()) {
-          setErro('Liste o que falta no vão pra ele ficar pronto. Empresa vai usar essa lista pra orientar o cliente.')
+      } else if (cmNao) {
+        if (!d.vao_pronto) {
+          setErro('Responda se o vão está acabado.')
           return
+        }
+        if (vaoNao) {
+          if (!d.precisa_correcao.trim()) {
+            setErro('Liste o que falta no vão pra ele ficar pronto. Empresa vai usar essa lista pra orientar o cliente.')
+            return
+          }
+        } else if (vaoSim) {
+          if (!d.tipologia) {
+            setErro('Escolha a tipologia da peça antes de salvar.')
+            return
+          }
+          if (!d.medida_largura.trim() || !d.medida_altura.trim()) {
+            setErro('Preencha a medida final (largura e altura) pra fabricação.')
+            return
+          }
         }
       }
     }
-    // Se vão pronto, limpa lista de correções (não faz sentido)
+
+    // Limpa campos não preenchidos baseado no caminho escolhido
     const dadosFinais: DadosMedicao1 = {
       ...d,
       meia_cana_interna: podeMeiaCanaInterna ? d.meia_cana_interna : false,
-      precisa_correcao: d.vao_pronto === 'sim' ? '' : d.precisa_correcao,
+      precisa_correcao: vaoNao ? d.precisa_correcao : '',
+      // Se não chegou no form completo, zera tipologia e specs
+      ...(mostraFormCompleto ? {} : {
+        tipologia: '' as const,
+        giro_macaneta_lado: '' as const,
+        giro_chave_posicao: '' as const,
+        giro_somente_puxador: false,
+        giro_abertura_lado: '' as const,
+        giro_abertura_posicao: '' as const,
+        correr_abertura_lado: '' as const,
+        correr_fecho: '' as const,
+        correr_trilho: '' as const,
+        soleira: '' as const,
+        tem_motor: false,
+        motor_lado: '' as const,
+        motor_tensao: '' as const,
+        instalacao: '' as const,
+        arremate_externo: false,
+        arremate_externo_tipo: '' as const,
+        meia_cana_interna: false,
+      }),
+      // Se não chegou em vão pronto, zera vao_pronto pra evitar dados stale
+      ...(cmSim ? { vao_pronto: '' as const } : {}),
       ...(d.tipologia !== 'giro' ? {
         giro_macaneta_lado: '' as const,
         giro_chave_posicao: '' as const,
@@ -168,6 +214,7 @@ export default function FormMedicao1({ inicial, onSalvar, onCancelar }: Props) {
         correr_trilho: '' as const,
       } : {}),
     }
+
     setSalvando(true)
     try {
       await onSalvar(dadosFinais)
@@ -178,22 +225,14 @@ export default function FormMedicao1({ inicial, onSalvar, onCancelar }: Props) {
     }
   }
 
-  const labelMedida = d.contra_marco === 'sim'
-    ? 'Medida do contra-marco'
-    : d.contra_marco === 'nao'
-      ? 'Medida para fabricação (vão pronto)'
-      : 'Medidas'
-
-  const naoExecutavel = d.tipologia_executavel === 'nao'
-
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm grid place-items-end md:place-items-center p-0 md:p-5 z-50" onClick={onCancelar}>
       <div className="bg-white border border-slate-200 rounded-t-2xl md:rounded-2xl w-full max-w-3xl max-h-[95vh] flex flex-col shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="px-5 md:px-6 py-4 md:py-5 border-b border-slate-200 flex items-start gap-3">
           <div className="flex-1 min-w-0">
             <span className="inline-block px-2.5 py-1 rounded-md text-xs font-bold border mb-2 bg-laranja-soft text-laranja-dark border-laranja-border">Medição 1 — Visita técnica</span>
-            <div className="text-base md:text-lg font-bold">Preencher checklist</div>
-            <div className="text-xs text-slate-500 mt-0.5">Esta medição define se vai ter contra-marco e as primeiras especificações da peça.</div>
+            <div className="text-base md:text-lg font-bold">Triagem da obra</div>
+            <div className="text-xs text-slate-500 mt-0.5">Decide se vai ter contra-marco e se o vão tá pronto pra tirar medida final.</div>
           </div>
           <button onClick={onCancelar} className="w-8 h-8 rounded-md bg-slate-100 text-slate-500 grid place-items-center hover:bg-slate-200 hover:text-slate-900 transition">x</button>
         </div>
@@ -235,7 +274,61 @@ export default function FormMedicao1({ inicial, onSalvar, onCancelar }: Props) {
             </div>
           </Secao>
 
-          {!naoExecutavel && (
+          {/* SE EXECUTÁVEL: pergunta contra-marco */}
+          {!naoExecutavel && d.tipologia_executavel === 'sim' && (
+            <Secao titulo="Decisão crítica" destaque>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-900 mb-2">
+                Contra-marco SIM ou NÃO define o próximo passo do fluxo da obra.
+              </div>
+              <GrupoRadio
+                label="Contra-marco?"
+                valor={d.contra_marco}
+                opcoes={[{ v: 'sim', l: 'SIM' }, { v: 'nao', l: 'NÃO' }]}
+                onChange={(v) => up('contra_marco', v)}
+              />
+            </Secao>
+          )}
+
+          {/* SE CM=SIM: só medida do contra-marco */}
+          {!naoExecutavel && cmSim && (
+            <Secao titulo="Medida do contra-marco">
+              <div className="text-xs text-slate-500 mb-2">
+                Tira a medida do vão para fabricar o contra-marco. Não precisa preencher tipologia/especificações agora — vai ser feito na Medição 2, depois do contra-marco instalado.
+              </div>
+              <div className="grid md:grid-cols-2 gap-3 max-w-md">
+                <Campo label="Largura"><Texto valor={d.medida_largura} onChange={(v) => up('medida_largura', v)} placeholder="Ex: 1200" /></Campo>
+                <Campo label="Altura"><Texto valor={d.medida_altura} onChange={(v) => up('medida_altura', v)} placeholder="Ex: 1000" /></Campo>
+              </div>
+            </Secao>
+          )}
+
+          {/* SE CM=NÃO: pergunta vão pronto */}
+          {!naoExecutavel && cmNao && (
+            <Secao titulo="Estado do vão (triagem)">
+              <div className="text-xs text-slate-500 mb-2">
+                Sem contra-marco, precisa avaliar se o vão tá pronto pra tirar medida final.
+              </div>
+              <GrupoRadio
+                label="Vão está acabado?"
+                valor={d.vao_pronto}
+                opcoes={[{ v: 'sim', l: 'Sim, pronto' }, { v: 'nao', l: 'Não, falta acabar' }]}
+                onChange={(v) => up('vao_pronto', v)}
+              />
+              {vaoNao && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-2">
+                  <Campo label="Lista de pendências (orientação pra obra)">
+                    <TextoArea valor={d.precisa_correcao} onChange={(v) => up('precisa_correcao', v)} placeholder="Ex: nivelar contra-piso, instalar soleira, requadrar vão, deixar ponto de energia. Empresa vai usar essa lista pra orientar o cliente." />
+                  </Campo>
+                  <div className="text-[11px] text-red-700 mt-1.5">
+                    Vão NÃO está pronto. Card vai pra Empresa redigir orientação ao cliente.
+                  </div>
+                </div>
+              )}
+            </Secao>
+          )}
+
+          {/* SE CM=NÃO + vão=SIM: form completo (tipologia + specs + acabamento + medida final) */}
+          {mostraFormCompleto && (
             <>
               <Secao titulo="Tipologia">
                 <div>
@@ -305,30 +398,18 @@ export default function FormMedicao1({ inicial, onSalvar, onCancelar }: Props) {
               {d.tipologia === 'maxim_ar' && (
                 <Secao titulo="Maxim-ar / Basculante">
                   <div className="text-xs text-slate-500">
-                    Sem campos específicos por enquanto — use o campo "Observação" da identificação pra detalhes (lado de abertura, motor, etc). Conforme você usar, a gente especializa.
+                    Sem campos específicos por enquanto — use o campo "Observação" da identificação pra detalhes.
                   </div>
                 </Secao>
               )}
 
-              <Secao titulo="Estrutura e instalação" destaque>
-                <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-900 mb-2">
-                  <strong>Decisão crítica:</strong> contra-marco SIM ou NÃO define o próximo passo do fluxo da obra.
-                </div>
-
-                <GrupoRadio
-                  label="Contra-marco"
-                  valor={d.contra_marco}
-                  opcoes={[{ v: 'sim', l: 'SIM' }, { v: 'nao', l: 'NÃO' }]}
-                  onChange={(v) => up('contra_marco', v)}
-                />
-
+              <Secao titulo="Estrutura e acabamento">
                 <GrupoRadio
                   label="Soleira"
                   valor={d.soleira}
                   opcoes={[{ v: 'sim', l: 'Sim' }, { v: 'nao', l: 'Não' }]}
                   onChange={(v) => up('soleira', v)}
                 />
-
                 <Check label="Esquadria motorizada" valor={d.tem_motor} onChange={(v) => up('tem_motor', v)} />
                 {d.tem_motor && (
                   <div className="grid md:grid-cols-2 gap-3 pl-3 border-l-2 border-laranja-soft">
@@ -337,18 +418,12 @@ export default function FormMedicao1({ inicial, onSalvar, onCancelar }: Props) {
                   </div>
                 )}
 
-                {d.contra_marco === 'sim' ? (
-                  <div className="bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-xs text-slate-600">
-                    <strong>Instalação:</strong> com contra-marco, alinhamento é interno (regra fixa).
-                  </div>
-                ) : d.contra_marco === 'nao' ? (
-                  <GrupoRadio
-                    label="Instalação — orientação do trilho"
-                    valor={d.instalacao}
-                    opcoes={[{ v: 'face_interna', l: 'Face Interna' }, { v: 'face_externa', l: 'Face Externa' }, { v: 'eixo', l: 'Eixo' }]}
-                    onChange={(v) => up('instalacao', v)}
-                  />
-                ) : null}
+                <GrupoRadio
+                  label="Instalação — orientação do trilho"
+                  valor={d.instalacao}
+                  opcoes={[{ v: 'face_interna', l: 'Face Interna' }, { v: 'face_externa', l: 'Face Externa' }, { v: 'eixo', l: 'Eixo' }]}
+                  onChange={(v) => up('instalacao', v)}
+                />
 
                 <div>
                   <span className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1.5">Acabamento</span>
@@ -375,45 +450,7 @@ export default function FormMedicao1({ inicial, onSalvar, onCancelar }: Props) {
                 </div>
               </Secao>
 
-              {/* "Vão pronto?" só faz sentido SEM contra-marco. Com contra-marco, o vão sempre tá bruto na M1 — vai ser conferido na M2 depois do contra-marco instalado. */}
-              {d.contra_marco !== 'sim' && (
-                <Secao titulo="Estado do vão (triagem)">
-                  <div className="text-xs text-slate-500 mb-2">
-                    Triagem rápida: o vão está suficientemente pronto pra tirar a medida final agora? Detalhamento fino vem depois, na Medição 2.
-                  </div>
-                  <GrupoRadio
-                    label="Vão está pronto pra tirar medida final?"
-                    valor={d.vao_pronto}
-                    opcoes={[{ v: 'sim', l: 'Sim, pronto' }, { v: 'nao', l: 'Não, falta acabar' }]}
-                    onChange={(v) => up('vao_pronto', v)}
-                  />
-                  {d.vao_pronto === 'nao' && (
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-2">
-                      <Campo label="Lista de pendências (orientação pra obra)">
-                        <TextoArea valor={d.precisa_correcao} onChange={(v) => up('precisa_correcao', v)} placeholder="Ex: nivelar contra-piso, instalar soleira, requadrar vão, deixar ponto de energia. Empresa vai usar essa lista pra orientar o cliente." />
-                      </Campo>
-                      <div className="text-[11px] text-red-700 mt-1.5">
-                        Vão NÃO está pronto. Card vai pra Empresa redigir orientação ao cliente.
-                      </div>
-                    </div>
-                  )}
-                </Secao>
-              )}
-
-              {d.contra_marco === 'sim' && (
-                <div className="bg-slate-50 border border-slate-200 rounded-md p-3 text-xs text-slate-600">
-                  <strong>Estado do vão</strong> não é avaliado nesta etapa. Com contra-marco, o vão será conferido na <strong>Medição 2</strong> depois que cliente instalar o contra-marco e o vão estiver acabado.
-                </div>
-              )}
-
-              <Secao titulo={labelMedida}>
-                <div className="text-xs text-slate-500 mb-2">
-                  {d.contra_marco === 'sim'
-                    ? 'Tira a medida do vão para fabricar o contra-marco. A medida final pra fabricação da peça vem depois, na Medição 2.'
-                    : d.contra_marco === 'nao'
-                      ? 'Tira a medida final pra fabricação. Só faz sentido se o vão já estiver pronto (chão, nível, prumo). Caso contrário, deixa em branco e termina na Medição 2.'
-                      : 'Define se vai ter contra-marco para o sistema saber qual medida pedir.'}
-                </div>
+              <Secao titulo="Medida final pra fabricação">
                 <div className="grid md:grid-cols-2 gap-3 max-w-md">
                   <Campo label="Largura"><Texto valor={d.medida_largura} onChange={(v) => up('medida_largura', v)} placeholder="Ex: 1200" /></Campo>
                   <Campo label="Altura"><Texto valor={d.medida_altura} onChange={(v) => up('medida_altura', v)} placeholder="Ex: 1000" /></Campo>
