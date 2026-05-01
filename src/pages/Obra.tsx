@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { LogoFull } from '../lib/logo'
 import { ABAS, STATUS_EM_ANDAMENTO } from '../types/obra'
 import type { AbaId, Card, Perfil, TipoCard } from '../types/obra'
-import { diasAte, formataData, statusSemantico } from '../lib/helpers'
+import { diasAte, formataData, formataDataHora, statusSemantico } from '../lib/helpers'
 import { useObraData } from '../hooks/useObraData'
 import { sair, useAuth } from '../lib/auth'
 import ImportarItens from '../components/ImportarItens'
@@ -237,6 +237,12 @@ export default function Obra() {
             setCardAbertoId(null)
             toast('Apontamento resolvido')
           }}
+          onMarcarCorrigido={async () => {
+            if (!confirm('Marcar como corrigido? O card volta pra Conclusão e cliente pode dar aceite novamente.')) return
+            await data.marcarCorrigido(cardAberto.id)
+            setCardAbertoId(null)
+            toast('Marcado como corrigido — aguardando novo aceite')
+          }}
           onApagar={async () => {
             if (!confirm('APAGAR este item permanentemente? Toda informação (histórico, fotos, checklists) será apagada do banco. Cliente NÃO vai ver nenhum registro disso. Essa ação não pode ser desfeita.')) return
             const confirmar = prompt('Pra confirmar, digite APAGAR:')
@@ -425,7 +431,7 @@ function CardView({ card, perfil, onClick }: { card: Card; perfil: Perfil; onCli
 }
 
 function ModalCard({
-  card, perfil, podeFotos, onClose, onAlterarStatus, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto, podeChecklist, onAbrirMedicao1, onAbrirMedicao2, onMarcarContraMarcoEntregue, onMarcarVaoPronto, onEncerrar, onResolverApontamento, onApagar,
+  card, perfil, podeFotos, onClose, onAlterarStatus, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto, podeChecklist, onAbrirMedicao1, onAbrirMedicao2, onMarcarContraMarcoEntregue, onMarcarVaoPronto, onEncerrar, onResolverApontamento, onMarcarCorrigido, onApagar,
 }: {
   card: Card; perfil: Perfil; podeFotos: boolean; onClose: () => void
   onAlterarStatus: (s: string) => Promise<void>
@@ -441,6 +447,7 @@ function ModalCard({
   onMarcarVaoPronto: () => Promise<void>
   onEncerrar: () => Promise<void>
   onResolverApontamento: () => Promise<void>
+  onMarcarCorrigido: () => Promise<void>
   onApagar: () => Promise<void>
 }) {
   const [texto, setTexto] = useState('')
@@ -474,6 +481,25 @@ function ModalCard({
             )}
           </div>
 
+          {/* Card reaberto pelo cliente — destaque o motivo + botão Corrigido */}
+          {perfil === 'empresa' && !card.encerrado && card.subStatus === 'Reaberto pelo cliente — aguardando correção' && (() => {
+            // Pega a última mensagem do cliente (motivo da reabertura)
+            const ultimaCliente = (card.historico ?? []).slice().reverse().find((h) => h.tipo === 'cliente')
+            return (
+              <div className="bg-red-50 border-2 border-red-300 rounded-lg px-4 py-4">
+                <div className="font-bold text-sm text-red-800 mb-1">⚠ Card reaberto pelo cliente</div>
+                {ultimaCliente && (
+                  <div className="bg-white border border-red-200 rounded-md px-3 py-2 mb-3">
+                    <div className="text-[10px] text-red-700 font-bold uppercase tracking-wider mb-0.5">Motivo (cliente)</div>
+                    <div className="text-sm text-slate-800">{ultimaCliente.texto}</div>
+                  </div>
+                )}
+                <p className="text-xs text-slate-700 mb-3">Quando empresa atender o problema apontado, marque como corrigido. Card volta pra Conclusão pra cliente dar novo aceite.</p>
+                <button className="btn-primary" onClick={onMarcarCorrigido}>Marcar como corrigido →</button>
+              </div>
+            )
+          })()}
+
           {/* Apontamento aberto — empresa pode marcar como resolvido */}
           {perfil === 'empresa' && !card.encerrado && card.tipo === 'reclamacao' && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-4">
@@ -504,7 +530,7 @@ function ModalCard({
             <div>
               {card.aceiteFinal ? (
                 <div className="bg-emerald-50 border border-emerald-200 px-4 py-3 rounded-lg text-xs text-slate-700">
-                  <span className="text-emerald-700 font-bold">OK Aceite confirmado</span> pelo cliente em {card.aceiteFinal}. Garantia iniciada nesta data.
+                  <span className="text-emerald-700 font-bold">✓ Aceite confirmado</span> pelo cliente em {formataDataHora(card.aceiteFinal)}. Garantia iniciada nesta data.
                 </div>
               ) : perfil === 'cliente' ? (
                 <div className="bg-emerald-50 border border-emerald-200 px-4 py-4 rounded-lg">

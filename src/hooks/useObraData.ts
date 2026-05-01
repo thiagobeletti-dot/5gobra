@@ -55,6 +55,7 @@ interface UseObraDataResult {
   marcarApontamentoCiente: (cardId: string) => Promise<void>
   encerrarCard: (cardId: string, motivo: string) => Promise<void>
   apagarCard: (cardId: string) => Promise<void>
+  marcarCorrigido: (cardId: string) => Promise<void>
   darAceite: (cardId: string) => Promise<void>
   reabrir: (cardId: string, texto: string, perfil: 'empresa' | 'cliente') => Promise<void>
   criarNovo: (input: NovoCardInput, perfil: 'empresa' | 'cliente') => Promise<AbaId>
@@ -554,7 +555,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
               { autor: 'Cliente', tipo: 'cliente' as AutorTipo, data: agora(), texto, interno: false },
               { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Cliente identificou problema. Card reaberto e enviado para Empresa.', interno: true },
             ]
-            return { ...c, aba: 'empresa' as AbaId, historico: hist }
+            return { ...c, aba: 'empresa' as AbaId, subStatus: 'Reaberto pelo cliente — aguardando correção', historico: hist }
           }),
         }
       })
@@ -563,7 +564,38 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     if (!obraReal) return
     await adicionarHistorico({ card_id: cardId, autor: 'Cliente', autor_tipo: perfil, texto })
     await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Cliente identificou problema. Card reaberto e enviado para Empresa.', interno: true })
-    await atualizarCard(cardId, { aba: 'empresa' })
+    await atualizarCard(cardId, { aba: 'empresa', sub_status: 'Reaberto pelo cliente — aguardando correção' })
+    const novo = await carregarDoBanco(obraReal)
+    setDados(novo)
+  }, [dados, modo, obraReal])
+
+  // Empresa marca corrigido depois de receber card reaberto pelo cliente.
+  // Volta pra Conclusão esperando aceite final.
+  const marcarCorrigido = useCallback(async (cardId: string) => {
+    if (!dados) return
+    const textoMsg = 'Empresa corrigiu o problema apontado. Item disponível para novo aceite.'
+    if (modo === 'demo') {
+      setDados((d) => {
+        if (!d) return d
+        return {
+          ...d,
+          cards: d.cards.map((c) => {
+            if (c.id !== cardId) return c
+            const hist = [
+              ...c.historico,
+              { autor: 'Empresa', tipo: 'empresa' as AutorTipo, data: agora(), texto: textoMsg, interno: false },
+              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Card devolvido pra Conclusão. Aguardando aceite do cliente.', interno: true },
+            ]
+            return { ...c, aba: 'conclusao' as AbaId, subStatus: 'Aguardando aceite final', historico: hist }
+          }),
+        }
+      })
+      return
+    }
+    if (!obraReal) return
+    await adicionarHistorico({ card_id: cardId, autor: 'Empresa', autor_tipo: 'empresa', texto: textoMsg })
+    await atualizarCard(cardId, { aba: 'conclusao', sub_status: 'Aguardando aceite final' })
+    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Card devolvido pra Conclusão. Aguardando aceite do cliente.', interno: true })
     const novo = await carregarDoBanco(obraReal)
     setDados(novo)
   }, [dados, modo, obraReal])
@@ -862,5 +894,5 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     setDados(structuredClone(SEED))
   }, [modo, idOrToken])
 
-  return { dados, modo, obraReal, carregando, erro, alterarStatus, registrar, confirmarItem, marcarContraMarcoEntregue, marcarVaoPronto, marcarApontamentoResolvido, marcarApontamentoCiente, encerrarCard, apagarCard, darAceite, reabrir, criarNovo, importarItens, adicionarFotos, removerFoto, salvarMedicao1Card, salvarMedicao2Card, resetar }
+  return { dados, modo, obraReal, carregando, erro, alterarStatus, registrar, confirmarItem, marcarContraMarcoEntregue, marcarVaoPronto, marcarApontamentoResolvido, marcarApontamentoCiente, encerrarCard, apagarCard, marcarCorrigido, darAceite, reabrir, criarNovo, importarItens, adicionarFotos, removerFoto, salvarMedicao1Card, salvarMedicao2Card, resetar }
 }

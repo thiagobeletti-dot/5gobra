@@ -12,6 +12,18 @@ export function formataData(iso: string | null): string {
   return `${d}/${m}/${y}`
 }
 
+// Formata timestamp ISO completo (yyyy-mm-ddTHH:MM:SS.SSS+TZ) pra "DD/MM/YYYY HH:MM" pt-BR
+export function formataDataHora(isoTimestamp: string | null): string {
+  if (!isoTimestamp) return '—'
+  try {
+    const d = new Date(isoTimestamp)
+    if (isNaN(d.getTime())) return isoTimestamp
+    return d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+  } catch {
+    return isoTimestamp
+  }
+}
+
 export function diasAte(isoData: string | null): number | null {
   if (!isoData) return null
   const alvo = new Date(isoData + 'T23:59:59')

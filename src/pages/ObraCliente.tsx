@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { LogoFull } from '../lib/logo'
 import { ABAS } from '../types/obra'
 import type { AbaId, Card } from '../types/obra'
-import { diasAte, formataData, statusSemantico } from '../lib/helpers'
+import { diasAte, formataData, formataDataHora, statusSemantico } from '../lib/helpers'
 import { useObraData } from '../hooks/useObraData'
 import GaleriaFotos from '../components/GaleriaFotos'
 
@@ -136,7 +136,11 @@ export default function ObraCliente() {
             toast('Aceite confirmado - garantia iniciada')
           }}
           onReabrir={async (texto) => {
-            if (!texto.trim()) { toast('Descreva o problema'); return }
+            if (!texto.trim()) {
+              toast('Antes de reabrir, descreva o problema no campo de mensagem acima')
+              return
+            }
+            if (!confirm('Reabrir este item? A empresa receberá seu motivo pra revisar e corrigir.')) return
             await data.reabrir(cardAberto.id, texto, 'cliente')
             setCardAbertoId(null)
             toast('Problema enviado pra empresa')
@@ -296,7 +300,7 @@ function ModalCardCliente({
             <div>
               {card.aceiteFinal ? (
                 <div className="bg-emerald-50 border border-emerald-200 px-4 py-3 rounded-lg text-xs text-slate-700">
-                  <span className="text-emerald-700 font-bold">OK Aceite confirmado</span> em {card.aceiteFinal}. Garantia iniciada.
+                  <span className="text-emerald-700 font-bold">✓ Aceite confirmado</span> em {formataDataHora(card.aceiteFinal)}. Garantia iniciada.
                 </div>
               ) : (
                 <div className="bg-emerald-50 border border-emerald-200 px-4 py-4 rounded-lg">
@@ -395,8 +399,9 @@ function ModalCardCliente({
                   <button
                     className="btn bg-transparent text-red-600 border border-red-200 hover:bg-red-50"
                     disabled={salvando}
+                    title="Use o campo acima pra detalhar o problema antes de reabrir"
                     onClick={async () => { setSalvando(true); try { await onReabrir(texto) } finally { setSalvando(false) } }}
-                  >Tem problema - reabrir</button>
+                  >Tem problema — reabrir</button>
                 )}
               </div>
             </div>

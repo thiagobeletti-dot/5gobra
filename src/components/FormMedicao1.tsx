@@ -182,14 +182,13 @@ export default function FormMedicao1({ inicial, onSalvar, onCancelar }: Props) {
       // Se não chegou no form completo, zera tipologia e specs
       ...(mostraFormCompleto ? {} : {
         tipologia: '' as const,
-        giro_macaneta_lado: '' as const,
-        giro_chave_posicao: '' as const,
-        giro_somente_puxador: false,
-        giro_abertura_lado: '' as const,
-        giro_abertura_posicao: '' as const,
+        giro_abertura: '' as const,
+        giro_fechadura_lado: '' as const,
+        giro_puxador: false,
         correr_abertura_lado: '' as const,
         correr_fecho: '' as const,
         correr_trilho: '' as const,
+        correr_somente_puxador: false,
         soleira: '' as const,
         tem_motor: false,
         motor_lado: '' as const,
@@ -202,16 +201,15 @@ export default function FormMedicao1({ inicial, onSalvar, onCancelar }: Props) {
       // Se não chegou em vão pronto, zera vao_pronto pra evitar dados stale
       ...(cmSim ? { vao_pronto: '' as const } : {}),
       ...(d.tipologia !== 'giro' ? {
-        giro_macaneta_lado: '' as const,
-        giro_chave_posicao: '' as const,
-        giro_somente_puxador: false,
-        giro_abertura_lado: '' as const,
-        giro_abertura_posicao: '' as const,
+        giro_abertura: '' as const,
+        giro_fechadura_lado: '' as const,
+        giro_puxador: false,
       } : {}),
       ...(d.tipologia !== 'correr' ? {
         correr_abertura_lado: '' as const,
         correr_fecho: '' as const,
         correr_trilho: '' as const,
+        correr_somente_puxador: false,
       } : {}),
     }
 
@@ -355,15 +353,19 @@ export default function FormMedicao1({ inicial, onSalvar, onCancelar }: Props) {
 
               {d.tipologia === 'giro' && (
                 <Secao titulo="Especificações da Porta de Giro">
-                  <div className="grid md:grid-cols-2 gap-3">
-                    <GrupoRadio label="Maçaneta — lado" valor={d.giro_macaneta_lado} opcoes={[{ v: 'esquerda', l: 'Esquerda' }, { v: 'direita', l: 'Direita' }]} onChange={(v) => up('giro_macaneta_lado', v)} />
-                    <GrupoRadio label="Chave — posição" valor={d.giro_chave_posicao} opcoes={[{ v: 'interna', l: 'Interna' }, { v: 'externa', l: 'Externa' }]} onChange={(v) => up('giro_chave_posicao', v)} />
-                  </div>
-                  <Check label="Somente puxador (sem chave)" valor={d.giro_somente_puxador} onChange={(v) => up('giro_somente_puxador', v)} />
-                  <div className="grid md:grid-cols-2 gap-3">
-                    <GrupoRadio label="Abertura — lado" valor={d.giro_abertura_lado} opcoes={[{ v: 'esquerda', l: 'Esquerda' }, { v: 'direita', l: 'Direita' }]} onChange={(v) => up('giro_abertura_lado', v)} />
-                    <GrupoRadio label="Abertura — posição" valor={d.giro_abertura_posicao} opcoes={[{ v: 'interna', l: 'Interna' }, { v: 'externa', l: 'Externa' }]} onChange={(v) => up('giro_abertura_posicao', v)} />
-                  </div>
+                  <GrupoRadio
+                    label="Abertura"
+                    valor={d.giro_abertura}
+                    opcoes={[{ v: 'interna', l: 'Interna' }, { v: 'externa', l: 'Externa' }]}
+                    onChange={(v) => up('giro_abertura', v)}
+                  />
+                  <GrupoRadio
+                    label="Fechadura — lado (vista externa)"
+                    valor={d.giro_fechadura_lado}
+                    opcoes={[{ v: 'esquerda', l: 'Esquerda' }, { v: 'direita', l: 'Direita' }]}
+                    onChange={(v) => up('giro_fechadura_lado', v)}
+                  />
+                  <Check label="Puxador" valor={d.giro_puxador} onChange={(v) => up('giro_puxador', v)} />
                 </Secao>
               )}
 
@@ -381,6 +383,7 @@ export default function FormMedicao1({ inicial, onSalvar, onCancelar }: Props) {
                     opcoes={[{ v: 'fechadura', l: 'Fechadura' }, { v: 'cremona', l: 'Cremona' }, { v: 'concha', l: 'Concha' }]}
                     onChange={(v) => up('correr_fecho', v)}
                   />
+                  <Check label="Somente puxador (sem chave)" valor={d.correr_somente_puxador} onChange={(v) => up('correr_somente_puxador', v)} />
                   <GrupoRadio
                     label="Tipo de trilho"
                     valor={d.correr_trilho}

@@ -34,16 +34,15 @@ export interface DadosMedicao1 {
   tipologia: Tipologia
 
   // Específicos de Giro
-  giro_macaneta_lado: 'esquerda' | 'direita' | ''
-  giro_chave_posicao: 'interna' | 'externa' | ''
-  giro_somente_puxador: boolean
-  giro_abertura_lado: 'esquerda' | 'direita' | ''
-  giro_abertura_posicao: 'interna' | 'externa' | ''
+  giro_abertura: 'interna' | 'externa' | '' // pra qual lado abre (vs vista externa)
+  giro_fechadura_lado: 'esquerda' | 'direita' | '' // lado da fechadura (vista externa)
+  giro_puxador: boolean // tem puxador adicional? (true=sim, false=não)
 
   // Específicos de Correr
   correr_abertura_lado: 'esquerda' | 'direita' | 'ambos' | ''
   correr_fecho: 'fechadura' | 'cremona' | 'concha' | ''
   correr_trilho: 'convencional' | 'embutido_u' | 'embutido_concavo' | 'na' | ''
+  correr_somente_puxador: boolean // sem chave, só puxador
 
   // Estrutura
   contra_marco: 'sim' | 'nao' | '' // ★ decisão crítica do fluxo
@@ -81,14 +80,13 @@ export const VAZIO_MEDICAO1: DadosMedicao1 = {
   tipologia_executavel: '',
   tipologia_problema: '',
   tipologia: '',
-  giro_macaneta_lado: '',
-  giro_chave_posicao: '',
-  giro_somente_puxador: false,
-  giro_abertura_lado: '',
-  giro_abertura_posicao: '',
+  giro_abertura: '',
+  giro_fechadura_lado: '',
+  giro_puxador: false,
   correr_abertura_lado: '',
   correr_fecho: '',
   correr_trilho: '',
+  correr_somente_puxador: false,
   contra_marco: '',
   soleira: '',
   tem_motor: false,
@@ -127,14 +125,13 @@ export interface DadosMedicao2 {
 
   // Especificações finais (captura sempre, pois M1 não captura quando CM=SIM nem quando vão=NÃO)
   tipologia: Tipologia
-  giro_macaneta_lado: 'esquerda' | 'direita' | ''
-  giro_chave_posicao: 'interna' | 'externa' | ''
-  giro_somente_puxador: boolean
-  giro_abertura_lado: 'esquerda' | 'direita' | ''
-  giro_abertura_posicao: 'interna' | 'externa' | ''
+  giro_abertura: 'interna' | 'externa' | ''
+  giro_fechadura_lado: 'esquerda' | 'direita' | ''
+  giro_puxador: boolean
   correr_abertura_lado: 'esquerda' | 'direita' | 'ambos' | ''
   correr_fecho: 'fechadura' | 'cremona' | 'concha' | ''
   correr_trilho: 'convencional' | 'embutido_u' | 'embutido_concavo' | 'na' | ''
+  correr_somente_puxador: boolean
   soleira: 'sim' | 'nao' | ''
   tem_motor: boolean
   motor_lado: 'esquerda' | 'direita' | ''
@@ -162,14 +159,13 @@ export const VAZIO_MEDICAO2: DadosMedicao2 = {
   prumo_ok: '',
   prumo_obs: '',
   tipologia: '',
-  giro_macaneta_lado: '',
-  giro_chave_posicao: '',
-  giro_somente_puxador: false,
-  giro_abertura_lado: '',
-  giro_abertura_posicao: '',
+  giro_abertura: '',
+  giro_fechadura_lado: '',
+  giro_puxador: false,
   correr_abertura_lado: '',
   correr_fecho: '',
   correr_trilho: '',
+  correr_somente_puxador: false,
   soleira: '',
   tem_motor: false,
   motor_lado: '',
