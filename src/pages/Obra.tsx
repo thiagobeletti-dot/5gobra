@@ -10,6 +10,7 @@ import ImportarItens from '../components/ImportarItens'
 import GaleriaFotos from '../components/GaleriaFotos'
 import FormMedicao1 from '../components/FormMedicao1'
 import FormMedicao2 from '../components/FormMedicao2'
+import GerenciarTecnicos from '../components/GerenciarTecnicos'
 import type { DadosMedicao1, DadosMedicao2 } from '../types/checklist'
 import { resumoMedicao1, resumoMedicao2, VAZIO_MEDICAO1, VAZIO_MEDICAO2, ROTULOS_TIPOLOGIA } from '../types/checklist'
 
@@ -26,6 +27,7 @@ export default function Obra() {
   const [importarAberto, setImportarAberto] = useState(false)
   const [formM1Aberto, setFormM1Aberto] = useState<string | null>(null)
   const [formM2Aberto, setFormM2Aberto] = useState<string | null>(null)
+  const [tecnicosAberto, setTecnicosAberto] = useState(false)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
 
   function toast(msg: string) {
@@ -144,6 +146,9 @@ export default function Obra() {
           <span>{ABAS.find((a) => a.id === abaAtiva)?.descricao}</span>
           {abaAtiva !== 'conclusao' && (
             <div className="flex gap-2">
+              {data.modo === 'banco' && data.obraReal && (
+                <button className="btn-ghost text-xs px-3.5 py-2" onClick={() => setTecnicosAberto(true)}>Técnicos</button>
+              )}
               {data.modo === 'banco' && (
                 <button className="btn-ghost text-xs px-3.5 py-2" onClick={() => setImportarAberto(true)}>+ Importar lista</button>
               )}
@@ -333,6 +338,13 @@ export default function Obra() {
             setAbaAtiva('cliente')
             toast(n + (n === 1 ? ' item importado' : ' itens importados'))
           }}
+        />
+      )}
+
+      {tecnicosAberto && data.obraReal && (
+        <GerenciarTecnicos
+          obraId={data.obraReal.id}
+          onClose={() => setTecnicosAberto(false)}
         />
       )}
 
@@ -609,13 +621,17 @@ function ModalCard({
                     h.interno ? 'bg-slate-100 border-slate-300 border-dashed' : 'bg-slate-50 border-slate-200'
                   ) + ' ' + (
                     h.tipo === 'empresa' ? 'border-l-2 border-l-laranja' :
-                    h.tipo === 'cliente' ? 'border-l-2 border-l-peca' : 'border-l-2 border-l-slate-300 opacity-90'
+                    h.tipo === 'cliente' ? 'border-l-2 border-l-peca' :
+                    h.tipo === 'tecnico' ? 'border-l-2 border-l-blue-500' :
+                    'border-l-2 border-l-slate-300 opacity-90'
                   )}
                 >
                   <div className="flex justify-between items-center mb-1 gap-2.5">
                     <span className={'font-bold text-[11px] uppercase tracking-wider ' + (
                       h.tipo === 'empresa' ? 'text-laranja-dark' :
-                      h.tipo === 'cliente' ? 'text-peca-dark' : 'text-slate-400'
+                      h.tipo === 'cliente' ? 'text-peca-dark' :
+                      h.tipo === 'tecnico' ? 'text-blue-700' :
+                      'text-slate-400'
                     )}>{h.autor}</span>
                     <div className="flex items-center gap-1.5">
                       {h.interno && (

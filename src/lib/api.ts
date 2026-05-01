@@ -40,7 +40,7 @@ export interface HistoricoRow {
   id: string
   card_id: string
   autor: string
-  autor_tipo: 'empresa' | 'cliente' | 'sistema'
+  autor_tipo: 'empresa' | 'cliente' | 'sistema' | 'tecnico'
   texto: string
   interno: boolean
   ip: string | null
@@ -187,7 +187,7 @@ export async function listarHistorico(cardId: string) {
 export async function adicionarHistorico(dados: {
   card_id: string
   autor: string
-  autor_tipo: 'empresa' | 'cliente' | 'sistema'
+  autor_tipo: 'empresa' | 'cliente' | 'sistema' | 'tecnico'
   texto: string
   interno?: boolean
 }) {

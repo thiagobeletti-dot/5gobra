@@ -6,6 +6,7 @@ import Cadastro from './pages/Cadastro'
 import Obras from './pages/Obras'
 import Obra from './pages/Obra'
 import ObraCliente from './pages/ObraCliente'
+import ObraTecnico from './pages/ObraTecnico'
 import RotaProtegida from './components/RotaProtegida'
 
 function App() {
@@ -35,6 +36,7 @@ function App() {
             }
           />
           <Route path="/obra/:token" element={<ObraCliente />} />
+          <Route path="/tec/:token" element={<ObraTecnico />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

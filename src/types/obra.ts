@@ -7,7 +7,7 @@ export type AbaId = 'cliente' | 'empresa' | 'tecnica' | 'emandamento' | 'conclus
 
 export type TipoCard = 'peca' | 'acordo' | 'reclamacao'
 
-export type AutorTipo = 'empresa' | 'cliente' | 'sistema'
+export type AutorTipo = 'empresa' | 'cliente' | 'sistema' | 'tecnico'
 
 export interface RegistroHistorico {
   autor: string
