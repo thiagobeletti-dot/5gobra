@@ -154,6 +154,12 @@ export default function ObraCliente() {
             setCardAbertoId(null)
             toast('Vão marcado como pronto — empresa vai agendar a próxima visita')
           }}
+          onMarcarCiente={async () => {
+            if (!confirm('Marcar este apontamento como ciente? O apontamento será encerrado.')) return
+            await data.marcarApontamentoCiente(cardAberto.id)
+            setCardAbertoId(null)
+            toast('Apontamento encerrado')
+          }}
         />
       )}
 
@@ -238,7 +244,7 @@ function CardClienteView({ card, onClick }: { card: Card; onClick: () => void })
 }
 
 function ModalCardCliente({
-  card, podeFotos, onClose, onConfirmar, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto, onMarcarVaoPronto,
+  card, podeFotos, onClose, onConfirmar, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto, onMarcarVaoPronto, onMarcarCiente,
 }: {
   card: Card
   podeFotos: boolean
@@ -250,6 +256,7 @@ function ModalCardCliente({
   onAdicionarFotos: (arquivos: File[]) => Promise<void>
   onRemoverFoto: (fotoId: string) => Promise<void>
   onMarcarVaoPronto: () => Promise<void>
+  onMarcarCiente: () => Promise<void>
 }) {
   const [texto, setTexto] = useState('')
   const [salvando, setSalvando] = useState(false)
@@ -353,10 +360,15 @@ function ModalCardCliente({
             </div>
           )}
 
-          {card.aba === 'cliente' && !card.encerrado && !card.subStatus && card.tipo === 'reclamacao' && (
+          {card.aba === 'cliente' && !card.encerrado && card.tipo === 'reclamacao' && (
             <div className="bg-amber-50 border border-amber-200 px-4 py-4 rounded-lg">
               <div className="font-bold text-sm text-amber-800 mb-1">📌 Apontamento aberto</div>
-              <p className="text-xs text-slate-600">Use o campo abaixo pra dialogar com a empresa sobre este apontamento. A empresa vai marcar como resolvido quando atender o que foi pedido.</p>
+              <p className="text-xs text-slate-600 mb-3">Use o campo abaixo pra dialogar com a empresa sobre este apontamento. Se o apontamento é só informativo, você pode marcar como ciente pra encerrar.</p>
+              <button
+                className="btn-ghost text-xs"
+                disabled={salvando}
+                onClick={async () => { setSalvando(true); try { await onMarcarCiente() } finally { setSalvando(false) } }}
+              >Ciente — encerrar apontamento</button>
             </div>
           )}
 

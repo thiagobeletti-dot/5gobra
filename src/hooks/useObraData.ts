@@ -51,6 +51,7 @@ interface UseObraDataResult {
   marcarContraMarcoEntregue: (cardId: string) => Promise<void>
   marcarVaoPronto: (cardId: string, perfil: 'empresa' | 'cliente') => Promise<void>
   marcarApontamentoResolvido: (cardId: string, resolucao: string) => Promise<void>
+  marcarApontamentoCiente: (cardId: string) => Promise<void>
   encerrarCard: (cardId: string, motivo: string) => Promise<void>
   darAceite: (cardId: string) => Promise<void>
   reabrir: (cardId: string, texto: string, perfil: 'empresa' | 'cliente') => Promise<void>
@@ -417,6 +418,37 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     setDados(novo)
   }, [dados, modo, obraReal])
 
+  // Cliente fica ciente do apontamento — encerra como informativo (sem necessidade de empresa resolver).
+  // Útil quando apontamento foi feito pela empresa (ex: "fui à obra e estava trancada") e cliente só precisa confirmar leitura.
+  const marcarApontamentoCiente = useCallback(async (cardId: string) => {
+    if (!dados) return
+    const textoCliente = 'Cliente ficou ciente do apontamento.'
+    if (modo === 'demo') {
+      setDados((d) => {
+        if (!d) return d
+        return {
+          ...d,
+          cards: d.cards.map((c) => {
+            if (c.id !== cardId) return c
+            const hist = [
+              ...c.historico,
+              { autor: 'Cliente', tipo: 'cliente' as AutorTipo, data: agora(), texto: textoCliente, interno: false },
+              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Apontamento encerrado pelo cliente (ciente).', interno: true },
+            ]
+            return { ...c, aba: 'conclusao' as AbaId, encerrado: true, subStatus: 'Apontamento encerrado', historico: hist }
+          }),
+        }
+      })
+      return
+    }
+    if (!obraReal) return
+    await adicionarHistorico({ card_id: cardId, autor: 'Cliente', autor_tipo: 'cliente', texto: textoCliente })
+    await atualizarCard(cardId, { aba: 'conclusao', encerrado: true, sub_status: 'Apontamento encerrado' })
+    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Apontamento encerrado pelo cliente (ciente).', interno: true })
+    const novo = await carregarDoBanco(obraReal)
+    setDados(novo)
+  }, [dados, modo, obraReal])
+
   // Empresa encerra/cancela card (ex: tipologia mudou, item descontinuado, divergência grande).
   // Card vai pra Conclusão com encerrado=true. Registro do motivo aparece pro cliente.
   const encerrarCard = useCallback(async (cardId: string, motivo: string) => {
@@ -737,5 +769,5 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     setDados(structuredClone(SEED))
   }, [modo, idOrToken])
 
-  return { dados, modo, obraReal, carregando, erro, alterarStatus, registrar, confirmarItem, marcarContraMarcoEntregue, marcarVaoPronto, marcarApontamentoResolvido, encerrarCard, darAceite, reabrir, criarNovo, importarItens, adicionarFotos, removerFoto, salvarMedicao1Card, resetar }
+  return { dados, modo, obraReal, carregando, erro, alterarStatus, registrar, confirmarItem, marcarContraMarcoEntregue, marcarVaoPronto, marcarApontamentoResolvido, marcarApontamentoCiente, encerrarCard, darAceite, reabrir, criarNovo, importarItens, adicionarFotos, removerFoto, salvarMedicao1Card, resetar }
 }
