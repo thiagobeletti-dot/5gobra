@@ -237,6 +237,14 @@ export default function Obra() {
             setCardAbertoId(null)
             toast('Apontamento resolvido')
           }}
+          onApagar={async () => {
+            if (!confirm('APAGAR este item permanentemente? Toda informação (histórico, fotos, checklists) será apagada do banco. Cliente NÃO vai ver nenhum registro disso. Essa ação não pode ser desfeita.')) return
+            const confirmar = prompt('Pra confirmar, digite APAGAR:')
+            if (confirmar !== 'APAGAR') { toast('Apagamento cancelado'); return }
+            await data.apagarCard(cardAberto.id)
+            setCardAbertoId(null)
+            toast('Item apagado')
+          }}
         />
       )}
 
@@ -417,7 +425,7 @@ function CardView({ card, perfil, onClick }: { card: Card; perfil: Perfil; onCli
 }
 
 function ModalCard({
-  card, perfil, podeFotos, onClose, onAlterarStatus, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto, podeChecklist, onAbrirMedicao1, onAbrirMedicao2, onMarcarContraMarcoEntregue, onMarcarVaoPronto, onEncerrar, onResolverApontamento,
+  card, perfil, podeFotos, onClose, onAlterarStatus, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto, podeChecklist, onAbrirMedicao1, onAbrirMedicao2, onMarcarContraMarcoEntregue, onMarcarVaoPronto, onEncerrar, onResolverApontamento, onApagar,
 }: {
   card: Card; perfil: Perfil; podeFotos: boolean; onClose: () => void
   onAlterarStatus: (s: string) => Promise<void>
@@ -433,6 +441,7 @@ function ModalCard({
   onMarcarVaoPronto: () => Promise<void>
   onEncerrar: () => Promise<void>
   onResolverApontamento: () => Promise<void>
+  onApagar: () => Promise<void>
 }) {
   const [texto, setTexto] = useState('')
   const tipoLabel = { peca: 'Item', acordo: 'Acordo', reclamacao: 'Apontamento' }[card.tipo]
@@ -598,12 +607,18 @@ function ModalCard({
             </div>
           </div>
 
-          {perfil === 'empresa' && !card.encerrado && (
-            <div className="pt-3 border-t border-slate-200 flex justify-end">
+          {perfil === 'empresa' && (
+            <div className="pt-3 border-t border-slate-200 flex justify-end gap-3">
+              {!card.encerrado && (
+                <button
+                  onClick={onEncerrar}
+                  className="text-xs text-slate-400 hover:text-red-600 underline-offset-2 hover:underline transition"
+                >Encerrar este item</button>
+              )}
               <button
-                onClick={onEncerrar}
+                onClick={onApagar}
                 className="text-xs text-slate-400 hover:text-red-600 underline-offset-2 hover:underline transition"
-              >Encerrar este item</button>
+              >Apagar este item (irreversível)</button>
             </div>
           )}
         </div>

@@ -54,6 +54,7 @@ interface UseObraDataResult {
   marcarApontamentoResolvido: (cardId: string, resolucao: string) => Promise<void>
   marcarApontamentoCiente: (cardId: string) => Promise<void>
   encerrarCard: (cardId: string, motivo: string) => Promise<void>
+  apagarCard: (cardId: string) => Promise<void>
   darAceite: (cardId: string) => Promise<void>
   reabrir: (cardId: string, texto: string, perfil: 'empresa' | 'cliente') => Promise<void>
   criarNovo: (input: NovoCardInput, perfil: 'empresa' | 'cliente') => Promise<AbaId>
@@ -170,7 +171,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
             const hist = [...c.historico, { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Status: "' + (c.statusEmAndamento ?? '-') + '" -> "' + novoStatus + '".', interno: true }]
             if (novoStatus === 'Concluido' || novoStatus === 'Concluído') {
               hist.push({ autor: 'Sistema', tipo: 'sistema', data: agora(), texto: 'Item concluído. Movido para aba Conclusão. Aguardando aceite do cliente.', interno: false })
-              return { ...c, statusEmAndamento: novoStatus, aba: 'conclusao' as AbaId, historico: hist }
+              return { ...c, statusEmAndamento: novoStatus, aba: 'conclusao' as AbaId, subStatus: 'Aguardando aceite final', historico: hist }
             }
             return { ...c, statusEmAndamento: novoStatus, historico: hist }
           }),
@@ -182,7 +183,10 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     const card = dados.cards.find((c) => c.id === cardId)
     if (!card) return
     const updates: any = { status_em_andamento: novoStatus }
-    if (novoStatus === 'Concluido' || novoStatus === 'Concluído') updates.aba = 'conclusao'
+    if (novoStatus === 'Concluido' || novoStatus === 'Concluído') {
+      updates.aba = 'conclusao'
+      updates.sub_status = 'Aguardando aceite final'
+    }
     await atualizarCard(cardId, updates)
     await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Status: "' + (card.statusEmAndamento ?? '-') + '" -> "' + novoStatus + '".', interno: true })
     if (novoStatus === 'Concluido' || novoStatus === 'Concluído') {
@@ -451,6 +455,25 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     setDados(novo)
   }, [dados, modo, obraReal])
 
+  // Empresa apaga card de verdade (delete no banco). Use só pra cards criados por engano.
+  // Cascade no banco apaga histórico/anexos/checklists junto.
+  // Diferente de encerrarCard: apagar NÃO deixa rastro pro cliente; é destrutivo.
+  const apagarCard = useCallback(async (cardId: string) => {
+    if (!dados) return
+    if (modo === 'demo') {
+      setDados((d) => {
+        if (!d) return d
+        return { ...d, cards: d.cards.filter((c) => c.id !== cardId) }
+      })
+      return
+    }
+    if (!obraReal || !supabase) return
+    const { error } = await supabase.from('cards').delete().eq('id', cardId)
+    if (error) throw error
+    const novo = await carregarDoBanco(obraReal)
+    setDados(novo)
+  }, [dados, modo, obraReal])
+
   // Empresa encerra/cancela card (ex: tipologia mudou, item descontinuado, divergência grande).
   // Card vai pra Conclusão com encerrado=true. Registro do motivo aparece pro cliente.
   const encerrarCard = useCallback(async (cardId: string, motivo: string) => {
@@ -498,7 +521,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
               { autor: 'Cliente', tipo: 'cliente' as AutorTipo, data: quando, texto: 'Aceite final confirmado. Item oficialmente entregue e garantia iniciada.', interno: false },
               { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: quando, texto: 'Card encerrado. Inicio de garantia registrado.', interno: false },
             ]
-            return { ...c, aceiteFinal: quando, encerrado: true, historico: hist }
+            return { ...c, aceiteFinal: quando, encerrado: true, subStatus: 'Aceite confirmado — garantia iniciada', historico: hist }
           }),
         }
       })
@@ -509,6 +532,7 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
       aceite_final_at: new Date().toISOString(),
       aceite_final_user_agent: navigator.userAgent,
       encerrado: true,
+      sub_status: 'Aceite confirmado — garantia iniciada',
     })
     await adicionarHistorico({ card_id: cardId, autor: 'Cliente', autor_tipo: 'cliente', texto: 'Aceite final confirmado. Item oficialmente entregue e garantia iniciada.' })
     await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Card encerrado. Inicio de garantia registrado.' })
@@ -838,5 +862,5 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     setDados(structuredClone(SEED))
   }, [modo, idOrToken])
 
-  return { dados, modo, obraReal, carregando, erro, alterarStatus, registrar, confirmarItem, marcarContraMarcoEntregue, marcarVaoPronto, marcarApontamentoResolvido, marcarApontamentoCiente, encerrarCard, darAceite, reabrir, criarNovo, importarItens, adicionarFotos, removerFoto, salvarMedicao1Card, salvarMedicao2Card, resetar }
+  return { dados, modo, obraReal, carregando, erro, alterarStatus, registrar, confirmarItem, marcarContraMarcoEntregue, marcarVaoPronto, marcarApontamentoResolvido, marcarApontamentoCiente, encerrarCard, apagarCard, darAceite, reabrir, criarNovo, importarItens, adicionarFotos, removerFoto, salvarMedicao1Card, salvarMedicao2Card, resetar }
 }
