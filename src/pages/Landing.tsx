@@ -9,7 +9,7 @@ export default function Landing() {
           <LogoFull />
           <div className="flex items-center gap-3">
             <Link to="/login" className="btn-ghost">Entrar</Link>
-            <Link to="/login" className="btn-primary">Acessar minha obra</Link>
+            <Link to="/cadastro" className="btn-primary">Criar conta</Link>
           </div>
         </div>
       </header>
@@ -27,7 +27,7 @@ export default function Landing() {
               Cada peca, cada acordo, cada reclamacao registrada num lugar so. Quem deve fazer o que fica obvio. Combinado nao se perde no WhatsApp.
             </p>
             <div className="flex gap-3 flex-wrap">
-              <Link to="/login" className="btn-primary text-base px-6 py-3">Comecar agora</Link>
+              <Link to="/cadastro" className="btn-primary text-base px-6 py-3">Comecar agora · 14 dias gratis</Link>
               <Link to="/app/demo" className="btn-ghost text-base px-6 py-3">Ver demo</Link>
             </div>
           </div>
@@ -79,8 +79,8 @@ export default function Landing() {
 
         <section className="max-w-6xl mx-auto px-6 py-16 text-center">
           <h2 className="text-2xl md:text-3xl font-bold mb-3">Pronto pra acabar com o ruido na obra?</h2>
-          <p className="text-slate-600 mb-6">Sua empresa em fase beta — vagas limitadas pras primeiras serralherias.</p>
-          <Link to="/login" className="btn-primary text-base px-6 py-3">Acessar G Obra</Link>
+          <p className="text-slate-600 mb-6">14 dias gratis. Sem cartao no cadastro. Cancele quando quiser.</p>
+          <Link to="/cadastro" className="btn-primary text-base px-6 py-3">Comecar agora</Link>
         </section>
       </main>
 

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { LogoFull } from '../lib/logo'
 import { sair, useAuth } from '../lib/auth'
 import { criarObra, listarObras, pegarMinhaEmpresa, type ObraRow } from '../lib/api'
+import BannerTrial, { calcularAcessoLiberado } from '../components/BannerTrial'
 
 export default function Obras() {
   const navigate = useNavigate()
@@ -10,10 +11,14 @@ export default function Obras() {
   const [obras, setObras] = useState<ObraRow[]>([])
   const [empresaId, setEmpresaId] = useState<string | null>(null)
   const [empresaNome, setEmpresaNome] = useState('')
+  const [trialTerminaEm, setTrialTerminaEm] = useState<string | null>(null)
+  const [assinaturaStatus, setAssinaturaStatus] = useState<'trial' | 'ativo' | 'suspenso' | 'cancelado'>('trial')
   const [carregando, setCarregando] = useState(true)
   const [novoAberto, setNovoAberto] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [linkCopiado, setLinkCopiado] = useState<string | null>(null)
+
+  const acessoLiberado = calcularAcessoLiberado(trialTerminaEm, assinaturaStatus)
 
   useEffect(() => {
     let ativo = true
@@ -24,6 +29,8 @@ export default function Obras() {
         if (empresa) {
           setEmpresaId(empresa.id)
           setEmpresaNome(empresa.nome)
+          setTrialTerminaEm(empresa.trial_termina_em ?? null)
+          setAssinaturaStatus(empresa.assinatura_status ?? 'trial')
         }
         const lista = await listarObras()
         if (!ativo) return
@@ -56,6 +63,10 @@ export default function Obras() {
 
   return (
     <div className="min-h-screen">
+      <BannerTrial
+        trialTerminaEm={trialTerminaEm}
+        assinaturaStatus={assinaturaStatus}
+      />
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link to="/"><LogoFull small /></Link>
