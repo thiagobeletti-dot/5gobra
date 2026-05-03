@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { LogoFull } from '../lib/logo'
+import CarrosselSistema from '../components/CarrosselSistema'
 
 const WA_COMPRAR =
   'https://wa.me/5511995400050?text=' +
@@ -69,32 +70,9 @@ export default function Landing() {
             </p>
           </div>
 
-          {/* Mock card de exemplo */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-            <div className="flex gap-2 mb-4 flex-wrap">
-              <span className="bg-laranja-soft text-laranja-dark border border-laranja-border px-2.5 py-1 rounded-md text-xs font-semibold">Cliente · 4</span>
-              <span className="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md text-xs font-semibold">Empresa · 2</span>
-              <span className="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md text-xs font-semibold">Em andamento · 8</span>
-              <span className="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md text-xs font-semibold">Conclusão · 3</span>
-            </div>
-            <div className="space-y-2.5">
-              <div className="card-base">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="bg-peca-soft text-peca-dark border border-peca-border px-2 py-0.5 rounded-md text-xs font-bold">J1</span>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Item</span>
-                </div>
-                <div className="font-semibold mb-1">Janela sala 1</div>
-                <div className="text-xs text-slate-500">Janela alumínio branco 1,20 × 1,00m, 2 folhas de correr.</div>
-              </div>
-              <div className="card-base">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="bg-acordo-soft text-acordo-dark border border-acordo-border px-2 py-0.5 rounded-md text-xs font-bold">A1</span>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Acordo</span>
-                </div>
-                <div className="font-semibold mb-1">Cor da janela suíte master</div>
-                <div className="text-xs text-slate-500">Cliente optou por preto fosco. Acréscimo R$ 480,00.</div>
-              </div>
-            </div>
+          {/* Carrossel das telas do sistema */}
+          <div className="min-w-0">
+            <CarrosselSistema />
           </div>
         </section>
 
