@@ -1,6 +1,14 @@
 import { Link } from 'react-router-dom'
 import { LogoFull } from '../lib/logo'
 
+const WA_COMPRAR =
+  'https://wa.me/5511995400050?text=' +
+  encodeURIComponent('Olá! Quero comprar o G Obra (R$ 349/mês). Posso tirar algumas dúvidas antes?')
+
+const WA_DUVIDA =
+  'https://wa.me/5511995400050?text=' +
+  encodeURIComponent('Olá! Tô olhando o G Obra e tenho algumas dúvidas.')
+
 export default function Landing() {
   return (
     <div className="min-h-screen flex flex-col">
@@ -10,7 +18,14 @@ export default function Landing() {
           <LogoFull />
           <div className="flex items-center gap-3">
             <Link to="/login" className="btn-ghost">Entrar</Link>
-            <Link to="/cadastro" className="btn-primary">Criar conta</Link>
+            <a
+              href={WA_COMPRAR}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary"
+            >
+              Comprar
+            </a>
           </div>
         </div>
       </header>
@@ -29,11 +44,28 @@ export default function Landing() {
               Cada peça, cada acordo, cada apontamento registrado num lugar só. Quem deve fazer o que fica óbvio. Combinado não se perde no WhatsApp.
             </p>
             <div className="flex gap-3 flex-wrap">
-              <Link to="/cadastro" className="btn-primary text-base px-6 py-3">Começar agora · 14 dias grátis</Link>
-              <Link to="/app/demo" className="btn-ghost text-base px-6 py-3">Ver demonstração</Link>
+              <a
+                href={WA_COMPRAR}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-primary text-base px-6 py-3"
+              >
+                Comprar G Obra · R$ 349/mês
+              </a>
+              <a
+                href={WA_DUVIDA}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-ghost text-base px-6 py-3"
+              >
+                Tirar dúvidas no WhatsApp
+              </a>
             </div>
-            <p className="text-xs text-slate-400 mt-4">
-              Sem cartão no cadastro · Cancele quando quiser
+            <p className="text-sm text-slate-500 mt-4">
+              <span className="font-semibold text-slate-700">14 dias de garantia.</span> Se não gostar, devolvemos seu dinheiro. Sem perguntas.
+            </p>
+            <p className="text-xs text-slate-400 mt-1">
+              Ou conheça antes pelo <Link to="/app/demo" className="underline hover:text-laranja-dark">modo demonstração</Link>.
             </p>
           </div>
 
@@ -150,7 +182,7 @@ export default function Landing() {
 
             <div className="space-y-3">
               <Pergunta titulo="Quanto custa?">
-                R$ 349 por mês, por empresa. Sem limite de obras, sem limite de usuários, sem custo extra por cliente. Você tem 14 dias de teste grátis antes de pagar qualquer coisa, e não pedimos cartão no cadastro.
+                R$ 349 por mês, por empresa. Sem limite de obras, sem limite de usuários, sem custo extra por cliente. Você tem <strong>14 dias de garantia</strong>: se em qualquer momento dentro desse prazo você não estiver satisfeito, devolvemos 100% do que pagou. Sem perguntas, sem letra miúda.
               </Pergunta>
 
               <Pergunta titulo="O cliente precisa baixar algum aplicativo?">
@@ -162,7 +194,7 @@ export default function Landing() {
               </Pergunta>
 
               <Pergunta titulo="Tem fidelidade ou multa de cancelamento?">
-                Não. Você assina mensal, e cancela quando quiser. Se cancelar, exporta seu histórico em PDF e seus dados ficam disponíveis por mais 30 dias caso queira voltar.
+                Não. Assinatura mensal, cancela quando quiser. Os primeiros 14 dias são de garantia: se decidir cancelar nesse prazo, devolvemos o valor pago. Depois disso, você só paga os meses em que usou. Ao cancelar, exporta seu histórico em PDF e seus dados ficam disponíveis por mais 30 dias caso queira voltar.
               </Pergunta>
 
               <Pergunta titulo="E se eu tiver várias obras ao mesmo tempo?">
@@ -170,7 +202,7 @@ export default function Landing() {
               </Pergunta>
 
               <Pergunta titulo="Quanto tempo até começar a usar?">
-                Cadastro leva 1 minuto. Importação de itens da obra (a partir de Alumisoft ou planilha) leva mais 5. Em 10 minutos você tá com a primeira obra ativa e o link pronto pra mandar pro cliente.
+                Depois do pagamento confirmado, você recebe o link de acesso por e-mail na hora. Cadastro de senha leva 1 minuto. Importação de itens da obra (a partir de Alumisoft ou planilha) leva mais 5. Em 10 minutos você tá com a primeira obra ativa e o link pronto pra mandar pro cliente.
               </Pergunta>
 
               <Pergunta titulo="Preciso treinar minha equipe pra usar?">
@@ -185,7 +217,7 @@ export default function Landing() {
             <div className="mt-10 text-center text-sm text-slate-500">
               Outra dúvida? Fala direto comigo no{' '}
               <a
-                href="https://wa.me/5511995400050"
+                href={WA_DUVIDA}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-laranja-dark font-semibold hover:underline"
@@ -203,11 +235,26 @@ export default function Landing() {
             Pronto pra acabar com o ruído na obra?
           </h2>
           <p className="text-slate-600 mb-8 max-w-xl mx-auto">
-            14 dias grátis. Sem cartão no cadastro. Cancele quando quiser.
+            R$ 349/mês com <strong className="text-slate-900">14 dias de garantia</strong>. Se não gostar, devolvemos seu dinheiro.
           </p>
-          <Link to="/cadastro" className="btn-primary text-base px-8 py-3.5">
-            Começar agora
-          </Link>
+          <div className="flex gap-3 flex-wrap justify-center">
+            <a
+              href={WA_COMPRAR}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary text-base px-8 py-3.5"
+            >
+              Comprar G Obra
+            </a>
+            <a
+              href={WA_DUVIDA}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-ghost text-base px-8 py-3.5"
+            >
+              Tirar dúvidas no WhatsApp
+            </a>
+          </div>
         </section>
       </main>
 

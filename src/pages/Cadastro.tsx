@@ -49,12 +49,8 @@ export default function Cadastro() {
         </div>
 
         <div className="bg-white border border-slate-200 rounded-xl p-7 shadow-sm">
-          <div className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md mb-3">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            14 dias grátis · sem cartão
-          </div>
           <h1 className="text-xl font-bold mb-1">Criar conta da empresa</h1>
-          <p className="text-sm text-slate-500 mb-6">Você tem 14 dias pra testar tudo. Depois, R$ 349/mês pra continuar usando. Cancele quando quiser.</p>
+          <p className="text-sm text-slate-500 mb-6">Defina os dados da sua empresa e a senha de acesso. Em poucos minutos você está usando o G Obra.</p>
 
           <form onSubmit={submit} className="space-y-4">
             <div>
