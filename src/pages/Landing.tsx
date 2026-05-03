@@ -15,8 +15,13 @@ export default function Landing() {
     <div className="min-h-screen flex flex-col">
       {/* HEADER */}
       <header className="border-b border-slate-200 bg-white sticky top-0 z-30">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
           <LogoFull />
+          <nav className="hidden md:flex items-center gap-7">
+            <a href="#dores" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition">Dores</a>
+            <a href="#como-funciona" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition">Como funciona</a>
+            <a href="#faq" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition">FAQ</a>
+          </nav>
           <div className="flex items-center gap-3">
             <Link to="/login" className="btn-ghost">Entrar</Link>
             <a
@@ -77,7 +82,7 @@ export default function Landing() {
         </section>
 
         {/* VOCÊ RECONHECE ISSO? — DORES */}
-        <section className="bg-slate-50 border-y border-slate-200">
+        <section id="dores" className="bg-slate-50 border-y border-slate-200 scroll-mt-20">
           <div className="max-w-6xl mx-auto px-6 py-16 md:py-20">
             <div className="text-center mb-12">
               <span className="inline-block text-xs font-bold uppercase tracking-[0.18em] text-laranja-dark mb-3">
@@ -118,7 +123,7 @@ export default function Landing() {
         </section>
 
         {/* FEATURES */}
-        <section className="bg-white">
+        <section id="como-funciona" className="bg-white scroll-mt-20">
           <div className="max-w-6xl mx-auto px-6 py-16 md:py-20">
             <div className="text-center mb-12">
               <span className="inline-block text-xs font-bold uppercase tracking-[0.18em] text-laranja-dark mb-3">
@@ -147,7 +152,7 @@ export default function Landing() {
         </section>
 
         {/* FAQ */}
-        <section className="bg-slate-50 border-y border-slate-200">
+        <section id="faq" className="bg-slate-50 border-y border-slate-200 scroll-mt-20">
           <div className="max-w-3xl mx-auto px-6 py-16 md:py-20">
             <div className="text-center mb-10">
               <span className="inline-block text-xs font-bold uppercase tracking-[0.18em] text-laranja-dark mb-3">
