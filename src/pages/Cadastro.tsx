@@ -27,11 +27,11 @@ export default function Cadastro() {
     try {
       const r = await cadastrar(email, senha)
       if (!r.session) {
-        setInfo('Cadastro criado. Verifique seu email pra confirmar a conta antes de entrar.')
+        setInfo('Cadastro criado. Verifique seu e-mail pra confirmar a conta antes de entrar.')
         setCarregando(false)
         return
       }
-      // Cria a empresa associada ao usuario logado
+      // Cria a empresa associada ao usuário logado
       await criarEmpresa(nomeEmpresa.trim())
       navigate('/app/obras')
     } catch (err: any) {
@@ -51,10 +51,10 @@ export default function Cadastro() {
         <div className="bg-white border border-slate-200 rounded-xl p-7 shadow-sm">
           <div className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md mb-3">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            14 dias gratis · sem cartao
+            14 dias grátis · sem cartão
           </div>
           <h1 className="text-xl font-bold mb-1">Criar conta da empresa</h1>
-          <p className="text-sm text-slate-500 mb-6">Voce tem 14 dias pra testar tudo. Depois, R$ 349/mes pra continuar usando. Cancele quando quiser.</p>
+          <p className="text-sm text-slate-500 mb-6">Você tem 14 dias pra testar tudo. Depois, R$ 349/mês pra continuar usando. Cancele quando quiser.</p>
 
           <form onSubmit={submit} className="space-y-4">
             <div>
@@ -69,7 +69,7 @@ export default function Cadastro() {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Seu email</label>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Seu e-mail</label>
               <input
                 type="email"
                 className="input"
@@ -86,7 +86,7 @@ export default function Cadastro() {
                 className="input"
                 value={senha}
                 onChange={(e) => setSenha(e.target.value)}
-                placeholder="minimo 6 caracteres"
+                placeholder="mínimo 6 caracteres"
                 required
               />
             </div>
@@ -100,7 +100,7 @@ export default function Cadastro() {
           </form>
 
           <div className="mt-5 pt-5 border-t border-slate-200 text-center text-sm">
-            <Link to="/login" className="text-slate-500 hover:text-slate-900">Ja tenho conta - entrar</Link>
+            <Link to="/login" className="text-slate-500 hover:text-slate-900">Já tenho conta — entrar</Link>
           </div>
         </div>
       </div>

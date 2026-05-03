@@ -16,12 +16,12 @@ export default function Login() {
     setErro(null)
 
     if (!supabaseConfigurado) {
-      // Modo demo: qualquer email/senha entra na obra exemplo
+      // Modo demo: qualquer e-mail/senha entra na obra exemplo
       if (email && senha) {
         navigate('/app/demo')
         return
       }
-      setErro('Preencha email e senha pra entrar no modo demo.')
+      setErro('Preencha e-mail e senha pra entrar no modo demo.')
       return
     }
 
@@ -49,13 +49,13 @@ export default function Login() {
 
           {!supabaseConfigurado && (
             <div className="mb-5 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-md px-3 py-2">
-              Modo demo ativo - Supabase ainda nao conectado. Qualquer email/senha entra na obra de exemplo.
+              Modo demo ativo — Supabase ainda não conectado. Qualquer e-mail/senha entra na obra de exemplo.
             </div>
           )}
 
           <form onSubmit={submit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Email</label>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">E-mail</label>
               <input
                 type="email"
                 className="input"
