@@ -1,21 +1,20 @@
 // Tour guiado de onboarding via react-joyride.
 //
-// Sequencia de 6 passos definida em sessao de produto (05/05/2026):
-//   1. Boas-vindas (centro)
-//   2. Botao "+ Nova obra"
-//   3. As 5 abas do fluxo (Cliente / Empresa / Tecnica / Em Andamento / Conclusao)
-//   4. Botao "Convidar tecnico"
-//   5. Botao "Link do cliente"
-//   6. Encerramento (centro) — referencia o menu Ajuda do header
+// VERSAO 2 (05/05/2026 - tarde): tour reduzido a 3 passos pra evitar
+// avancar fora de contexto. Os passos 3-5 antigos falavam de elementos
+// que so existem DENTRO de uma obra (5 abas, tecnico, link cliente).
+// Como o tour roda na lista de obras, virava ruido.
+//
+// Solucao: tour curto aqui (boas-vindas + onde clicar + onde encontrar
+// ajuda). Conceitos avancados ficam pros videos tutoriais em /app/ajuda.
+//
+// FUTURO (proxima sessao de dev): criar segundo tour que dispara quando
+// usuario entra numa obra pela primeira vez (componente TourObra) com
+// os passos sobre as 5 abas, convidar tecnico, link cliente.
 //
 // O tour pode ser ativado:
 //   - automaticamente quando empresa nova entra (banner -> Iniciar tour)
 //   - manualmente pelo botao "Refazer tour" na rota /app/ajuda
-//
-// IMPORTANTE: alguns passos referenciam elementos que so existem na tela
-// de Obras (passos 2-5). Se o tour for executado a partir de outra rota,
-// joyride redireciona invisivelmente — mas o jeito mais limpo e abrir
-// /app/obras antes de iniciar.
 
 import Joyride, { CallBackProps, STATUS, Step } from 'react-joyride'
 
@@ -24,59 +23,29 @@ interface Props {
   onTerminado: (dispensado: boolean) => void
 }
 
-// Passos do tour. Quando o elemento target nao existe na tela atual
-// (caso dos passos 3-5, que mencionam elementos da pagina de uma obra
-// especifica), usamos target='body' + placement='center' e o texto
-// vira educativo. O tour completo roda na tela de Obras sem precisar
-// navegar — quando o cliente criar a primeira obra, ele encontra os
-// elementos descritos na pratica.
 const passos: Step[] = [
   {
     target: 'body',
     placement: 'center',
     title: 'Bem-vindo ao G Obra',
     content:
-      'Vou te ajudar a criar tua primeira obra. Leva uns 5 minutos. Pode pular a qualquer momento.',
+      'Vou te dar um empurrao rapido pra comecar. Sao so 3 cliques. Pode pular se quiser.',
     disableBeacon: true,
   },
   {
     target: '[data-tour="nova-obra"]',
-    title: 'Tudo comeca aqui',
+    title: 'Cria tua primeira obra',
     content:
-      'Cada obra que voce toca vira um espaco proprio com cards, fotos e historico. Clica nesse botao pra criar a primeira.',
+      'Tudo comeca aqui. Cada obra que voce toca vira um espaco proprio com cards, fotos e historico. Quando voce abrir a obra, vai ver as 5 fases do fluxo, o convite de tecnico e o link do cliente — explico cada um na hora certa.',
     placement: 'bottom',
     disableBeacon: true,
   },
   {
     target: 'body',
     placement: 'center',
-    title: 'As 5 fases do fluxo (dentro de cada obra)',
+    title: 'Precisa de ajuda?',
     content:
-      'Quando voce abrir uma obra, vai ver 5 abas: Cliente -> Empresa -> Tecnica -> Em Andamento -> Conclusao. Cada item da obra (porta, janela, etc) passa por essas 5 fases. Voce nao precisa mover manualmente — o sistema decide com base nos checklists.',
-    disableBeacon: true,
-  },
-  {
-    target: 'body',
-    placement: 'center',
-    title: 'Quem mede e instala',
-    content:
-      'Dentro de uma obra voce cadastra tecnicos. Cada um recebe um link unico no celular pra apontar medicao e fotos, sem precisar criar conta nem decorar senha.',
-    disableBeacon: true,
-  },
-  {
-    target: 'body',
-    placement: 'center',
-    title: 'O cliente acompanha tudo',
-    content:
-      'Cada obra gera um link magico pro cliente final. Ele abre no celular e ve em tempo real em que fase esta cada esquadria — sem login, sem app pra baixar. Esse link voce copia direto na lista de obras.',
-    disableBeacon: true,
-  },
-  {
-    target: 'body',
-    placement: 'center',
-    title: 'Pronto!',
-    content:
-      'Quando precisar rever o tour, abre o menu Ajuda no topo. La voce tambem encontra videos curtos, perguntas frequentes e o canal direto comigo no WhatsApp. Bora comecar?',
+      'Se travar em algo, abre o menu "Ajuda" la em cima — tem videos curtos, perguntas frequentes e o botao pra falar comigo direto no WhatsApp. Bora la, clica em "+ Nova obra" pra comecar.',
     disableBeacon: true,
   },
 ]
@@ -86,7 +55,6 @@ export default function TourGuiado({ ativo, onTerminado }: Props) {
     const { status, action } = data
     const finalizados: string[] = [STATUS.FINISHED, STATUS.SKIPPED]
     if (finalizados.includes(status)) {
-      // dispensado=true se usuario pulou; false se completou ate o fim
       const dispensado = action === 'skip' || status === STATUS.SKIPPED
       onTerminado(dispensado)
     }
@@ -106,13 +74,13 @@ export default function TourGuiado({ ativo, onTerminado }: Props) {
       locale={{
         back: 'Voltar',
         close: 'Fechar',
-        last: 'Comecar',
+        last: 'Entendi',
         next: 'Proximo',
         skip: 'Pular',
       }}
       styles={{
         options: {
-          primaryColor: '#ea580c', // laranja-dark do tailwind config
+          primaryColor: '#ea580c',
           textColor: '#0f172a',
           backgroundColor: '#ffffff',
           arrowColor: '#ffffff',
