@@ -82,6 +82,12 @@ export default function Obra() {
         ) : (
           <NavItem>Perfil</NavItem>
         )}
+        {data.modo === 'banco' && habilitado && (
+          <Link to="/app/ajuda" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition text-left text-slate-600 hover:bg-slate-100 hover:text-slate-900">
+            <span className="w-4 inline-flex items-center justify-center">?</span>
+            Ajuda
+          </Link>
+        )}
         <NavItem>Configuracoes</NavItem>
         {data.modo === 'demo' && (
           <NavItem onClick={() => {

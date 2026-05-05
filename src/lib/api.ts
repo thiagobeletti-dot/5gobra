@@ -243,3 +243,127 @@ export function rowsParaDadosObra(
   }))
   return { obra, cards }
 }
+
+// =============== Phase 9: Onboarding status ===============
+
+export type OnboardingStatus = {
+  tour_visto: boolean
+  tour_dispensado: boolean
+  primeira_obra_criada: boolean
+  tecnico_convidado: boolean
+  primeiro_card_criado: boolean
+  cliente_acessou_link_magico: boolean
+  primeiro_aceite_registrado: boolean
+}
+
+const onboardingDefault: OnboardingStatus = {
+  tour_visto: false,
+  tour_dispensado: false,
+  primeira_obra_criada: false,
+  tecnico_convidado: false,
+  primeiro_card_criado: false,
+  cliente_acessou_link_magico: false,
+  primeiro_aceite_registrado: false,
+}
+
+export async function pegarOnboardingStatus(): Promise<OnboardingStatus> {
+  if (!supabase) return onboardingDefault
+  const { data, error } = await supabase
+    .from('empresas')
+    .select('onboarding_status')
+    .limit(1)
+    .maybeSingle()
+  if (error) {
+    // Se a coluna nao existir ainda (migration nao rodada), volta default
+    return onboardingDefault
+  }
+  return { ...onboardingDefault, ...(data?.onboarding_status ?? {}) }
+}
+
+export async function marcarOnboardingFlag(flag: keyof OnboardingStatus): Promise<void> {
+  if (!supabase) return
+  // Usa a function helper do banco (evita race condition na fusao do jsonb)
+  const { error } = await supabase.rpc('marcar_onboarding', { p_flag: flag })
+  if (error) {
+    // Fallback: update direto se a function ainda nao existir
+    const empresa = await pegarMinhaEmpresa()
+    if (!empresa) return
+    const novoStatus = { ...onboardingDefault, ...(empresa.onboarding_status ?? {}), [flag]: true }
+    await supabase.from('empresas').update({ onboarding_status: novoStatus }).eq('id', empresa.id)
+  }
+}
+
+// =============== Phase 9: Aceites ===============
+
+export type TipoAceite =
+  | 'termos_uso'
+  | 'politica_privacidade'
+  | 'aceite_final_obra'
+  | 'mudanca_tipologia'
+  | 'acordo_card'
+  | 'liberacao_obra'
+  | 'outro'
+
+export interface AceiteInput {
+  tipo: TipoAceite
+  documentoVersao: string
+  documentoHash: string
+  documentoSnapshot?: Record<string, unknown>
+  empresaId?: string | null
+  obraId?: string | null
+  cardId?: string | null
+  contatoIdentificador?: string | null
+  contatoTipo?: 'cliente_final' | 'tecnico' | 'admin_empresa' | null
+}
+
+export async function gravarAceite(input: AceiteInput) {
+  if (!supabase) throw new Error('Supabase nao configurado')
+  const ip = await pegarIpClienteLocal() // best-effort, opcional
+  const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : null
+
+  const { data, error } = await supabase
+    .from('aceites')
+    .insert({
+      tipo: input.tipo,
+      documento_versao: input.documentoVersao,
+      documento_hash: input.documentoHash,
+      documento_snapshot: input.documentoSnapshot ?? null,
+      empresa_id: input.empresaId ?? null,
+      obra_id: input.obraId ?? null,
+      card_id: input.cardId ?? null,
+      contato_identificador: input.contatoIdentificador ?? null,
+      contato_tipo: input.contatoTipo ?? null,
+      ip,
+      user_agent: userAgent,
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+async function pegarIpClienteLocal(): Promise<string | null> {
+  // Best-effort: chama um endpoint publico que retorna o IP do cliente.
+  // Se falhar (offline, bloqueado, etc), retorna null. O importante eh
+  // o aceite ser registrado mesmo sem IP.
+  try {
+    const r = await fetch('https://api.ipify.org?format=json', {
+      signal: AbortSignal.timeout(2000),
+    })
+    if (!r.ok) return null
+    const j = await r.json()
+    return typeof j?.ip === 'string' ? j.ip : null
+  } catch {
+    return null
+  }
+}
+
+// Hash SHA-256 de uma string usando Web Crypto API (browser).
+// Usado pra fixar o documento aceito no momento do aceite.
+export async function hashSha256(texto: string): Promise<string> {
+  const encoder = new TextEncoder()
+  const buf = await crypto.subtle.digest('SHA-256', encoder.encode(texto))
+  const arr = Array.from(new Uint8Array(buf))
+  return arr.map((b) => b.toString(16).padStart(2, '0')).join('')
+}

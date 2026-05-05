@@ -1,11 +1,22 @@
 import { useEffect, useState, FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { LogoFull } from '../lib/logo'
 import { sair, useAuth } from '../lib/auth'
-import { criarObra, listarObras, pegarMinhaEmpresa, type ObraRow } from '../lib/api'
+import {
+  criarObra,
+  listarObras,
+  pegarMinhaEmpresa,
+  pegarOnboardingStatus,
+  marcarOnboardingFlag,
+  type ObraRow,
+  type OnboardingStatus,
+} from '../lib/api'
+import BannerOnboarding from '../components/BannerOnboarding'
+import TourGuiado from '../components/TourGuiado'
 
 export default function Obras() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
   const [obras, setObras] = useState<ObraRow[]>([])
   const [empresaId, setEmpresaId] = useState<string | null>(null)
@@ -14,6 +25,8 @@ export default function Obras() {
   const [novoAberto, setNovoAberto] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [linkCopiado, setLinkCopiado] = useState<string | null>(null)
+  const [onboarding, setOnboarding] = useState<OnboardingStatus | null>(null)
+  const [tourAtivo, setTourAtivo] = useState(false)
 
   useEffect(() => {
     let ativo = true
@@ -28,6 +41,18 @@ export default function Obras() {
         const lista = await listarObras()
         if (!ativo) return
         setObras(lista)
+
+        // Carrega status de onboarding pra decidir banner/tour
+        const status = await pegarOnboardingStatus()
+        if (!ativo) return
+        setOnboarding(status)
+
+        // Auto-dispara tour se vier de /app/ajuda com ?tour=1
+        if (searchParams.get('tour') === '1') {
+          setTourAtivo(true)
+          searchParams.delete('tour')
+          setSearchParams(searchParams, { replace: true })
+        }
       } catch (err: any) {
         if (ativo) setErro(err?.message ?? 'Erro ao carregar obras')
       } finally {
@@ -36,6 +61,46 @@ export default function Obras() {
     })()
     return () => { ativo = false }
   }, [])
+
+  // Quando primeira obra eh criada, marca a flag (banner some na proxima carga)
+  useEffect(() => {
+    if (obras.length > 0 && onboarding && !onboarding.primeira_obra_criada) {
+      marcarOnboardingFlag('primeira_obra_criada')
+        .then(() => setOnboarding({ ...onboarding, primeira_obra_criada: true }))
+        .catch(() => {})
+    }
+  }, [obras.length, onboarding])
+
+  function iniciarTour() {
+    setTourAtivo(true)
+  }
+
+  async function dispensarBanner() {
+    await marcarOnboardingFlag('tour_dispensado').catch(() => {})
+    if (onboarding) setOnboarding({ ...onboarding, tour_dispensado: true })
+  }
+
+  async function tourTerminado(dispensado: boolean) {
+    setTourAtivo(false)
+    await marcarOnboardingFlag('tour_visto').catch(() => {})
+    if (dispensado) {
+      await marcarOnboardingFlag('tour_dispensado').catch(() => {})
+    }
+    if (onboarding) {
+      setOnboarding({
+        ...onboarding,
+        tour_visto: true,
+        tour_dispensado: dispensado || onboarding.tour_dispensado,
+      })
+    }
+  }
+
+  // Banner aparece quando: tem empresa + 0 obras + tour ainda nao foi dispensado
+  const mostrarBanner =
+    !!empresaId &&
+    obras.length === 0 &&
+    onboarding !== null &&
+    !onboarding.tour_dispensado
 
   async function logout() {
     await sair()
@@ -59,12 +124,25 @@ export default function Obras() {
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link to="/"><LogoFull small /></Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
+            <Link to="/app/ajuda" className="text-sm text-slate-500 hover:text-slate-900">
+              Ajuda
+            </Link>
             <span className="text-sm text-slate-500 hidden md:inline">{user?.email}</span>
             <button onClick={logout} className="btn-ghost text-xs">Sair</button>
           </div>
         </div>
       </header>
+
+      {/* Banner de onboarding (so aparece pra empresa nova com 0 obras) */}
+      {mostrarBanner && (
+        <div className="max-w-5xl mx-auto px-6 pt-6">
+          <BannerOnboarding onIniciarTour={iniciarTour} onDispensar={dispensarBanner} />
+        </div>
+      )}
+
+      {/* Tour guiado react-joyride */}
+      <TourGuiado ativo={tourAtivo} onTerminado={tourTerminado} />
 
       <main className="max-w-5xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-6">
@@ -73,7 +151,7 @@ export default function Obras() {
             {empresaNome && <p className="text-sm text-slate-500 mt-1">{empresaNome}</p>}
           </div>
           {empresaId && (
-            <button className="btn-primary" onClick={() => setNovoAberto(true)}>+ Nova obra</button>
+            <button data-tour="nova-obra" className="btn-primary" onClick={() => setNovoAberto(true)}>+ Nova obra</button>
           )}
         </div>
 
@@ -193,6 +271,63 @@ function ModalNovaObra({ empresaId, onClose, onCriou }: { empresaId: string; onC
   const [erro, setErro] = useState<string | null>(null)
 
   async function submit(e: FormEvent) {
+    e.preventDefault()
+    if (!nome.trim()) return
+    setSalvando(true)
+    setErro(null)
+    try {
+      const o = await criarObra({
+        empresa_id: empresaId,
+        nome: nome.trim(),
+        endereco: endereco.trim() || undefined,
+        cliente_nome: clienteNome.trim() || undefined,
+        cliente_telefone: clienteTelefone.trim() || undefined,
+      })
+      onCriou(o)
+    } catch (err: any) {
+      setErro(err?.message ?? 'Erro ao criar')
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm grid place-items-center p-5 z-40" onClick={onClose}>
+      <form className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
+        <div className="px-6 py-5 border-b border-slate-200">
+          <h2 className="text-lg font-bold">Nova obra</h2>
+          <p className="text-sm text-slate-500">Cadastra a obra. Os itens (janelas, portas, etc) voce adiciona depois dentro dela.</p>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <Campo label="Nome da obra" value={nome} setValue={setNome} placeholder="Residencial Vila Bela" obrigatorio />
+          <Campo label="Endereco" value={endereco} setValue={setEndereco} placeholder="Rua das Palmeiras, 450 - Jundiai/SP" />
+          <Campo label="Nome do cliente" value={clienteNome} setValue={setClienteNome} placeholder="Joao da Silva" />
+          <Campo label="Telefone do cliente (com DDD)" value={clienteTelefone} setValue={setClienteTelefone} placeholder="11 99999-9999" />
+          {erro && <div className="text-sm text-red-600">{erro}</div>}
+        </div>
+        <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-2">
+          <button type="button" className="btn-ghost" onClick={onClose}>Cancelar</button>
+          <button type="submit" className="btn-primary" disabled={salvando}>{salvando ? 'Criando...' : 'Criar obra'}</button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+function Campo({ label, value, setValue, placeholder, obrigatorio }: { label: string; value: string; setValue: (v: string) => void; placeholder?: string; obrigatorio?: boolean }) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">{label}</label>
+      <input
+        className="input"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder={placeholder}
+        required={obrigatorio}
+      />
+    </div>
+  )
+}
     e.preventDefault()
     if (!nome.trim()) return
     setSalvando(true)
