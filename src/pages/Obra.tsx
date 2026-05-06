@@ -34,6 +34,23 @@ export default function Obra() {
   const [tecnicosAberto, setTecnicosAberto] = useState(false)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
 
+  // Tour 2 — dispara quando rota tem ?tour=1 (vindo do redirect apos criar primeira obra).
+  // IMPORTANTE: este useEffect tem que ficar ANTES dos early returns abaixo,
+  // senao quebra as Regras dos Hooks do React (hooks chamados em ordem diferente
+  // entre renders -> tela branca).
+  useEffect(() => {
+    if (searchParams.get('tour') === '1' && data.modo === 'banco') {
+      setTourObraAtivo(true)
+      searchParams.delete('tour')
+      setSearchParams(searchParams, { replace: true })
+    }
+  }, [searchParams, data.modo, setSearchParams])
+
+  async function tourObraTerminado(_dispensado: boolean) {
+    setTourObraAtivo(false)
+    await marcarOnboardingFlag('tour_obra_visto').catch(() => {})
+  }
+
   function toast(msg: string) {
     setToastMsg(msg)
     window.setTimeout(() => setToastMsg(null), 2400)
@@ -64,20 +81,6 @@ export default function Obra() {
 
   const dados = data.dados
   const cardsDaAba = dados.cards.filter((c) => c.aba === abaAtiva)
-
-  // Tour 2 — dispara quando rota tem ?tour=1 (vindo do redirect apos criar primeira obra)
-  useEffect(() => {
-    if (searchParams.get('tour') === '1' && data.modo === 'banco') {
-      setTourObraAtivo(true)
-      searchParams.delete('tour')
-      setSearchParams(searchParams, { replace: true })
-    }
-  }, [searchParams, data.modo, setSearchParams])
-
-  async function tourObraTerminado(_dispensado: boolean) {
-    setTourObraAtivo(false)
-    await marcarOnboardingFlag('tour_obra_visto').catch(() => {})
-  }
   const contagem = (a: AbaId) => dados.cards.filter((c) => c.aba === a).length
 
   return (
