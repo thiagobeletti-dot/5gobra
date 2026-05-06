@@ -20,13 +20,13 @@
 // Recomenda-se passada de revisao por advogado especializado em direito digital
 // antes de escala >50 clientes.
 
-export const TERMOS_VERSAO = '1.0'
-export const PRIVACIDADE_VERSAO = '1.0'
+export const TERMOS_VERSAO = '1.1'
+export const PRIVACIDADE_VERSAO = '1.1'
 
 export const DOC_TERMOS_USO = `TERMOS DE USO DO G OBRA — versao ${TERMOS_VERSAO}
 
 Vigencia: 06/05/2026
-Contratada: 5G GERENCIAMENTO, com sede em Jundiai/SP, doravante "5G".
+Contratada: 5G GERENCIAMENTO LTDA, inscrita no CNPJ sob o no 51.544.570/0001-83, com sede a Av. Antonio Frederico Ozanan, 9200, Casa 122, Jardim Shangai, Jundiai/SP, CEP 13214-206, doravante "5G".
 Plataforma: G Obra (5gobra.com.br).
 
 1. DEFINICOES
@@ -208,7 +208,7 @@ Documento versao ${TERMOS_VERSAO} — 06/05/2026`
 export const DOC_POLITICA_PRIVACIDADE = `POLITICA DE PRIVACIDADE DO G OBRA — versao ${PRIVACIDADE_VERSAO}
 
 Vigencia: 06/05/2026
-Operadora: 5G GERENCIAMENTO, com sede em Jundiai/SP, doravante "5G".
+Operadora: 5G GERENCIAMENTO LTDA, inscrita no CNPJ sob o no 51.544.570/0001-83, com sede a Av. Antonio Frederico Ozanan, 9200, Casa 122, Jardim Shangai, Jundiai/SP, CEP 13214-206, doravante "5G".
 Plataforma: G Obra (5gobra.com.br).
 
 Esta Politica de Privacidade descreve como a 5G coleta, utiliza, armazena, compartilha e protege os dados pessoais tratados no G Obra, em estrita observancia a Lei 13.709/2018 (LGPD), a Lei 12.965/2014 (Marco Civil da Internet) e a legislacao correlata.
