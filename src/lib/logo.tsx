@@ -12,10 +12,12 @@ interface FullProps {
 }
 
 // Logo principal usado no header — versão horizontal com o nome
-// "G Obra" + "Diário de Obra" embutidos na arte (substitui composição
-// anterior que misturava imagem 5G + texto separado).
+// "G Obra" + "Diário de Obra" embutidos na arte.
+//
+// Tamanhos: small=56px (lista de obras, headers compactos),
+//           normal=72px (cadastro, login, telas centralizadas).
 export function LogoFull({ small = false }: FullProps) {
-  const altura = small ? 40 : 56
+  const altura = small ? 56 : 72
   return (
     <img
       src="/logo-gobra-tagline.png"
@@ -31,7 +33,7 @@ export function LogoFull({ small = false }: FullProps) {
 
 // Logo só com o "G" — versão empilhada/quadrada. Usado em favicons,
 // OG images, avatares (Instagram, etc) — qualquer contexto que peça quadrado.
-export function LogoMark({ size = 40 }: { size?: number }) {
+export function LogoMark({ size = 56 }: { size?: number }) {
   return (
     <img
       src="/logo-gobra-circulo.jpeg"
@@ -44,9 +46,8 @@ export function LogoMark({ size = 40 }: { size?: number }) {
 }
 
 // Versão grande empilhada — usado em telas centralizadas (cadastro, login)
-// onde queremos mais peso visual. Mostra o "G" grande + texto "Diário de Obra"
-// abaixo, tudo na mesma imagem oficial.
-export function LogoStack({ size = 200 }: { size?: number }) {
+// onde queremos mais peso visual.
+export function LogoStack({ size = 240 }: { size?: number }) {
   return (
     <img
       src="/logo-gobra-tagline.png"
