@@ -14,7 +14,7 @@ export default function Landing() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* HEADER */}
-      <header className="border-b border-slate-200 bg-white sticky top-0 z-30">
+      <header className="border-b border-slate-200 bg-white">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
           <LogoFull />
           <nav className="hidden md:flex items-center gap-7">

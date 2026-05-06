@@ -129,7 +129,7 @@ export default function Configuracoes() {
     <div className="min-h-screen">
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link to="/app/obras"><LogoFull small /></Link>
+          <Link to="/app/obras"><LogoFull /></Link>
           <div className="flex items-center gap-4">
             {fromObra && (
               <Link to={`/app/obra/${fromObra}`} className="text-sm text-laranja-dark hover:text-laranja font-semibold inline-flex items-center gap-1">
