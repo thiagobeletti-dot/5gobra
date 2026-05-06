@@ -63,8 +63,11 @@ export default function Obra() {
 
   async function tourObraTerminado(_dispensado: boolean) {
     setTourObraAtivo(false)
-    await marcarOnboardingFlag('tour_obra_visto').catch(() => {})
+    // Atualiza o state local IMEDIATAMENTE pra evitar que o useEffect reabra o tour
+    // antes do banco devolver. Sem isso, ha uma janela onde tourObraAtivo=false e
+    // onboarding.tour_obra_visto ainda eh false → useEffect reativa o tour.
     if (onboarding) setOnboarding({ ...onboarding, tour_obra_visto: true })
+    await marcarOnboardingFlag('tour_obra_visto').catch(() => {})
   }
 
   function toast(msg: string) {
@@ -101,7 +104,10 @@ export default function Obra() {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] min-h-screen">
-      <TourObra ativo={tourObraAtivo} onTerminado={tourObraTerminado} />
+      {/* Wrapper invisivel — tira o TourObra do flow do grid (Joyride usa position fixed internamente) */}
+      <div style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>
+        <TourObra ativo={tourObraAtivo} onTerminado={tourObraTerminado} />
+      </div>
       <aside className="hidden md:flex flex-col gap-1 bg-white border-r border-slate-200 p-3">
         <div className="px-2.5 pb-4 mb-3 border-b border-slate-200">
           <Link to="/"><LogoFull /></Link>

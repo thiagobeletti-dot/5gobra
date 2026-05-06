@@ -14,7 +14,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { LogoFull } from '../lib/logo'
 import { sair, useAuth } from '../lib/auth'
-import { pegarMinhaEmpresa } from '../lib/api'
+import { pegarMinhaEmpresa, listarObras } from '../lib/api'
 import FaqUso from '../components/FaqUso'
 
 interface VideoTutorial {
@@ -89,11 +89,20 @@ export default function Ajuda() {
     window.open(url, '_blank', 'noopener,noreferrer')
   }
 
-  function reiniciarTour() {
-    // Volta pra tela de Obras com ?tour=1 — o Tour 1 (boas-vindas + Nova obra) dispara la.
-    // Se o usuario clicar em "Nova obra" e criar a primeira obra, eh redirecionado
-    // pra /app/obra/{id}?tour=1 e o Tour 2 dispara automaticamente.
-    navigate('/app/obras?tour=1')
+  async function reiniciarTour() {
+    // Se ja tem obra criada, vai direto pra dentro com ?tour=1 — o Tour 2 (fluxo das 5 abas
+    // e adicionar item) dispara la, que e o que tem informacoes importantes.
+    // Se nao tem obra ainda (caso raro pos-cadastro), vai pra lista com Tour 1.
+    try {
+      const obras = await listarObras()
+      if (obras.length > 0) {
+        navigate(`/app/obra/${obras[0].id}?tour=1`)
+      } else {
+        navigate('/app/obras?tour=1')
+      }
+    } catch {
+      navigate('/app/obras?tour=1')
+    }
   }
 
   return (
@@ -126,10 +135,9 @@ export default function Ajuda() {
           <h2 className="text-lg font-bold mb-3">1. Tour interativo</h2>
           <div className="bg-white border border-slate-200 rounded-xl p-5 flex items-center justify-between gap-4">
             <div>
-              <div className="font-semibold mb-1">Refazer tour de boas-vindas</div>
+              <div className="font-semibold mb-1">Refazer tour do sistema</div>
               <p className="text-sm text-slate-500">
-                Mostra como criar tua primeira obra. Se for tua primeira vez criando,
-                ao salvar a obra o tour continua dentro dela explicando o fluxo das 5 abas.
+                Reabre o passo a passo de uma obra: como adicionar itens, e o que cada uma das 5 fases (Cliente → Empresa → Técnica → Em Andamento → Conclusão) significa.
               </p>
             </div>
             <button onClick={reiniciarTour} className="btn-primary flex-shrink-0">
