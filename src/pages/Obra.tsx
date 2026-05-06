@@ -14,7 +14,7 @@ import GerenciarTecnicos from '../components/GerenciarTecnicos'
 import type { DadosMedicao1, DadosMedicao2 } from '../types/checklist'
 import { resumoMedicao1, resumoMedicao2, VAZIO_MEDICAO1, VAZIO_MEDICAO2, ROTULOS_TIPOLOGIA } from '../types/checklist'
 import TourObra from '../components/TourObra'
-import { marcarOnboardingFlag } from '../lib/api'
+import { marcarOnboardingFlag, pegarOnboardingStatus, type OnboardingStatus } from '../lib/api'
 
 export default function Obra() {
   const { obraId = 'demo' } = useParams<{ obraId: string }>()
@@ -24,6 +24,7 @@ export default function Obra() {
 
   const [searchParams, setSearchParams] = useSearchParams()
   const [tourObraAtivo, setTourObraAtivo] = useState(false)
+  const [onboarding, setOnboarding] = useState<OnboardingStatus | null>(null)
   const [perfil, setPerfil] = useState<Perfil>('empresa')
   const [abaAtiva, setAbaAtiva] = useState<AbaId>('cliente')
   const [cardAbertoId, setCardAbertoId] = useState<string | null>(null)
@@ -34,21 +35,36 @@ export default function Obra() {
   const [tecnicosAberto, setTecnicosAberto] = useState(false)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
 
-  // Tour 2 — dispara quando rota tem ?tour=1 (vindo do redirect apos criar primeira obra).
-  // IMPORTANTE: este useEffect tem que ficar ANTES dos early returns abaixo,
-  // senao quebra as Regras dos Hooks do React (hooks chamados em ordem diferente
-  // entre renders -> tela branca).
+  // Tour 2 — busca onboarding status do banco e decide se dispara o tour.
+  // IMPORTANTE: estes hooks tem que ficar ANTES dos early returns abaixo,
+  // senao quebra as Regras dos Hooks do React (hooks chamados em ordem
+  // diferente entre renders -> tela branca).
   useEffect(() => {
-    if (searchParams.get('tour') === '1' && data.modo === 'banco') {
+    if (data.modo !== 'banco') return
+    pegarOnboardingStatus().then(setOnboarding).catch(() => {})
+  }, [data.modo])
+
+  // Quando temos o onboarding, decidimos se o tour dispara:
+  //   - Se ?tour=1 esta na URL (vindo do redirect apos criar obra OU do botao Refazer tour da pagina /ajuda) → dispara
+  //   - Se nunca viu o tour da obra (tour_obra_visto=false) → dispara automatico tambem
+  useEffect(() => {
+    if (data.carregando || data.modo !== 'banco' || tourObraAtivo) return
+    if (!onboarding) return
+    const force = searchParams.get('tour') === '1'
+    const naoViu = !onboarding.tour_obra_visto
+    if (force || naoViu) {
       setTourObraAtivo(true)
-      searchParams.delete('tour')
-      setSearchParams(searchParams, { replace: true })
+      if (force) {
+        searchParams.delete('tour')
+        setSearchParams(searchParams, { replace: true })
+      }
     }
-  }, [searchParams, data.modo, setSearchParams])
+  }, [data.carregando, data.modo, searchParams, onboarding, setSearchParams, tourObraAtivo])
 
   async function tourObraTerminado(_dispensado: boolean) {
     setTourObraAtivo(false)
     await marcarOnboardingFlag('tour_obra_visto').catch(() => {})
+    if (onboarding) setOnboarding({ ...onboarding, tour_obra_visto: true })
   }
 
   function toast(msg: string) {

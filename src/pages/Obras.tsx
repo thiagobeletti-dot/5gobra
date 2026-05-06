@@ -221,12 +221,9 @@ export default function Obras() {
           onCriou={(o) => {
             setObras((cur) => [o, ...cur])
             setNovoAberto(false)
-            // Se eh a primeira obra da empresa, navega pra dentro com ?tour=1
-            // pra disparar o Tour 2 (TourObra) que mostra o fluxo das 5 abas.
-            const eraPrimeira = obras.length === 0
-            if (eraPrimeira) {
-              navigate(`/app/obra/${o.id}?tour=1`)
-            }
+            // Sempre navega pra dentro da obra criada. O Tour 2 dispara la
+            // automaticamente se a empresa nunca viu (flag tour_obra_visto).
+            navigate(`/app/obra/${o.id}`)
             navigate(`/app/obra/${o.id}`)
           }}
         />
