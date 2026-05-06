@@ -132,7 +132,12 @@ export default function Obra() {
             Ajuda
           </Link>
         )}
-        <NavItem emBreve title="Dados da empresa, trocar senha, ver contratos aceitos, preferências. Em breve.">Configurações</NavItem>
+        {data.modo === 'banco' && habilitado && (
+          <Link to="/app/configuracoes" state={{ fromObra: obraId, fromObraNome: dados.obra.nome }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition text-left text-slate-600 hover:bg-slate-100 hover:text-slate-900">
+            <span className="w-4 inline-flex items-center justify-center">⚙</span>
+            Configurações
+          </Link>
+        )}
         {data.modo === 'demo' && (
           <NavItem onClick={() => {
             if (confirm('Reiniciar o prototipo e voltar aos dados-exemplo?')) {

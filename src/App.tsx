@@ -8,6 +8,7 @@ import Obra from './pages/Obra'
 import ObraCliente from './pages/ObraCliente'
 import ObraTecnico from './pages/ObraTecnico'
 import Ajuda from './pages/Ajuda'
+import Configuracoes from './pages/Configuracoes'
 import RotaProtegida from './components/RotaProtegida'
 
 function App() {
@@ -32,6 +33,14 @@ function App() {
             element={
               <RotaProtegida>
                 <Ajuda />
+              </RotaProtegida>
+            }
+          />
+          <Route
+            path="/app/configuracoes"
+            element={
+              <RotaProtegida>
+                <Configuracoes />
               </RotaProtegida>
             }
           />

@@ -122,6 +122,9 @@ export default function Obras() {
             <Link to="/app/ajuda" className="text-sm text-slate-500 hover:text-slate-900">
               Ajuda
             </Link>
+            <Link to="/app/configuracoes" className="text-sm text-slate-500 hover:text-slate-900">
+              Configurações
+            </Link>
             <span className="text-sm text-slate-500 hidden md:inline">{user?.email}</span>
             <button onClick={logout} className="btn-ghost text-xs">Sair</button>
           </div>

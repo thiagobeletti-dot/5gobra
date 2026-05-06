@@ -126,6 +126,9 @@ export default function Ajuda() {
             <Link to="/app/ajuda" className="text-sm font-semibold text-laranja-dark">
               Ajuda
             </Link>
+            <Link to="/app/configuracoes" className="text-sm text-slate-500 hover:text-slate-900">
+              Configurações
+            </Link>
             <span className="text-sm text-slate-500 hidden md:inline">{user?.email}</span>
             <button onClick={logout} className="btn-ghost text-xs">Sair</button>
           </div>

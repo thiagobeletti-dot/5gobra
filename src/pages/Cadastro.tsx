@@ -105,7 +105,7 @@ export default function Cadastro() {
         setCarregando(false)
         return
       }
-      const empresa = await criarEmpresa(nomeEmpresa.trim())
+      const empresa = await criarEmpresa(nomeEmpresa.trim(), { cnpj: cnpj.trim() || undefined, telefone: telefone.trim() || undefined })
       const hashTermos = await hashSha256(DOC_TERMOS_USO)
       const hashPriv = await hashSha256(DOC_POLITICA_PRIVACIDADE)
       await Promise.all([

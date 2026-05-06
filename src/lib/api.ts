@@ -57,17 +57,63 @@ export async function pegarMinhaEmpresa() {
   return data
 }
 
-export async function criarEmpresa(nome: string) {
+export async function criarEmpresa(nome: string, extras: { cnpj?: string; telefone?: string } = {}) {
   if (!supabase) throw new Error('Supabase nao configurado')
   const { data: user } = await supabase.auth.getUser()
   if (!user.user) throw new Error('Nao autenticado')
+  const payload: Record<string, unknown> = { nome, owner_user_id: user.user.id }
+  if (extras.cnpj) payload.cnpj = extras.cnpj
+  if (extras.telefone) payload.telefone = extras.telefone
   const { data, error } = await supabase
     .from('empresas')
-    .insert({ nome, owner_user_id: user.user.id })
+    .insert(payload)
     .select()
     .single()
   if (error) throw error
   return data
+}
+
+export async function atualizarMinhaEmpresa(mudancas: { nome?: string; cnpj?: string; telefone?: string }) {
+  if (!supabase) throw new Error('Supabase nao configurado')
+  const empresa = await pegarMinhaEmpresa()
+  if (!empresa) throw new Error('Empresa nao encontrada')
+  const payload: Record<string, unknown> = {}
+  if (mudancas.nome !== undefined) payload.nome = mudancas.nome
+  if (mudancas.cnpj !== undefined) payload.cnpj = mudancas.cnpj
+  if (mudancas.telefone !== undefined) payload.telefone = mudancas.telefone
+  const { data, error } = await supabase.from('empresas').update(payload).eq('id', empresa.id).select().single()
+  if (error) throw error
+  return data
+}
+
+export async function trocarSenha(novaSenha: string) {
+  if (!supabase) throw new Error('Supabase nao configurado')
+  const { error } = await supabase.auth.updateUser({ password: novaSenha })
+  if (error) throw error
+}
+
+export interface AceiteRow {
+  id: string
+  tipo: string
+  documento_versao: string
+  documento_hash: string
+  documento_snapshot: { texto?: string; versao?: string } | null
+  ip: string | null
+  user_agent: string | null
+  created_at: string
+}
+
+export async function listarMeusAceites(): Promise<AceiteRow[]> {
+  if (!supabase) return []
+  const empresa = await pegarMinhaEmpresa()
+  if (!empresa) return []
+  const { data, error } = await supabase
+    .from('aceites')
+    .select('id, tipo, documento_versao, documento_hash, documento_snapshot, ip, user_agent, created_at')
+    .eq('empresa_id', empresa.id)
+    .order('created_at', { ascending: false })
+  if (error) return []
+  return (data ?? []) as AceiteRow[]
 }
 
 // =============== Obras ===============
