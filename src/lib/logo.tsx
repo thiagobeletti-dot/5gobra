@@ -1,63 +1,57 @@
-// Logo do G Obra — usa o logo 3D oficial da 5G Gerenciamento
-// (mesmo arquivo do site institucional gerenciamento5g.com.br pra
-// manter consistência visual entre marketing e produto).
+// Logo do G Obra — pacote oficial de 5 versões entregue pelo designer (06/05/2026).
 //
-// O fundo branco do PNG some sobre fundos claros graças ao
-// mix-blend-mode: multiply.
+// Versões disponíveis em /public:
+//   - logo-gobra-tagline.png    → fundo claro, com "Diário de Obra" embaixo (uso principal: hero, headers grandes)
+//   - logo-gobra-circulo.jpeg   → fundo claro, empilhada (uso: favicon, OG image, avatar)
+//   - logo-gobra.jpeg           → fundo claro, horizontal (uso: header compacto)
+//   - logo-gobra-circulo-laranja.png → fundo laranja, empilhada (contexto colorido)
+//   - logo-gobra-laranja.png    → fundo laranja, horizontal (contexto colorido)
 
 interface FullProps {
   small?: boolean
 }
 
+// Logo principal usado no header — versão horizontal com o nome
+// "G Obra" + "Diário de Obra" embutidos na arte (substitui composição
+// anterior que misturava imagem 5G + texto separado).
 export function LogoFull({ small = false }: FullProps) {
   const altura = small ? 40 : 56
   return (
-    <div className="inline-flex items-center gap-3">
-      <img
-        src="/logo-5g.png"
-        alt="5G Gerenciamento"
-        style={{
-          height: altura,
-          width: altura,
-          display: 'block',
-          mixBlendMode: 'multiply',
-        }}
-      />
-      <span
-        className="font-extrabold tracking-tight leading-none text-slate-900"
-        style={{ fontSize: small ? '1.1rem' : '1.4rem' }}
-      >
-        Diário de Obra
-      </span>
-    </div>
-  )
-}
-
-export function LogoMark({ size = 40 }: { size?: number }) {
-  return (
     <img
-      src="/logo-5g.png"
-      alt="5G Gerenciamento"
-      width={size}
-      height={size}
-      style={{ display: 'block', mixBlendMode: 'multiply' }}
+      src="/logo-gobra-tagline.png"
+      alt="G Obra — Diário de Obra"
+      style={{
+        height: altura,
+        width: 'auto',
+        display: 'block',
+      }}
     />
   )
 }
 
+// Logo só com o "G" — versão empilhada/quadrada. Usado em favicons,
+// OG images, avatares (Instagram, etc) — qualquer contexto que peça quadrado.
+export function LogoMark({ size = 40 }: { size?: number }) {
+  return (
+    <img
+      src="/logo-gobra-circulo.jpeg"
+      alt="G Obra"
+      width={size}
+      height={size}
+      style={{ display: 'block' }}
+    />
+  )
+}
+
+// Versão grande empilhada — usado em telas centralizadas (cadastro, login)
+// onde queremos mais peso visual. Mostra o "G" grande + texto "Diário de Obra"
+// abaixo, tudo na mesma imagem oficial.
 export function LogoStack({ size = 200 }: { size?: number }) {
   return (
-    <div className="inline-flex flex-col items-center gap-3">
-      <img
-        src="/logo-5g-circulo.png"
-        alt="5G Gerenciamento"
-        width={size}
-        height={size}
-        style={{ display: 'block' }}
-      />
-      <span className="font-extrabold tracking-tight text-2xl text-slate-900">
-        Diário de Obra
-      </span>
-    </div>
+    <img
+      src="/logo-gobra-tagline.png"
+      alt="G Obra — Diário de Obra"
+      style={{ width: size, height: 'auto', display: 'block' }}
+    />
   )
 }
