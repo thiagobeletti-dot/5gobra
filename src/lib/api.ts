@@ -249,6 +249,7 @@ export function rowsParaDadosObra(
 export type OnboardingStatus = {
   tour_visto: boolean
   tour_dispensado: boolean
+  tour_obra_visto: boolean
   primeira_obra_criada: boolean
   tecnico_convidado: boolean
   primeiro_card_criado: boolean
@@ -259,6 +260,7 @@ export type OnboardingStatus = {
 const onboardingDefault: OnboardingStatus = {
   tour_visto: false,
   tour_dispensado: false,
+  tour_obra_visto: false,
   primeira_obra_criada: false,
   tecnico_convidado: false,
   primeiro_card_criado: false,

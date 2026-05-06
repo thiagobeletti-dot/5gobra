@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { LogoFull } from '../lib/logo'
 import { ABAS, STATUS_EM_ANDAMENTO } from '../types/obra'
 import type { AbaId, Card, Perfil, TipoCard } from '../types/obra'
@@ -13,6 +13,8 @@ import FormMedicao2 from '../components/FormMedicao2'
 import GerenciarTecnicos from '../components/GerenciarTecnicos'
 import type { DadosMedicao1, DadosMedicao2 } from '../types/checklist'
 import { resumoMedicao1, resumoMedicao2, VAZIO_MEDICAO1, VAZIO_MEDICAO2, ROTULOS_TIPOLOGIA } from '../types/checklist'
+import TourObra from '../components/TourObra'
+import { marcarOnboardingFlag } from '../lib/api'
 
 export default function Obra() {
   const { obraId = 'demo' } = useParams<{ obraId: string }>()
@@ -20,6 +22,8 @@ export default function Obra() {
   const { habilitado, user } = useAuth()
   const data = useObraData(obraId)
 
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [tourObraAtivo, setTourObraAtivo] = useState(false)
   const [perfil, setPerfil] = useState<Perfil>('empresa')
   const [abaAtiva, setAbaAtiva] = useState<AbaId>('cliente')
   const [cardAbertoId, setCardAbertoId] = useState<string | null>(null)
@@ -60,10 +64,25 @@ export default function Obra() {
 
   const dados = data.dados
   const cardsDaAba = dados.cards.filter((c) => c.aba === abaAtiva)
+
+  // Tour 2 — dispara quando rota tem ?tour=1 (vindo do redirect apos criar primeira obra)
+  useEffect(() => {
+    if (searchParams.get('tour') === '1' && data.modo === 'banco') {
+      setTourObraAtivo(true)
+      searchParams.delete('tour')
+      setSearchParams(searchParams, { replace: true })
+    }
+  }, [searchParams, data.modo, setSearchParams])
+
+  async function tourObraTerminado(_dispensado: boolean) {
+    setTourObraAtivo(false)
+    await marcarOnboardingFlag('tour_obra_visto').catch(() => {})
+  }
   const contagem = (a: AbaId) => dados.cards.filter((c) => c.aba === a).length
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] min-h-screen">
+      <TourObra ativo={tourObraAtivo} onTerminado={tourObraTerminado} />
       <aside className="hidden md:flex flex-col gap-1 bg-white border-r border-slate-200 p-3">
         <div className="px-2.5 pb-4 mb-3 border-b border-slate-200">
           <Link to="/"><LogoFull /></Link>
@@ -137,6 +156,7 @@ export default function Obra() {
           {ABAS.map((a) => (
             <button
               key={a.id}
+              data-tour-aba={a.id}
               onClick={() => setAbaAtiva(a.id)}
               className={'py-3.5 px-4 text-xs md:text-[13px] font-semibold border-b-2 -mb-px whitespace-nowrap inline-flex items-center gap-2 transition ' + (abaAtiva === a.id ? 'text-laranja border-laranja' : 'text-slate-500 border-transparent hover:text-slate-900')}
             >
@@ -158,7 +178,7 @@ export default function Obra() {
               {data.modo === 'banco' && (
                 <button className="btn-ghost text-xs px-3.5 py-2" onClick={() => setImportarAberto(true)}>+ Importar lista</button>
               )}
-              <button className="btn-primary text-xs px-3.5 py-2" onClick={() => setNovoAberto(true)}>+ Registrar</button>
+              <button data-tour="adicionar-item" className="btn-primary text-xs px-3.5 py-2" onClick={() => setNovoAberto(true)}>+ Registrar</button>
             </div>
           )}
         </div>

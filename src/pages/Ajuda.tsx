@@ -1,7 +1,7 @@
 // Pagina de Ajuda do G Obra — rota /app/ajuda
 //
-// Layout em 4 blocos, conforme decisao de produto (05/05/2026):
-//   1. Tour interativo  — botao reativa o react-joyride
+// Layout em 4 blocos (revisado 05/05/2026 — tour 1 e 2 ativos):
+//   1. Tour interativo  — botoes que reativam Tour 1 (lista) e Tour 2 (obra)
 //   2. Videos rapidos   — grade 3x3 com placeholders ate Thiago gravar
 //   3. Perguntas frequentes (FAQ de Uso)
 //   4. Falar com a gente — WhatsApp do Thiago com prefixo [SUPORTE]
@@ -82,17 +82,18 @@ export default function Ajuda() {
     navigate('/')
   }
 
-  function reiniciarTour() {
-    // Volta pra tela de Obras com query param que o componente Obras
-    // detecta e dispara o tour automaticamente.
-    navigate('/app/obras?tour=1')
-  }
-
   function abrirWhatsApp() {
     const empresa = empresaNome || 'minha empresa'
     const texto = `[SUPORTE G OBRA - ${empresa}] Olá, preciso de ajuda com:`
     const url = `https://wa.me/5511995400050?text=${encodeURIComponent(texto)}`
     window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
+  function reiniciarTour() {
+    // Volta pra tela de Obras com ?tour=1 — o Tour 1 (boas-vindas + Nova obra) dispara la.
+    // Se o usuario clicar em "Nova obra" e criar a primeira obra, eh redirecionado
+    // pra /app/obra/{id}?tour=1 e o Tour 2 dispara automaticamente.
+    navigate('/app/obras?tour=1')
   }
 
   return (
@@ -127,8 +128,8 @@ export default function Ajuda() {
             <div>
               <div className="font-semibold mb-1">Refazer tour de boas-vindas</div>
               <p className="text-sm text-slate-500">
-                Mostra os 6 passos principais do G Obra — criar obra, abas,
-                convidar tecnico e link do cliente.
+                Mostra como criar tua primeira obra. Se for tua primeira vez criando,
+                ao salvar a obra o tour continua dentro dela explicando o fluxo das 5 abas.
               </p>
             </div>
             <button onClick={reiniciarTour} className="btn-primary flex-shrink-0">

@@ -1,20 +1,12 @@
-// Tour guiado de onboarding via react-joyride.
+// Tour 1 — onboarding inicial na lista de obras (rota /app/obras).
 //
-// VERSAO 2 (05/05/2026 - tarde): tour reduzido a 3 passos pra evitar
-// avancar fora de contexto. Os passos 3-5 antigos falavam de elementos
-// que so existem DENTRO de uma obra (5 abas, tecnico, link cliente).
-// Como o tour roda na lista de obras, virava ruido.
+// 2 passos:
+//   1. Boas-vindas
+//   2. Highlight no botao "+ Nova obra"
 //
-// Solucao: tour curto aqui (boas-vindas + onde clicar + onde encontrar
-// ajuda). Conceitos avancados ficam pros videos tutoriais em /app/ajuda.
-//
-// FUTURO (proxima sessao de dev): criar segundo tour que dispara quando
-// usuario entra numa obra pela primeira vez (componente TourObra) com
-// os passos sobre as 5 abas, convidar tecnico, link cliente.
-//
-// O tour pode ser ativado:
-//   - automaticamente quando empresa nova entra (banner -> Iniciar tour)
-//   - manualmente pelo botao "Refazer tour" na rota /app/ajuda
+// Quando o usuario clica em "+ Nova obra" no banner ou no header,
+// preenche e cria a primeira obra, eh redirecionado pra /app/obra/{id}?tour=1
+// onde o Tour 2 (TourObra) dispara automaticamente.
 
 import Joyride, { CallBackProps, STATUS, Step } from 'react-joyride'
 
@@ -29,23 +21,15 @@ const passos: Step[] = [
     placement: 'center',
     title: 'Bem-vindo ao G Obra',
     content:
-      'Vou te dar um empurrao rapido pra comecar. Sao so 3 cliques. Pode pular se quiser.',
+      'Vou te mostrar como criar tua primeira obra. São só 2 passos rápidos.',
     disableBeacon: true,
   },
   {
     target: '[data-tour="nova-obra"]',
-    title: 'Cria tua primeira obra',
+    title: 'Cria sua primeira obra',
     content:
-      'Tudo comeca aqui. Cada obra que voce toca vira um espaco proprio com cards, fotos e historico. Quando voce abrir a obra, vai ver as 5 fases do fluxo, o convite de tecnico e o link do cliente — explico cada um na hora certa.',
+      'Tudo começa aqui. Cada obra que você toca vira um espaço próprio com cards, fotos e histórico. Quando você abrir a obra, vou explicar as 5 fases do fluxo, o convite de técnico e o link do cliente.',
     placement: 'bottom',
-    disableBeacon: true,
-  },
-  {
-    target: 'body',
-    placement: 'center',
-    title: 'Precisa de ajuda?',
-    content:
-      'Se travar em algo, abre o menu "Ajuda" la em cima — tem videos curtos, perguntas frequentes e o botao pra falar comigo direto no WhatsApp. Bora la, clica em "+ Nova obra" pra comecar.',
     disableBeacon: true,
   },
 ]
@@ -75,7 +59,7 @@ export default function TourGuiado({ ativo, onTerminado }: Props) {
         back: 'Voltar',
         close: 'Fechar',
         last: 'Entendi',
-        next: 'Proximo',
+        next: 'Próximo',
         skip: 'Pular',
       }}
       styles={{
@@ -87,28 +71,16 @@ export default function TourGuiado({ ativo, onTerminado }: Props) {
           overlayColor: 'rgba(15, 23, 42, 0.55)',
           zIndex: 9999,
         },
-        tooltipTitle: {
-          fontSize: '17px',
-          fontWeight: 700,
-        },
-        tooltipContent: {
-          fontSize: '14px',
-          lineHeight: 1.5,
-        },
+        tooltipTitle: { fontSize: '17px', fontWeight: 700 },
+        tooltipContent: { fontSize: '14px', lineHeight: 1.5 },
         buttonNext: {
           backgroundColor: '#ea580c',
           borderRadius: '8px',
           fontSize: '14px',
           padding: '10px 18px',
         },
-        buttonBack: {
-          color: '#475569',
-          fontSize: '14px',
-        },
-        buttonSkip: {
-          color: '#94a3b8',
-          fontSize: '13px',
-        },
+        buttonBack: { color: '#475569', fontSize: '14px' },
+        buttonSkip: { color: '#94a3b8', fontSize: '13px' },
       }}
     />
   )

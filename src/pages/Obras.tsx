@@ -26,9 +26,7 @@ export default function Obras() {
   const [linkCopiado, setLinkCopiado] = useState<string | null>(null)
   const [onboarding, setOnboarding] = useState<OnboardingStatus | null>(null)
   const [tourAtivo, setTourAtivo] = useState(false)
-  const navigateUseSearchParams = useSearchParams()
-  const searchParams = navigateUseSearchParams[0]
-  const setSearchParams = navigateUseSearchParams[1]
+  const [searchParams, setSearchParams] = useSearchParams()
 
   useEffect(() => {
     let ativo = true
@@ -72,11 +70,6 @@ export default function Obras() {
     setTourAtivo(true)
   }
 
-  async function dispensarBanner() {
-    await marcarOnboardingFlag('tour_dispensado').catch(() => {})
-    if (onboarding) setOnboarding({ ...onboarding, tour_dispensado: true })
-  }
-
   async function tourTerminado(dispensado: boolean) {
     setTourAtivo(false)
     await marcarOnboardingFlag('tour_visto').catch(() => {})
@@ -90,6 +83,11 @@ export default function Obras() {
         tour_dispensado: dispensado || onboarding.tour_dispensado,
       })
     }
+  }
+
+  async function dispensarBanner() {
+    await marcarOnboardingFlag('tour_dispensado').catch(() => {})
+    if (onboarding) setOnboarding({ ...onboarding, tour_dispensado: true })
   }
 
   const mostrarBanner =
@@ -132,7 +130,11 @@ export default function Obras() {
 
       {mostrarBanner && (
         <div className="max-w-5xl mx-auto px-6 pt-6">
-          <BannerOnboarding onIniciarTour={iniciarTour} onDispensar={dispensarBanner} />
+          <BannerOnboarding
+            onIniciarTour={iniciarTour}
+            onCriarObra={() => setNovoAberto(true)}
+            onDispensar={dispensarBanner}
+          />
         </div>
       )}
 
@@ -219,6 +221,12 @@ export default function Obras() {
           onCriou={(o) => {
             setObras((cur) => [o, ...cur])
             setNovoAberto(false)
+            // Se eh a primeira obra da empresa, navega pra dentro com ?tour=1
+            // pra disparar o Tour 2 (TourObra) que mostra o fluxo das 5 abas.
+            const eraPrimeira = obras.length === 0
+            if (eraPrimeira) {
+              navigate(`/app/obra/${o.id}?tour=1`)
+            }
             navigate(`/app/obra/${o.id}`)
           }}
         />
