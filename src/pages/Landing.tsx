@@ -243,9 +243,13 @@ export default function Landing() {
 
       {/* FOOTER */}
       <footer className="border-t border-slate-200 bg-white">
-        <div className="max-w-6xl mx-auto px-6 py-6 flex flex-col md:flex-row items-center justify-between gap-2 text-sm text-slate-500">
+        <div className="max-w-6xl mx-auto px-6 py-6 flex flex-col md:flex-row items-center justify-between gap-3 text-sm text-slate-500">
           <span>Diário de Obra · um módulo do 5G Gerenciamento</span>
-          <span>© 2026 5G Gerenciamento</span>
+          <div className="flex items-center gap-5">
+            <Link to="/termos" className="hover:text-slate-900 transition">Termos de Uso</Link>
+            <Link to="/privacidade" className="hover:text-slate-900 transition">Privacidade</Link>
+            <span>© 2026 5G Gerenciamento</span>
+          </div>
         </div>
       </footer>
     </div>

@@ -16,6 +16,7 @@ import {
   listarMeusAceites,
   type AceiteRow,
 } from '../lib/api'
+import { enviarPdfsDeAceite } from '../lib/email-aceites'
 
 export default function Configuracoes() {
   const navigate = useNavigate()
@@ -41,12 +42,16 @@ export default function Configuracoes() {
   // Bloco 3: Contratos aceitos
   const [aceites, setAceites] = useState<AceiteRow[]>([])
   const [aceiteAberto, setAceiteAberto] = useState<string | null>(null)
+  const [reenviando, setReenviando] = useState(false)
+  const [msgReenvio, setMsgReenvio] = useState<{ tipo: 'ok' | 'erro' | 'aviso'; texto: string } | null>(null)
+  const [empresaId, setEmpresaId] = useState<string | null>(null)
 
   useEffect(() => {
     let ativo = true
     ;(async () => {
       const e = await pegarMinhaEmpresa()
       if (ativo && e) {
+        setEmpresaId(e.id)
         setNomeEmpresa(e.nome ?? '')
         setCnpj((e as { cnpj?: string }).cnpj ?? '')
         setTelefone((e as { telefone?: string }).telefone ?? '')
@@ -105,6 +110,26 @@ export default function Configuracoes() {
       setMsgSenha({ tipo: 'erro', texto: err?.message ?? 'Erro ao trocar senha.' })
     } finally {
       setSalvandoSenha(false)
+    }
+  }
+
+  async function reenviarPdfs() {
+    if (!empresaId) return
+    setReenviando(true)
+    setMsgReenvio(null)
+    try {
+      const r = await enviarPdfsDeAceite(empresaId, true)
+      if (!r.ok) {
+        setMsgReenvio({ tipo: 'erro', texto: r.error ?? 'Erro ao reenviar' })
+      } else if (r.dryRun) {
+        setMsgReenvio({ tipo: 'aviso', texto: 'PDFs gerados em modo de teste — Resend ainda nao foi configurado pelo administrador. Avise o suporte.' })
+      } else {
+        setMsgReenvio({ tipo: 'ok', texto: `PDFs reenviados pra ${r.destinatario}. Verifique a caixa de entrada (e o spam).` })
+      }
+    } catch (err: any) {
+      setMsgReenvio({ tipo: 'erro', texto: err?.message ?? 'Erro inesperado' })
+    } finally {
+      setReenviando(false)
     }
   }
 
@@ -212,6 +237,34 @@ export default function Configuracoes() {
           <p className="text-sm text-slate-500 mb-4">
             Histórico de tudo que você aceitou no sistema. Cada aceite tem data, hora, IP e hash do documento — prova jurídica.
           </p>
+          {aceites.some((a) => a.tipo === 'termos_uso' || a.tipo === 'politica_privacidade') && (
+            <div className="mb-4 bg-slate-50 border border-slate-200 rounded-lg p-4 flex items-center justify-between gap-4 flex-wrap">
+              <div className="text-sm text-slate-600">
+                Quer uma cópia em PDF dos seus contratos por e-mail?
+              </div>
+              <button
+                onClick={reenviarPdfs}
+                disabled={reenviando || !empresaId}
+                className="btn-ghost text-xs whitespace-nowrap"
+              >
+                {reenviando ? 'Gerando...' : 'Reenviar PDFs por e-mail'}
+              </button>
+            </div>
+          )}
+          {msgReenvio && (
+            <div
+              className={
+                'mb-4 text-sm rounded-md px-3 py-2 ' +
+                (msgReenvio.tipo === 'ok'
+                  ? 'text-emerald-700 bg-emerald-50 border border-emerald-200'
+                  : msgReenvio.tipo === 'aviso'
+                    ? 'text-amber-700 bg-amber-50 border border-amber-200'
+                    : 'text-red-700 bg-red-50 border border-red-200')
+              }
+            >
+              {msgReenvio.texto}
+            </div>
+          )}
           {aceites.length === 0 ? (
             <div className="bg-white border border-slate-200 rounded-xl p-6 text-center text-sm text-slate-500">
               Nenhum aceite registrado ainda.

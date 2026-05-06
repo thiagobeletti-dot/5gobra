@@ -1,70 +1,24 @@
-// Cadastro do G Obra — fluxo em 3 etapas (Phase 9, 05/05/2026)
+// Cadastro do G Obra — fluxo em 3 etapas (Phase 9, atualizado 06/05/2026)
 //
-//   Etapa 1: Dados basicos (nome empresa, e-mail, senha)
-//   Etapa 2: Aceite contratual obrigatorio (Termos de Uso + Politica de Privacidade)
+//   Etapa 1: Dados basicos (nome empresa, CNPJ opcional, telefone opcional, e-mail, senha)
+//   Etapa 2: Aceite contratual obrigatorio (Termos de Uso v1.0 + Politica de Privacidade v1.0)
 //   Etapa 3: Confirmacao + criacao da conta + redirecionamento
 //
-// IMPORTANTE: os textos contratuais aqui sao PLACEHOLDERS. A versao final
-// vai ser redigida por advogado especializado em direito digital. Quando
-// chegarem os textos finais:
-//   - substituir DOC_TERMOS_USO e DOC_POLITICA_PRIVACIDADE
-//   - bumpar TERMOS_VERSAO e PRIVACIDADE_VERSAO
-//   - o hash recalcula automaticamente
+// Os textos dos contratos vivem em src/lib/contratos.ts — fonte unica de verdade
+// usada tambem em /termos e /privacidade publicas.
 
 import { Link, useNavigate } from 'react-router-dom'
 import { useState, FormEvent } from 'react'
 import { LogoFull } from '../lib/logo'
 import { cadastrar } from '../lib/auth'
 import { criarEmpresa, gravarAceite, hashSha256 } from '../lib/api'
-
-const TERMOS_VERSAO = '1.0-placeholder'
-const PRIVACIDADE_VERSAO = '1.0-placeholder'
-
-const DOC_TERMOS_USO = `TERMOS DE USO DO G OBRA — versao ${TERMOS_VERSAO}
-
-[ATENCAO: documento provisorio. Sera substituido por versao redigida por advogado.]
-
-1. OBJETO. O G Obra (5gobra.com.br) e um sistema de comunicacao formal entre fabrica de esquadria e cliente final, mantido pela 5G Gerenciamento.
-
-2. PLANO E PAGAMENTO. A assinatura mensal e R$ 349 por mes, sem fidelidade, sem multa, sem carencia. O pagamento e processado por gateway parceiro (Asaas).
-
-3. GARANTIA DE 14 DIAS. Em caso de insatisfacao nos primeiros 14 dias do pagamento, basta solicitar reembolso por WhatsApp e o valor pago e devolvido integralmente, sem necessidade de justificativa.
-
-4. CANCELAMENTO. A assinatura pode ser cancelada a qualquer momento, com efeito no proximo ciclo de cobranca. Os dados ficam preservados por 90 dias apos o cancelamento, podendo ser exportados ou removidos a pedido.
-
-5. RESPONSABILIDADES. A 5G fornece a plataforma. A empresa contratante e responsavel pelos dados que insere no sistema (clientes finais, obras, fotos, acordos).
-
-6. LIMITES. Sem limite de obras ou cards. Cada assinatura inclui 1 usuario administrador.
-
-7. ATUALIZACOES. A 5G pode atualizar o sistema sem aviso previo. Mudancas que afetem materialmente o servico contratado serao comunicadas por e-mail com antecedencia minima de 30 dias.
-
-8. SUPORTE. Suporte oferecido via WhatsApp do canal oficial em horario comercial.
-
-9. FORO. Foro da comarca de Jundiai/SP, Brasil.
-
-(versao final sera mais detalhada e revisada juridicamente)`
-
-const DOC_POLITICA_PRIVACIDADE = `POLITICA DE PRIVACIDADE DO G OBRA — versao ${PRIVACIDADE_VERSAO}
-
-[ATENCAO: documento provisorio. Sera substituido por versao redigida por advogado.]
-
-1. PAPEIS NA LGPD. A 5G Gerenciamento atua como OPERADOR dos dados pessoais que circulam pelo sistema. A empresa contratante e a CONTROLADORA dos dados que ela coleta dos seus clientes finais (nome, telefone, endereco da obra, fotos). Cabe a empresa contratante definir a finalidade e a base legal do tratamento desses dados.
-
-2. DADOS COLETADOS DIRETAMENTE PELA 5G. Cadastrais da empresa contratante (CNPJ, nome, e-mail, telefone), de pagamento (gerenciados pelo Asaas — a 5G nao armazena dados de cartao), e de uso (logs, metricas).
-
-3. FINALIDADE. Operar o sistema, processar pagamentos, fornecer suporte tecnico, melhorar o produto.
-
-4. ARMAZENAMENTO. Os dados ficam no Supabase (infraestrutura AWS), com criptografia em transito (TLS) e em repouso (AES-256). Backups diarios automaticos.
-
-5. SEGURANCA. Senhas armazenadas com bcrypt. RLS (Row-Level Security) garante isolamento entre empresas — empresas diferentes nunca acessam dados umas das outras.
-
-6. DIREITOS DO TITULAR. Voce pode solicitar acesso, retificacao, exclusao ou portabilidade dos seus dados. Solicite por WhatsApp; processamos em ate 15 dias uteis.
-
-7. DPO (ENCARREGADO). Thiago Beletti — thiago@gerenciamento5g.com.br
-
-8. COMPARTILHAMENTO. Nao compartilhamos dados pessoais com terceiros, exceto provedores de infraestrutura essencial (Supabase, Asaas) e quando exigido por lei.
-
-(versao final sera mais detalhada e revisada juridicamente)`
+import { enviarPdfsDeAceite } from '../lib/email-aceites'
+import {
+  TERMOS_VERSAO,
+  PRIVACIDADE_VERSAO,
+  DOC_TERMOS_USO,
+  DOC_POLITICA_PRIVACIDADE,
+} from '../lib/contratos'
 
 type Etapa = 1 | 2 | 3
 
@@ -128,6 +82,12 @@ export default function Cadastro() {
           contatoIdentificador: email,
         }),
       ])
+      // Dispara envio dos PDFs por e-mail em background (fire-and-forget).
+      // Se a edge function nao estiver deployada ou der erro, nao bloqueia
+      // a UX do cadastro — o usuario pode reenviar depois em /app/configuracoes.
+      enviarPdfsDeAceite(empresa.id).catch((err) => {
+        console.warn('[cadastro] envio de PDFs falhou silenciosamente:', err)
+      })
       setEtapa(3)
     } catch (err: any) {
       setErro(err?.message ?? 'Erro ao finalizar cadastro')
@@ -194,7 +154,7 @@ export default function Cadastro() {
             <>
               <h1 className="text-xl font-bold mb-1">Termos e Privacidade</h1>
               <p className="text-sm text-slate-500 mb-5">
-                Le abaixo os dois documentos. Pra continuar, marca o checkbox de aceite e clica em "Aceitar e criar conta". Vamos enviar copia em PDF pro seu e-mail apos o cadastro.
+                Le abaixo os dois documentos. Pra continuar, marca o checkbox de aceite e clica em "Aceitar e criar conta". Voce sempre pode reler em <Link to="/termos" className="text-laranja-dark hover:underline" target="_blank">5gobra.com.br/termos</Link> e <Link to="/privacidade" className="text-laranja-dark hover:underline" target="_blank">/privacidade</Link>.
               </p>
               <DocumentoBox titulo="Termos de Uso" texto={DOC_TERMOS_USO} versao={TERMOS_VERSAO} />
               <DocumentoBox titulo="Politica de Privacidade" texto={DOC_POLITICA_PRIVACIDADE} versao={PRIVACIDADE_VERSAO} />
@@ -221,8 +181,11 @@ export default function Cadastro() {
             <div className="text-center py-4">
               <div className="text-5xl mb-3">✓</div>
               <h1 className="text-xl font-bold mb-2">Conta criada!</h1>
-              <p className="text-sm text-slate-600 mb-6">
-                Bem-vindo ao G Obra. Vamos criar tua primeira obra. Voce vai receber por e-mail uma copia dos contratos aceitos.
+              <p className="text-sm text-slate-600 mb-2">
+                Bem-vindo ao G Obra. Vamos criar tua primeira obra.
+              </p>
+              <p className="text-xs text-slate-500 mb-6">
+                Em alguns minutos voce vai receber em <strong>{email}</strong> uma copia em PDF dos contratos aceitos, com cabecalho de auditoria (data, hora, IP, hash). Se nao chegar, da pra reenviar em <em>Configuracoes → Contratos aceitos</em>.
               </p>
               <button onClick={() => navigate('/app/obras')} className="btn-primary w-full">Entrar no sistema</button>
             </div>

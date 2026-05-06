@@ -9,6 +9,8 @@ import ObraCliente from './pages/ObraCliente'
 import ObraTecnico from './pages/ObraTecnico'
 import Ajuda from './pages/Ajuda'
 import Configuracoes from './pages/Configuracoes'
+import Termos from './pages/Termos'
+import Privacidade from './pages/Privacidade'
 import RotaProtegida from './components/RotaProtegida'
 
 function App() {
@@ -19,6 +21,8 @@ function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/cadastro" element={<Cadastro />} />
+          <Route path="/termos" element={<Termos />} />
+          <Route path="/privacidade" element={<Privacidade />} />
           <Route path="/app" element={<Navigate to="/app/obras" replace />} />
           <Route
             path="/app/obras"
