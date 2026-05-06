@@ -114,6 +114,8 @@ export default function Obra() {
         </div>
         <SidebarSec titulo="Obra" />
         <NavItem ativo>Painel da obra</NavItem>
+        <NavItem emBreve title="PDFs gerados pela obra: ficha de medição, histórico oficial, dossiê completo. Em breve.">Documentos</NavItem>
+        <NavItem emBreve title="Linha do tempo da obra: prazos, milestones, status. Em breve.">Cronograma</NavItem>
         <div className="h-px bg-slate-200 my-2 mx-1" />
         <SidebarSec titulo="Sistema" />
         {data.modo === 'banco' && habilitado ? (
@@ -130,6 +132,7 @@ export default function Obra() {
             Ajuda
           </Link>
         )}
+        <NavItem emBreve title="Dados da empresa, trocar senha, ver contratos aceitos, preferências. Em breve.">Configurações</NavItem>
         {data.modo === 'demo' && (
           <NavItem onClick={() => {
             if (confirm('Reiniciar o prototipo e voltar aos dados-exemplo?')) {
@@ -410,14 +413,27 @@ function SidebarSec({ titulo }: { titulo: string }) {
   return <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3 py-1">{titulo}</div>
 }
 
-function NavItem({ children, ativo, onClick }: { children: React.ReactNode; ativo?: boolean; onClick?: () => void }) {
+function NavItem({ children, ativo, onClick, emBreve, title }: { children: React.ReactNode; ativo?: boolean; onClick?: () => void; emBreve?: boolean; title?: string }) {
+  // Estilo: ativo (laranja preenchido) > emBreve (cinza claro com badge) > normal
+  const base = 'flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition text-left w-full'
+  let styles = ''
+  if (ativo) styles = 'bg-laranja text-white font-semibold'
+  else if (emBreve) styles = 'text-slate-400 cursor-default'
+  else styles = 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
   return (
     <button
-      onClick={onClick}
-      className={'flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition text-left w-full ' + (ativo ? 'bg-laranja text-white font-semibold' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900')}
+      onClick={emBreve ? undefined : onClick}
+      title={title}
+      disabled={emBreve}
+      className={base + ' ' + styles}
     >
       <span className="w-4 inline-flex items-center justify-center">.</span>
-      {children}
+      <span className="flex-1">{children}</span>
+      {emBreve && (
+        <span className="text-[9px] font-bold uppercase tracking-wider bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded">
+          Em breve
+        </span>
+      )}
     </button>
   )
 }
