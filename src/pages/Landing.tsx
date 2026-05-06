@@ -165,7 +165,7 @@ export default function Landing() {
 
             <div className="space-y-3">
               <Pergunta titulo="Quanto custa?">
-                R$ 349 por mês, por empresa. Sem limite de obras, sem limite de usuários, sem custo extra por cliente. Você tem <strong>14 dias de garantia</strong>: se em qualquer momento dentro desse prazo você não estiver satisfeito, devolvemos 100% do que pagou. Sem perguntas, sem letra miúda.
+                R$ 349 por mês, por empresa. Sem limite de obras, sem custo extra por cliente. Você tem <strong>14 dias de garantia</strong>: se em qualquer momento dentro desse prazo você não estiver satisfeito, devolvemos 100% do que pagou. Sem perguntas, sem letra miúda.
               </Pergunta>
 
               <Pergunta titulo="O cliente precisa baixar algum aplicativo?">

@@ -34,7 +34,7 @@ const faq: PerguntaResposta[] = [
   },
   {
     pergunta: 'Tem limite de usuarios na minha empresa?',
-    resposta: 'Sem limite. Empresa pode ter quantos usuarios precisar, sem custo adicional.',
+    resposta: 'Cada assinatura inclui 1 usuario administrador (voce). A equipe tecnica e o cliente final acessam o sistema sem precisar de conta — pelo link magico no celular. Se sua empresa precisar de mais usuarios administradores no futuro, fala comigo no WhatsApp pra a gente combinar.',
   },
   {
     pergunta: 'Quem ve o historico interno? E o cliente, ve?',

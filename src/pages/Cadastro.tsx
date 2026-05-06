@@ -34,7 +34,7 @@ const DOC_TERMOS_USO = `TERMOS DE USO DO G OBRA — versao ${TERMOS_VERSAO}
 
 5. RESPONSABILIDADES. A 5G fornece a plataforma. A empresa contratante e responsavel pelos dados que insere no sistema (clientes finais, obras, fotos, acordos).
 
-6. LIMITES. Sem limite de usuarios, obras ou cards.
+6. LIMITES. Sem limite de obras ou cards. Cada assinatura inclui 1 usuario administrador.
 
 7. ATUALIZACOES. A 5G pode atualizar o sistema sem aviso previo. Mudancas que afetem materialmente o servico contratado serao comunicadas por e-mail com antecedencia minima de 30 dias.
 
