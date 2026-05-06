@@ -110,12 +110,10 @@ export default function Obra() {
       </div>
       <aside className="hidden md:flex flex-col gap-1 bg-white border-r border-slate-200 p-3">
         <div className="px-2.5 pb-4 mb-3 border-b border-slate-200">
-          <Link to="/"><LogoFull /></Link>
+          <Link to={data.modo === 'banco' && habilitado ? '/app/obras' : '/'}><LogoFull /></Link>
         </div>
         <SidebarSec titulo="Obra" />
         <NavItem ativo>Painel da obra</NavItem>
-        <NavItem>Documentos</NavItem>
-        <NavItem>Cronograma</NavItem>
         <div className="h-px bg-slate-200 my-2 mx-1" />
         <SidebarSec titulo="Sistema" />
         {data.modo === 'banco' && habilitado ? (
@@ -127,12 +125,11 @@ export default function Obra() {
           <NavItem>Perfil</NavItem>
         )}
         {data.modo === 'banco' && habilitado && (
-          <Link to="/app/ajuda" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition text-left text-slate-600 hover:bg-slate-100 hover:text-slate-900">
+          <Link to="/app/ajuda" state={{ fromObra: obraId, fromObraNome: dados.obra.nome }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition text-left text-slate-600 hover:bg-slate-100 hover:text-slate-900">
             <span className="w-4 inline-flex items-center justify-center">?</span>
             Ajuda
           </Link>
         )}
-        <NavItem>Configuracoes</NavItem>
         {data.modo === 'demo' && (
           <NavItem onClick={() => {
             if (confirm('Reiniciar o prototipo e voltar aos dados-exemplo?')) {

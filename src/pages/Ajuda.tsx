@@ -10,7 +10,7 @@
 // forca o cliente a passar pelos videos/FAQ antes, reduz volume de
 // duvida boba e protege o tempo do Thiago.
 
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { LogoFull } from '../lib/logo'
 import { sair, useAuth } from '../lib/auth'
@@ -64,9 +64,13 @@ const videos: VideoTutorial[] = [
 
 export default function Ajuda() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuth()
   const [empresaNome, setEmpresaNome] = useState('')
   const [videoAberto, setVideoAberto] = useState<VideoTutorial | null>(null)
+  // Se chegou aqui de dentro de uma obra, pega o id pra mostrar botao "Voltar pra obra"
+  const fromObra = (location.state as { fromObra?: string; fromObraNome?: string } | null)?.fromObra
+  const fromObraNome = (location.state as { fromObra?: string; fromObraNome?: string } | null)?.fromObraNome
 
   useEffect(() => {
     let ativo = true
@@ -111,6 +115,11 @@ export default function Ajuda() {
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link to="/app/obras"><LogoFull small /></Link>
           <div className="flex items-center gap-4">
+            {fromObra && (
+              <Link to={`/app/obra/${fromObra}`} className="text-sm text-laranja-dark hover:text-laranja font-semibold inline-flex items-center gap-1">
+                ← Voltar pra obra{fromObraNome ? ` "${fromObraNome}"` : ''}
+              </Link>
+            )}
             <Link to="/app/obras" className="text-sm text-slate-500 hover:text-slate-900">
               Obras
             </Link>
