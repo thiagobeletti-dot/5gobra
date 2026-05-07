@@ -867,6 +867,18 @@ function ModalNovo({
   const [prazoContrato, setPrazoContrato] = useState('')
   const [salvando, setSalvando] = useState(false)
 
+  // Bug fix (07/05/2026): so 'peca' tem aba 'em andamento' (com prazo de producao).
+  // Acordo e apontamento nao tem essa aba — se o usuario abre o modal estando
+  // em 'em andamento' (que vira destino default) e troca o tipo pra acordo/apontamento,
+  // o destino fica preso em 'emandamento' (option some, mas state nao reseta), e o
+  // card fica orfao numa aba que nao tem botoes de acao pra ele.
+  useEffect(() => {
+    if (tipo !== 'peca' && destino === 'emandamento') {
+      setDestino('cliente')
+      setPrazoContrato('')
+    }
+  }, [tipo, destino])
+
   return (
     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm grid place-items-center p-5 z-40" onClick={onClose}>
       <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>

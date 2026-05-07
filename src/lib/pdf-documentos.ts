@@ -59,7 +59,9 @@ export async function gerarPdfDossie(
 
 // Helper que dispara o download no browser (cria Blob URL e clica num <a>).
 export function baixarPdf(bytes: Uint8Array, filename: string) {
-  const blob = new Blob([bytes], { type: 'application/pdf' })
+  // TS 5 estrito reclama de Uint8Array<ArrayBufferLike> vs BlobPart.
+  // Cast seguro: em runtime Uint8Array sempre eh BlobPart valido.
+  const blob = new Blob([bytes as BlobPart], { type: 'application/pdf' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
