@@ -230,6 +230,29 @@ export async function listarHistorico(cardId: string) {
   return (data ?? []) as HistoricoRow[]
 }
 
+// Busca em lote o historico de varios cards (so eventos NAO internos por padrao,
+// pra usar no PDF de Dossie — documento oficial que vai pro cliente).
+// Retorna um Map cardId -> HistoricoRow[] em ordem cronologica crescente.
+export async function listarHistoricoEmLote(cardIds: string[], opts: { incluirInterno?: boolean } = {}) {
+  const mapa = new Map<string, HistoricoRow[]>()
+  if (!supabase || cardIds.length === 0) return mapa
+  let q = supabase
+    .from('historico_card')
+    .select('*')
+    .in('card_id', cardIds)
+    .order('created_at', { ascending: true })
+  if (!opts.incluirInterno) q = q.eq('interno', false)
+  const { data, error } = await q
+  if (error) throw error
+  for (const id of cardIds) mapa.set(id, [])
+  for (const row of (data ?? []) as HistoricoRow[]) {
+    const arr = mapa.get(row.card_id) ?? []
+    arr.push(row)
+    mapa.set(row.card_id, arr)
+  }
+  return mapa
+}
+
 export async function adicionarHistorico(dados: {
   card_id: string
   autor: string

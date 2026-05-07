@@ -14,7 +14,8 @@ import GerenciarTecnicos from '../components/GerenciarTecnicos'
 import type { DadosMedicao1, DadosMedicao2 } from '../types/checklist'
 import { resumoMedicao1, resumoMedicao2, VAZIO_MEDICAO1, VAZIO_MEDICAO2, ROTULOS_TIPOLOGIA } from '../types/checklist'
 import TourObra from '../components/TourObra'
-import { marcarOnboardingFlag, pegarOnboardingStatus, type OnboardingStatus } from '../lib/api'
+import ModalDocumentos from '../components/ModalDocumentos'
+import { marcarOnboardingFlag, pegarOnboardingStatus, pegarMinhaEmpresa, type OnboardingStatus } from '../lib/api'
 
 export default function Obra() {
   const { obraId = 'demo' } = useParams<{ obraId: string }>()
@@ -33,6 +34,8 @@ export default function Obra() {
   const [formM1Aberto, setFormM1Aberto] = useState<string | null>(null)
   const [formM2Aberto, setFormM2Aberto] = useState<string | null>(null)
   const [tecnicosAberto, setTecnicosAberto] = useState(false)
+  const [documentosAberto, setDocumentosAberto] = useState(false)
+  const [empresaInfo, setEmpresaInfo] = useState<{ nome: string; cnpj?: string | null } | null>(null)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
 
   // Tour 2 — busca onboarding status do banco e decide se dispara o tour.
@@ -42,6 +45,9 @@ export default function Obra() {
   useEffect(() => {
     if (data.modo !== 'banco') return
     pegarOnboardingStatus().then(setOnboarding).catch(() => {})
+    pegarMinhaEmpresa().then((e) => {
+      if (e) setEmpresaInfo({ nome: e.nome, cnpj: (e as { cnpj?: string }).cnpj })
+    }).catch(() => {})
   }, [data.modo])
 
   // Quando temos o onboarding, decidimos se o tour dispara:
@@ -114,7 +120,12 @@ export default function Obra() {
         </div>
         <SidebarSec titulo="Obra" />
         <NavItem ativo>Painel da obra</NavItem>
-        <NavItem emBreve title="PDFs gerados pela obra: ficha de medição, histórico oficial, dossiê completo. Em breve.">Documentos</NavItem>
+        <NavItem
+          onClick={() => setDocumentosAberto(true)}
+          title="Exportar PDFs: Ficha de Medição (M1+M2 das peças) ou Dossiê (timeline de eventos)."
+        >
+          Documentos
+        </NavItem>
         <NavItem emBreve title="Linha do tempo da obra: prazos, milestones, status. Em breve.">Cronograma</NavItem>
         <div className="h-px bg-slate-200 my-2 mx-1" />
         <SidebarSec titulo="Sistema" />
@@ -403,6 +414,14 @@ export default function Obra() {
           onClose={() => setTecnicosAberto(false)}
         />
       )}
+
+      <ModalDocumentos
+        obra={dados}
+        empresa={empresaInfo ?? { nome: dados.obra.empresa || 'Empresa', cnpj: null }}
+        aberto={documentosAberto}
+        onFechar={() => setDocumentosAberto(false)}
+      />
+
 
       {toastMsg && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white border border-slate-300 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2.5 text-sm z-50">
