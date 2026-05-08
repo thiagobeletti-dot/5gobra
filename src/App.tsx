@@ -12,6 +12,7 @@ import Configuracoes from './pages/Configuracoes'
 import Termos from './pages/Termos'
 import Privacidade from './pages/Privacidade'
 import RotaProtegida from './components/RotaProtegida'
+import ErrorBoundary from './components/ErrorBoundary'
 
 function App() {
   return (
@@ -48,17 +49,31 @@ function App() {
               </RotaProtegida>
             }
           />
-          <Route path="/app/demo" element={<Obra />} />
+          <Route path="/app/demo" element={
+            <ErrorBoundary contexto="Houve um erro carregando a obra demo. Tenta recarregar.">
+              <Obra />
+            </ErrorBoundary>
+          } />
           <Route
             path="/app/obra/:obraId"
             element={
               <RotaProtegida>
-                <Obra />
+                <ErrorBoundary contexto="Houve um erro carregando essa obra. Tenta recarregar — se persistir me manda print dessa mensagem.">
+                  <Obra />
+                </ErrorBoundary>
               </RotaProtegida>
             }
           />
-          <Route path="/obra/:token" element={<ObraCliente />} />
-          <Route path="/tec/:token" element={<ObraTecnico />} />
+          <Route path="/obra/:token" element={
+            <ErrorBoundary contexto="Houve um erro carregando essa obra. Tenta recarregar.">
+              <ObraCliente />
+            </ErrorBoundary>
+          } />
+          <Route path="/tec/:token" element={
+            <ErrorBoundary contexto="Houve um erro carregando essa obra. Tenta recarregar.">
+              <ObraTecnico />
+            </ErrorBoundary>
+          } />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

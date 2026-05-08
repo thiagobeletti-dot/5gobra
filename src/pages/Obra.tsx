@@ -69,9 +69,15 @@ export default function Obra() {
   // Quando temos o onboarding, decidimos se o tour dispara:
   //   - Se ?tour=1 esta na URL (vindo do redirect apos criar obra OU do botao Refazer tour da pagina /ajuda) → dispara
   //   - Se nunca viu o tour da obra (tour_obra_visto=false) → dispara automatico tambem
+  //
+  // EXCETO em mobile (<768px): react-joyride pode crashar em viewports pequenos
+  // e os elementos com data-tour-aba ficam apertados na barra de abas com
+  // overflow-x. Em mobile o tour eh inutil (sidebar nao existe) entao bloqueamos.
   useEffect(() => {
     if (data.carregando || data.modo !== 'banco' || tourObraAtivo) return
     if (!onboarding) return
+    const ehMobile = typeof window !== 'undefined' && window.innerWidth < 768
+    if (ehMobile) return
     const force = searchParams.get('tour') === '1'
     const naoViu = !onboarding.tour_obra_visto
     if (force || naoViu) {
