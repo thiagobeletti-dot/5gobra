@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useReducer, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { LogoFull } from '../lib/logo'
 import { ABAS, STATUS_EM_ANDAMENTO } from '../types/obra'
@@ -17,7 +17,13 @@ import TourObra from '../components/TourObra'
 import ModalDocumentos from '../components/ModalDocumentos'
 import { useConfirm } from '../hooks/useConfirm'
 import { useEscClose } from '../hooks/useEscClose'
-import { marcarOnboardingFlag, pegarOnboardingStatus, pegarMinhaEmpresa, type OnboardingStatus } from '../lib/api'
+import { useOnboarding } from '../hooks/useOnboarding'
+import { pegarMinhaEmpresa } from '../lib/api'
+
+// Modal "global" da página — tipo discriminado pra evitar 4 booleans separados.
+// Cards, FormM1 e FormM2 mantêm seus state separados pq podem co-existir
+// (ex: card aberto + M1 aberto sobre ele). Audit Sprint C item D1.
+type ModalGlobal = 'nenhum' | 'novo' | 'importar' | 'tecnicos' | 'documentos'
 
 export default function Obra() {
   const { obraId = 'demo' } = useParams<{ obraId: string }>()
@@ -27,16 +33,23 @@ export default function Obra() {
 
   const [searchParams, setSearchParams] = useSearchParams()
   const [tourObraAtivo, setTourObraAtivo] = useState(false)
-  const [onboarding, setOnboarding] = useState<OnboardingStatus | null>(null)
+  const { status: onboarding, marcar: marcarOnb } = useOnboarding()
   const [perfil, setPerfil] = useState<Perfil>('empresa')
   const [abaAtiva, setAbaAtiva] = useState<AbaId>('cliente')
   const [cardAbertoId, setCardAbertoId] = useState<string | null>(null)
-  const [novoAberto, setNovoAberto] = useState(false)
-  const [importarAberto, setImportarAberto] = useState(false)
   const [formM1Aberto, setFormM1Aberto] = useState<string | null>(null)
   const [formM2Aberto, setFormM2Aberto] = useState<string | null>(null)
-  const [tecnicosAberto, setTecnicosAberto] = useState(false)
-  const [documentosAberto, setDocumentosAberto] = useState(false)
+  // Modal "global" da página — só 1 desses 4 fica aberto por vez. useReducer
+  // consolida 4 booleans em 1 state, evitando bugs de "2 modais abertos juntos".
+  // Audit Sprint C item D1.
+  const [modalGlobal, setModalGlobal] = useReducer(
+    (_estado: ModalGlobal, novo: ModalGlobal) => novo,
+    'nenhum' as ModalGlobal,
+  )
+  const novoAberto = modalGlobal === 'novo'
+  const importarAberto = modalGlobal === 'importar'
+  const tecnicosAberto = modalGlobal === 'tecnicos'
+  const documentosAberto = modalGlobal === 'documentos'
   const [empresaInfo, setEmpresaInfo] = useState<{ nome: string; cnpj?: string | null } | null>(null)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
   const { confirmar, dialog: confirmDialog } = useConfirm()
@@ -45,9 +58,9 @@ export default function Obra() {
   // IMPORTANTE: estes hooks tem que ficar ANTES dos early returns abaixo,
   // senao quebra as Regras dos Hooks do React (hooks chamados em ordem
   // diferente entre renders -> tela branca).
+  // useOnboarding ja carrega o status sozinho. Aqui só carregamos a empresa.
   useEffect(() => {
     if (data.modo !== 'banco') return
-    pegarOnboardingStatus().then(setOnboarding).catch((e) => console.warn('[Obra] pegarOnboardingStatus falhou:', e))
     pegarMinhaEmpresa().then((e) => {
       if (e) setEmpresaInfo({ nome: e.nome, cnpj: (e as { cnpj?: string }).cnpj })
     }).catch((e) => console.warn('[Obra] pegarMinhaEmpresa falhou:', e))
@@ -72,11 +85,10 @@ export default function Obra() {
 
   async function tourObraTerminado(_dispensado: boolean) {
     setTourObraAtivo(false)
-    // Atualiza o state local IMEDIATAMENTE pra evitar que o useEffect reabra o tour
-    // antes do banco devolver. Sem isso, ha uma janela onde tourObraAtivo=false e
+    // marcarOnb ja faz update otimista do state local + persiste no banco.
+    // Sem o update otimista, haveria janela onde tourObraAtivo=false e
     // onboarding.tour_obra_visto ainda eh false → useEffect reativa o tour.
-    if (onboarding) setOnboarding({ ...onboarding, tour_obra_visto: true })
-    await marcarOnboardingFlag('tour_obra_visto').catch((e) => console.warn('[Obra] marcar tour_obra_visto falhou:', e))
+    await marcarOnb('tour_obra_visto')
   }
 
   function toast(msg: string) {
@@ -135,7 +147,7 @@ export default function Obra() {
         <SidebarSec titulo="Obra" />
         <NavItem ativo>Painel da obra</NavItem>
         <NavItem
-          onClick={() => setDocumentosAberto(true)}
+          onClick={() => setModalGlobal('documentos')}
           title="Exportar PDFs: Ficha de Medição (M1+M2 das peças) ou Dossiê (timeline de eventos)."
         >
           Documentos
@@ -232,12 +244,12 @@ export default function Obra() {
           {abaAtiva !== 'conclusao' && (
             <div className="flex gap-2">
               {data.modo === 'banco' && data.obraReal && (
-                <button className="btn-ghost text-xs px-3.5 py-2" onClick={() => setTecnicosAberto(true)}>Técnicos</button>
+                <button className="btn-ghost text-xs px-3.5 py-2" onClick={() => setModalGlobal('tecnicos')}>Técnicos</button>
               )}
               {data.modo === 'banco' && (
-                <button className="btn-ghost text-xs px-3.5 py-2" onClick={() => setImportarAberto(true)}>+ Importar lista</button>
+                <button className="btn-ghost text-xs px-3.5 py-2" onClick={() => setModalGlobal('importar')}>+ Importar lista</button>
               )}
-              <button data-tour="adicionar-item" className="btn-primary text-xs px-3.5 py-2" onClick={() => setNovoAberto(true)}>+ Registrar</button>
+              <button data-tour="adicionar-item" className="btn-primary text-xs px-3.5 py-2" onClick={() => setModalGlobal('novo')}>+ Registrar</button>
             </div>
           )}
         </div>
@@ -436,12 +448,12 @@ export default function Obra() {
       {novoAberto && (
         <ModalNovo
           abaAtiva={abaAtiva}
-          onClose={() => setNovoAberto(false)}
+          onClose={() => setModalGlobal('nenhum')}
           onCriar={async (input) => {
             if (!input.sigla.trim() || !input.nome.trim()) { toast('Preencha sigla e nome'); return }
             if (input.destino === 'emandamento' && !input.prazoContrato) { toast('Informe o prazo contratual'); return }
             const destino = await data.criarNovo(input, perfil)
-            setNovoAberto(false)
+            setModalGlobal('nenhum')
             setAbaAtiva(destino)
             toast('Registro criado')
           }}
@@ -451,10 +463,10 @@ export default function Obra() {
       {importarAberto && data.obraReal && (
         <ImportarItens
           obraId={data.obraReal.id}
-          onClose={() => setImportarAberto(false)}
+          onClose={() => setModalGlobal('nenhum')}
           onImportar={async (itens) => {
             const n = await data.importarItens(itens, perfil)
-            setImportarAberto(false)
+            setModalGlobal('nenhum')
             setAbaAtiva('cliente')
             toast(n + (n === 1 ? ' item importado' : ' itens importados'))
           }}
@@ -464,7 +476,7 @@ export default function Obra() {
       {tecnicosAberto && data.obraReal && (
         <GerenciarTecnicos
           obraId={data.obraReal.id}
-          onClose={() => setTecnicosAberto(false)}
+          onClose={() => setModalGlobal('nenhum')}
         />
       )}
 
@@ -472,7 +484,7 @@ export default function Obra() {
         obra={dados}
         empresa={empresaInfo ?? { nome: dados.obra.empresa || 'Empresa', cnpj: null }}
         aberto={documentosAberto}
-        onFechar={() => setDocumentosAberto(false)}
+        onFechar={() => setModalGlobal('nenhum')}
       />
 
       {confirmDialog}

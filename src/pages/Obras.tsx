@@ -6,13 +6,11 @@ import {
   criarObra,
   listarObras,
   pegarMinhaEmpresa,
-  pegarOnboardingStatus,
-  marcarOnboardingFlag,
   type ObraRow,
-  type OnboardingStatus,
 } from '../lib/api'
 import BannerOnboarding from '../components/BannerOnboarding'
 import TourGuiado from '../components/TourGuiado'
+import { useOnboarding } from '../hooks/useOnboarding'
 
 export default function Obras() {
   const navigate = useNavigate()
@@ -24,7 +22,7 @@ export default function Obras() {
   const [novoAberto, setNovoAberto] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [linkCopiado, setLinkCopiado] = useState<string | null>(null)
-  const [onboarding, setOnboarding] = useState<OnboardingStatus | null>(null)
+  const { status: onboarding, marcar: marcarOnb } = useOnboarding()
   const [tourAtivo, setTourAtivo] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -41,9 +39,6 @@ export default function Obras() {
         const lista = await listarObras()
         if (!ativo) return
         setObras(lista)
-        const status = await pegarOnboardingStatus()
-        if (!ativo) return
-        setOnboarding(status)
         if (searchParams.get('tour') === '1') {
           setTourAtivo(true)
           searchParams.delete('tour')
@@ -60,11 +55,9 @@ export default function Obras() {
 
   useEffect(() => {
     if (obras.length > 0 && onboarding && !onboarding.primeira_obra_criada) {
-      marcarOnboardingFlag('primeira_obra_criada')
-        .then(() => setOnboarding({ ...onboarding, primeira_obra_criada: true }))
-        .catch((e) => console.warn('[Obras] marcar primeira_obra_criada falhou:', e))
+      marcarOnb('primeira_obra_criada')
     }
-  }, [obras.length, onboarding])
+  }, [obras.length, onboarding, marcarOnb])
 
   function iniciarTour() {
     setTourAtivo(true)
@@ -72,22 +65,12 @@ export default function Obras() {
 
   async function tourTerminado(dispensado: boolean) {
     setTourAtivo(false)
-    await marcarOnboardingFlag('tour_visto').catch((e) => console.warn('[Obras] marcar tour_visto falhou:', e))
-    if (dispensado) {
-      await marcarOnboardingFlag('tour_dispensado').catch((e) => console.warn('[Obras] marcar tour_dispensado falhou:', e))
-    }
-    if (onboarding) {
-      setOnboarding({
-        ...onboarding,
-        tour_visto: true,
-        tour_dispensado: dispensado || onboarding.tour_dispensado,
-      })
-    }
+    await marcarOnb('tour_visto')
+    if (dispensado) await marcarOnb('tour_dispensado')
   }
 
   async function dispensarBanner() {
-    await marcarOnboardingFlag('tour_dispensado').catch((e) => console.warn('[Obras] marcar tour_dispensado falhou:', e))
-    if (onboarding) setOnboarding({ ...onboarding, tour_dispensado: true })
+    await marcarOnb('tour_dispensado')
   }
 
   const mostrarBanner =
