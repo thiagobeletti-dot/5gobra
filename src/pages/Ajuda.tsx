@@ -229,6 +229,9 @@ export default function Ajuda() {
         <div
           className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
           onClick={() => setVideoAberto(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Vídeo tutorial"
         >
           <div
             className="bg-black rounded-xl overflow-hidden w-full max-w-4xl aspect-video relative"

@@ -120,26 +120,26 @@ export default function Cadastro() {
               </p>
               <form onSubmit={avancarParaEtapa2} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Nome da empresa</label>
-                  <input className="input" value={nomeEmpresa} onChange={(e) => setNomeEmpresa(e.target.value)} placeholder="Esquadrias 5G" autoFocus required />
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Nome da empresa <span className="text-red-600" aria-hidden="true">*</span></label>
+                  <input className="input" value={nomeEmpresa} onChange={(e) => setNomeEmpresa(e.target.value)} placeholder="Esquadrias 5G" autoFocus required aria-required="true" />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">CNPJ (opcional)</label>
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">CNPJ <span className="text-slate-400 font-normal normal-case">(opcional)</span></label>
                     <input className="input" value={cnpj} onChange={(e) => setCnpj(e.target.value)} placeholder="00.000.000/0000-00" />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Telefone (opcional)</label>
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Telefone <span className="text-slate-400 font-normal normal-case">(opcional)</span></label>
                     <input type="tel" inputMode="tel" autoComplete="tel" className="input" value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(11) 99999-9999" />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Seu e-mail</label>
-                  <input type="email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" required />
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Seu e-mail <span className="text-red-600" aria-hidden="true">*</span></label>
+                  <input type="email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" required aria-required="true" autoComplete="email" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Senha</label>
-                  <input type="password" className="input" value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="minimo 6 caracteres" required />
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Senha <span className="text-red-600" aria-hidden="true">*</span></label>
+                  <input type="password" className="input" value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="mínimo 6 caracteres" required aria-required="true" autoComplete="new-password" />
                 </div>
                 {erro && <div className="text-sm text-red-600">{erro}</div>}
                 <button type="submit" className="btn-primary w-full">Continuar — ler contratos</button>

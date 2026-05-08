@@ -365,7 +365,7 @@ export default function ObraTecnico() {
       })()}
 
       {toastMsg && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white border border-slate-300 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2.5 text-sm z-50">
+        <div className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 bg-white border border-slate-300 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2.5 text-sm z-50" role="status" aria-live="polite">
           <span className="text-status-andamento font-bold">OK</span>
           <span>{toastMsg}</span>
         </div>
@@ -455,7 +455,7 @@ function ModalCardTecnico({ card, onClose, onAbrirM1, onAbrirM2, onAdicionarFoto
   const tipologiaLabel = dadosM1?.tipologia ? ROTULOS_TIPOLOGIA[dadosM1.tipologia] : null
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm grid place-items-end md:place-items-center p-0 md:p-5 z-40" onClick={onClose}>
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm grid place-items-end md:place-items-center p-0 md:p-5 z-40" onClick={onClose} role="dialog" aria-modal="true">
       <div className="bg-white border border-slate-200 rounded-t-2xl md:rounded-2xl w-full max-w-2xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="px-5 md:px-6 py-4 md:py-5 border-b border-slate-200 flex items-start gap-3">
           <div className="flex-1 min-w-0">

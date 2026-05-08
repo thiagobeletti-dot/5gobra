@@ -55,7 +55,7 @@ export default function Login() {
 
           <form onSubmit={submit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">E-mail</label>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">E-mail <span className="text-red-600" aria-hidden="true">*</span></label>
               <input
                 type="email"
                 className="input"
@@ -64,10 +64,12 @@ export default function Login() {
                 placeholder="seu@email.com"
                 autoFocus
                 required
+                aria-required="true"
+                autoComplete="email"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Senha</label>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Senha <span className="text-red-600" aria-hidden="true">*</span></label>
               <input
                 type="password"
                 className="input"
@@ -75,6 +77,8 @@ export default function Login() {
                 onChange={(e) => setSenha(e.target.value)}
                 placeholder="senha"
                 required
+                aria-required="true"
+                autoComplete="current-password"
               />
             </div>
 

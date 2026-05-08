@@ -21,7 +21,7 @@
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 font-semibold text-sm transition;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 font-semibold text-sm transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-laranja;
   }
   .btn-primary {
     @apply btn bg-laranja text-white hover:bg-laranja-hover;
@@ -29,8 +29,9 @@
   .btn-ghost {
     @apply btn bg-transparent text-slate-600 border border-slate-200 hover:bg-slate-50 hover:text-slate-900;
   }
+  /* Sprint D do audit: focus ring mais forte (era /15, agora /40) — A11y. */
   .input {
-    @apply w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-laranja focus:ring-2 focus:ring-laranja/15;
+    @apply w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-laranja focus:ring-2 focus:ring-laranja/40;
   }
   .card-base {
     @apply bg-white border border-slate-200 rounded-lg p-3.5 transition cursor-pointer relative overflow-hidden hover:border-slate-300 hover:-translate-y-px hover:shadow-md;

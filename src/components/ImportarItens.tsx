@@ -76,7 +76,7 @@ export default function ImportarItens({ obraId, onClose, onImportar }: ImportarI
   }
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm grid place-items-center p-5 z-40" onClick={onClose}>
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm grid place-items-center p-5 z-40" onClick={onClose} role="dialog" aria-modal="true">
       <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="px-6 py-4 border-b border-slate-200 flex items-start gap-4">
           <div className="flex-1 min-w-0">

@@ -279,7 +279,7 @@ function ModalNovaObra({ empresaId, onClose, onCriou }: { empresaId: string; onC
   }
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm grid place-items-center p-5 z-40" onClick={onClose}>
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm grid place-items-center p-5 z-40" onClick={onClose} role="dialog" aria-modal="true">
       <form className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
         <div className="px-6 py-5 border-b border-slate-200">
           <h2 className="text-lg font-bold">Nova obra</h2>

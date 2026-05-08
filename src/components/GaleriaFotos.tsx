@@ -171,7 +171,7 @@ function Lightbox({ fotos, indexInicial, onClose }: { fotos: FotoCard[]; indexIn
   }
 
   return (
-    <div className="fixed inset-0 bg-black/90 z-50 grid place-items-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/90 z-50 grid place-items-center p-4" onClick={onClose} role="dialog" aria-modal="true" aria-label="Visualizador de foto">
       <div className="absolute top-4 right-4 z-10">
         <button
           onClick={onClose}

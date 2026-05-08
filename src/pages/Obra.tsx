@@ -491,7 +491,7 @@ export default function Obra() {
 
 
       {toastMsg && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white border border-slate-300 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2.5 text-sm z-50">
+        <div className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 bg-white border border-slate-300 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2.5 text-sm z-50" role="status" aria-live="polite">
           <span className="text-status-andamento font-bold">OK</span>
           <span>{toastMsg}</span>
         </div>
@@ -626,7 +626,7 @@ function ModalCard({
     : 'bg-acordo-soft text-acordo-dark border-acordo-border'
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm grid place-items-center p-5 z-40" onClick={onClose}>
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm grid place-items-center p-5 z-40" onClick={onClose} role="dialog" aria-modal="true">
       <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="px-6 py-5 border-b border-slate-200 flex items-start gap-4">
           <div className="flex-1 min-w-0">
@@ -949,7 +949,7 @@ function ModalNovo({
   }, [tipo, destino])
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm grid place-items-center p-5 z-40" onClick={onClose}>
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm grid place-items-center p-5 z-40" onClick={onClose} role="dialog" aria-modal="true">
       <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="px-6 py-5 border-b border-slate-200 flex items-start gap-4">
           <div className="flex-1">
