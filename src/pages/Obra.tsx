@@ -204,7 +204,7 @@ export default function Obra() {
       </aside>
 
       <main className="flex flex-col">
-        <div className="bg-white border-b border-slate-200 px-7 py-3.5 flex items-center gap-5">
+        <div className="bg-white border-b border-slate-200 px-4 md:px-7 py-3.5 flex items-center gap-3 md:gap-5">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2.5 font-bold text-[15px]">
               {dados.obra.nome}
@@ -230,7 +230,22 @@ export default function Obra() {
           </div>
         </div>
 
-        <div className="bg-white border-b border-slate-200 px-7 flex gap-1 overflow-x-auto">
+        {/* Faixa de ações: fica acima das abas pra não competir com a descrição
+            da aba (que é texto longo em mobile). Some na aba "Conclusão" porque
+            registrar/importar não fazem sentido lá. */}
+        {abaAtiva !== 'conclusao' && (
+          <div className="bg-white border-b border-slate-200 px-4 md:px-7 py-2.5 flex items-center justify-end gap-2 flex-wrap">
+            {data.modo === 'banco' && data.obraReal && (
+              <button className="btn-ghost text-xs px-3.5 py-2" onClick={() => setModalGlobal('tecnicos')}>Técnicos</button>
+            )}
+            {data.modo === 'banco' && (
+              <button className="btn-ghost text-xs px-3.5 py-2" onClick={() => setModalGlobal('importar')}>+ Importar lista</button>
+            )}
+            <button data-tour="adicionar-item" className="btn-primary text-xs px-3.5 py-2" onClick={() => setModalGlobal('novo')}>+ Registrar</button>
+          </div>
+        )}
+
+        <div className="bg-white border-b border-slate-200 px-4 md:px-7 flex gap-1 overflow-x-auto">
           {ABAS.map((a) => (
             <button
               key={a.id}
@@ -246,19 +261,8 @@ export default function Obra() {
           ))}
         </div>
 
-        <div className="bg-white border-b border-slate-200 px-7 py-3.5 flex items-center justify-between gap-3 text-xs text-slate-500">
-          <span>{ABAS.find((a) => a.id === abaAtiva)?.descricao}</span>
-          {abaAtiva !== 'conclusao' && (
-            <div className="flex gap-2">
-              {data.modo === 'banco' && data.obraReal && (
-                <button className="btn-ghost text-xs px-3.5 py-2" onClick={() => setModalGlobal('tecnicos')}>Técnicos</button>
-              )}
-              {data.modo === 'banco' && (
-                <button className="btn-ghost text-xs px-3.5 py-2" onClick={() => setModalGlobal('importar')}>+ Importar lista</button>
-              )}
-              <button data-tour="adicionar-item" className="btn-primary text-xs px-3.5 py-2" onClick={() => setModalGlobal('novo')}>+ Registrar</button>
-            </div>
-          )}
+        <div className="bg-white border-b border-slate-200 px-4 md:px-7 py-3.5 text-xs text-slate-500">
+          {ABAS.find((a) => a.id === abaAtiva)?.descricao}
         </div>
 
         <div className="flex-1">
