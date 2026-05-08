@@ -22,6 +22,35 @@ export default function GaleriaFotos({ fotos, podeEditar, onAdicionar, onRemover
     const arquivos = Array.from(e.target.files ?? [])
     if (arquivos.length === 0) return
     setErro(null)
+
+    // Validação client-side de tamanho. Audit Sprint B item P6.
+    // Limite de 8 MB por arquivo evita upload longo + erro genérico do Storage.
+    const LIMITE_BYTES = 8 * 1024 * 1024
+    const muitoGrandes = arquivos.filter((a) => a.size > LIMITE_BYTES)
+    if (muitoGrandes.length > 0) {
+      const nomes = muitoGrandes.map((a) => a.name + ' (' + (a.size / 1024 / 1024).toFixed(1) + ' MB)').join(', ')
+      setErro(
+        muitoGrandes.length === arquivos.length
+          ? 'Arquivo grande demais. Limite por foto: 8 MB. Você enviou: ' + nomes
+          : 'Algumas fotos passam de 8 MB e foram ignoradas: ' + nomes,
+      )
+      const aceitos = arquivos.filter((a) => a.size <= LIMITE_BYTES)
+      if (aceitos.length === 0) {
+        if (inputRef.current) inputRef.current.value = ''
+        return
+      }
+      setSubindo(true)
+      try {
+        await onAdicionar(aceitos)
+      } catch (err) {
+        setErro(mensagemDeErro(err))
+      } finally {
+        setSubindo(false)
+        if (inputRef.current) inputRef.current.value = ''
+      }
+      return
+    }
+
     setSubindo(true)
     try {
       await onAdicionar(arquivos)

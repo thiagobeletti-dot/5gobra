@@ -41,12 +41,23 @@ export default function ObraCliente() {
   }
 
   const dados = data.dados
-  const cardsDaAba = dados.cards.filter((c) => c.aba === abaAtiva)
-  const contagem = (a: AbaId) => dados.cards.filter((c) => c.aba === a).length
-
-  const meusPendentes = dados.cards.filter((c) =>
-    !c.encerrado && (c.aba === 'cliente' || (c.aba === 'conclusao' && !c.aceiteFinal))
-  ).length
+  // useMemo evita refilter a cada render. Audit Sprint B item P4.
+  const cardsDaAba = useMemo(
+    () => dados.cards.filter((c) => c.aba === abaAtiva),
+    [dados.cards, abaAtiva],
+  )
+  const contagensPorAba = useMemo(() => {
+    const m = new Map<AbaId, number>()
+    for (const c of dados.cards) m.set(c.aba, (m.get(c.aba) ?? 0) + 1)
+    return m
+  }, [dados.cards])
+  const contagem = (a: AbaId) => contagensPorAba.get(a) ?? 0
+  const meusPendentes = useMemo(
+    () => dados.cards.filter((c) =>
+      !c.encerrado && (c.aba === 'cliente' || (c.aba === 'conclusao' && !c.aceiteFinal))
+    ).length,
+    [dados.cards],
+  )
 
   return (
     <div className="min-h-screen flex flex-col">

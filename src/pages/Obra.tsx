@@ -108,8 +108,19 @@ export default function Obra() {
   }
 
   const dados = data.dados
-  const cardsDaAba = dados.cards.filter((c) => c.aba === abaAtiva)
-  const contagem = (a: AbaId) => dados.cards.filter((c) => c.aba === a).length
+  // useMemo evita refiltrar a lista a cada render (re-render por toast,
+  // mudança de outros estados, etc). Audit Sprint B item P4.
+  const cardsDaAba = useMemo(
+    () => dados.cards.filter((c) => c.aba === abaAtiva),
+    [dados.cards, abaAtiva],
+  )
+  // Pré-computa contagem por aba uma vez por render (em vez de N filters).
+  const contagensPorAba = useMemo(() => {
+    const m = new Map<AbaId, number>()
+    for (const c of dados.cards) m.set(c.aba, (m.get(c.aba) ?? 0) + 1)
+    return m
+  }, [dados.cards])
+  const contagem = (a: AbaId) => contagensPorAba.get(a) ?? 0
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] min-h-screen">

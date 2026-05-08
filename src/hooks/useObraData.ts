@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import type { Card, DadosObra, AbaId, TipoCard, AutorTipo } from '../types/obra'
 import { SEED } from '../lib/seed'
 import { supabaseConfigurado, supabase } from '../lib/supabase'
@@ -45,6 +45,9 @@ interface UseObraDataResult {
   modo: 'demo' | 'banco'
   obraReal: ObraRow | null
   carregando: boolean
+  /** True enquanto uma mutação async está em curso. UI usa pra desabilitar
+   * botões. Ref-based pra ser pego sincronamente em handlers. */
+  ocupado: boolean
   erro: string | null
   alterarStatus: (cardId: string, novoStatus: string) => Promise<void>
   registrar: (cardId: string, texto: string, perfil: 'empresa' | 'cliente', moveAba: boolean) => Promise<void>
@@ -116,12 +119,95 @@ async function carregarDoBanco(obraResolvida: ObraRow): Promise<DadosObra> {
   return rowsParaDadosObra(obraResolvida, cardsRows, histPorCard, anexosPorCard, checklistsPorCard)
 }
 
+/**
+ * Recarrega apenas 1 card e seus dados auxiliares (historico, anexos, checklists),
+ * mantendo os outros cards do state inalterados. Usado em mutações single-card
+ * pra reduzir round-trips quando obra tem muitos cards.
+ *
+ * Audit Sprint B item top fix #1 (versão conservadora). Ganho proporcional ao
+ * tamanho da obra: em obra com 50 cards, antes 4 queries traziam todo o histórico
+ * de todos os cards; agora 4 queries trazem só os do card afetado.
+ *
+ * Se o card foi apagado (cardRow null), remove do state local.
+ */
+async function recarregarCard(
+  obraResolvida: ObraRow,
+  cardId: string,
+  atual: DadosObra,
+): Promise<DadosObra> {
+  if (!supabase) return atual
+  const { data: cardRow, error } = await supabase
+    .from('cards')
+    .select('*')
+    .eq('id', cardId)
+    .maybeSingle()
+  if (error) throw error
+  if (!cardRow) {
+    return { ...atual, cards: atual.cards.filter((c) => c.id !== cardId) }
+  }
+
+  const histPorCard: Record<string, HistoricoRow[]> = {}
+  const { data: hists } = await supabase
+    .from('historico_card')
+    .select('*')
+    .eq('card_id', cardId)
+    .order('created_at', { ascending: true })
+  histPorCard[cardId] = (hists ?? []) as HistoricoRow[]
+
+  const anexosPorCard = await listarAnexosDeVariosCards([cardId])
+  let checklistsPorCard: Record<string, Checklist[]> = {}
+  try {
+    checklistsPorCard = await listarChecklistsDeVariosCards([cardId])
+  } catch (e) {
+    console.warn('Falha ao carregar checklists do card:', e)
+  }
+
+  // Reaproveita rowsParaDadosObra pra montar o card. Passamos só esse card —
+  // o resultado terá apenas 1 card; pegamos ele e mergeamos no state existente.
+  const reconstruido = rowsParaDadosObra(
+    obraResolvida,
+    [cardRow as any],
+    histPorCard,
+    anexosPorCard,
+    checklistsPorCard,
+  )
+  const cardNovo = reconstruido.cards[0]
+  if (!cardNovo) return atual
+  return {
+    ...atual,
+    cards: atual.cards.map((c) => c.id === cardId ? cardNovo : c),
+  }
+}
+
 export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' = 'id'): UseObraDataResult {
   const modo: 'demo' | 'banco' = ehDemo(idOrToken) ? 'demo' : 'banco'
   const [dados, setDados] = useState<DadosObra | null>(null)
   const [obraReal, setObraReal] = useState<ObraRow | null>(null)
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
+  const [ocupado, setOcupado] = useState(false)
+  // Ref espelha o ocupado pra detectar concorrencia em handlers sincronos.
+  const ocupadoRef = useRef(false)
+
+  /**
+   * Wrap pra mutações: bloqueia chamadas concorrentes (anti duplo-clique) e
+   * mantém o flag `ocupado` em sync. Cada mutação async passa pelo wrap.
+   * Audit Sprint B item top fix #8.
+   */
+  const mutar = useCallback(async <T>(fn: () => Promise<T>): Promise<T | undefined> => {
+    if (ocupadoRef.current) {
+      console.warn('[useObraData] mutação ignorada — outra em curso')
+      return undefined
+    }
+    ocupadoRef.current = true
+    setOcupado(true)
+    try {
+      return await fn()
+    } finally {
+      ocupadoRef.current = false
+      setOcupado(false)
+    }
+  }, [])
 
   useEffect(() => {
     let ativo = true
@@ -193,7 +279,9 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     if (novoStatus === 'Concluido' || novoStatus === 'Concluído') {
       await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Item concluído. Movido para aba Conclusão. Aguardando aceite do cliente.' })
     }
-    const novo = await carregarDoBanco(obraReal)
+    const novo = dados
+      ? await recarregarCard(obraReal, cardId, dados)
+      : await carregarDoBanco(obraReal)
     setDados(novo)
   }, [dados, modo, obraReal])
 
@@ -209,54 +297,66 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
 
   const registrar = useCallback(async (cardId: string, texto: string, perfil: 'empresa' | 'cliente', moveAba: boolean) => {
     if (!dados || !texto.trim()) return
+    // Anti duplo-clique: se outra mutação está rodando, ignora.
+    if (ocupadoRef.current) { console.warn('[registrar] ignorada — outra mutação em curso'); return }
+    ocupadoRef.current = true
+    setOcupado(true)
     const autor = perfil === 'empresa' ? 'Empresa' : 'Cliente'
-    if (modo === 'demo') {
-      setDados((d) => {
-        if (!d) return d
-        return {
-          ...d,
-          cards: d.cards.map((c) => {
-            if (c.id !== cardId) return c
-            const hist = [...c.historico, { autor, tipo: perfil as AutorTipo, data: agora(), texto, interno: false }]
-            let novaAba = c.aba
-            let novoSubStatus = c.subStatus
-            if (moveAba) {
-              if (c.aba === 'emandamento') novaAba = perfil === 'empresa' ? 'cliente' : 'empresa'
-              else if (c.aba === 'cliente') novaAba = 'empresa'
-              else if (c.aba === 'empresa') novaAba = 'cliente'
-              hist.push({ autor: 'Sistema', tipo: 'sistema', data: agora(), texto: 'Movido para aba ' + (novaAba === 'cliente' ? 'Cliente' : novaAba === 'empresa' ? 'Empresa' : novaAba) + '.', interno: true })
-              // Se empresa move pra cliente e tem sub-status interno, traduz
-              if (perfil === 'empresa' && novaAba === 'cliente') {
-                novoSubStatus = traduzirSubStatusParaCliente(c.subStatus)
+    try {
+      if (modo === 'demo') {
+        setDados((d) => {
+          if (!d) return d
+          return {
+            ...d,
+            cards: d.cards.map((c) => {
+              if (c.id !== cardId) return c
+              const hist = [...c.historico, { autor, tipo: perfil as AutorTipo, data: agora(), texto, interno: false }]
+              let novaAba = c.aba
+              let novoSubStatus = c.subStatus
+              if (moveAba) {
+                if (c.aba === 'emandamento') novaAba = perfil === 'empresa' ? 'cliente' : 'empresa'
+                else if (c.aba === 'cliente') novaAba = 'empresa'
+                else if (c.aba === 'empresa') novaAba = 'cliente'
+                hist.push({ autor: 'Sistema', tipo: 'sistema', data: agora(), texto: 'Movido para aba ' + (novaAba === 'cliente' ? 'Cliente' : novaAba === 'empresa' ? 'Empresa' : novaAba) + '.', interno: true })
+                // Se empresa move pra cliente e tem sub-status interno, traduz
+                if (perfil === 'empresa' && novaAba === 'cliente') {
+                  novoSubStatus = traduzirSubStatusParaCliente(c.subStatus)
+                }
               }
-            }
-            return { ...c, aba: novaAba, subStatus: novoSubStatus, historico: hist }
-          }),
-        }
-      })
-      return
-    }
-    if (!obraReal) return
-    const card = dados.cards.find((c) => c.id === cardId)
-    if (!card) return
-    await adicionarHistorico({ card_id: cardId, autor, autor_tipo: perfil, texto })
-    if (moveAba) {
-      let novaAba: AbaId = card.aba
-      if (card.aba === 'emandamento') novaAba = perfil === 'empresa' ? 'cliente' : 'empresa'
-      else if (card.aba === 'cliente') novaAba = 'empresa'
-      else if (card.aba === 'empresa') novaAba = 'cliente'
-      if (novaAba !== card.aba) {
-        const updates: any = { aba: novaAba }
-        // Quando empresa empurra pro cliente, traduz sub-status interno em algo amigável
-        if (perfil === 'empresa' && novaAba === 'cliente') {
-          updates.sub_status = traduzirSubStatusParaCliente(card.subStatus)
-        }
-        await atualizarCard(cardId, updates)
-        await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Movido para aba ' + (novaAba === 'cliente' ? 'Cliente' : 'Empresa') + '.', interno: true })
+              return { ...c, aba: novaAba, subStatus: novoSubStatus, historico: hist }
+            }),
+          }
+        })
+        return
       }
+      if (!obraReal) return
+      const card = dados.cards.find((c) => c.id === cardId)
+      if (!card) return
+      await adicionarHistorico({ card_id: cardId, autor, autor_tipo: perfil, texto })
+      if (moveAba) {
+        let novaAba: AbaId = card.aba
+        if (card.aba === 'emandamento') novaAba = perfil === 'empresa' ? 'cliente' : 'empresa'
+        else if (card.aba === 'cliente') novaAba = 'empresa'
+        else if (card.aba === 'empresa') novaAba = 'cliente'
+        if (novaAba !== card.aba) {
+          const updates: any = { aba: novaAba }
+          // Quando empresa empurra pro cliente, traduz sub-status interno em algo amigável
+          if (perfil === 'empresa' && novaAba === 'cliente') {
+            updates.sub_status = traduzirSubStatusParaCliente(card.subStatus)
+          }
+          await atualizarCard(cardId, updates)
+          await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Movido para aba ' + (novaAba === 'cliente' ? 'Cliente' : 'Empresa') + '.', interno: true })
+        }
+      }
+      // Patch otimista: recarregar só o card afetado, em vez de a obra inteira.
+      const novo = dados
+        ? await recarregarCard(obraReal, cardId, dados)
+        : await carregarDoBanco(obraReal)
+      setDados(novo)
+    } finally {
+      ocupadoRef.current = false
+      setOcupado(false)
     }
-    const novo = await carregarDoBanco(obraReal)
-    setDados(novo)
   }, [dados, modo, obraReal])
 
   // Cliente confirma item — fluxo varia por tipo:
@@ -293,7 +393,9 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
       await adicionarHistorico({ card_id: cardId, autor: 'Cliente', autor_tipo: 'cliente', texto })
       await atualizarCard(cardId, { aba: 'conclusao', encerrado: true, sub_status: 'Acordo aceito' })
       await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Acordo encerrado. Registro permanente na obra.', interno: false })
-      const novo = await carregarDoBanco(obraReal)
+      const novo = dados
+        ? await recarregarCard(obraReal, cardId, dados)
+        : await carregarDoBanco(obraReal)
       setDados(novo)
       return
     }
@@ -322,7 +424,9 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     await adicionarHistorico({ card_id: cardId, autor: 'Cliente', autor_tipo: 'cliente', texto })
     await atualizarCard(cardId, { aba: 'tecnica', sub_status: 'Aguardando visita técnica' })
     await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Card movido para aba Técnica. Empresa precisa agendar visita técnica para Medição 1.', interno: true })
-    const novo = await carregarDoBanco(obraReal)
+    const novo = dados
+      ? await recarregarCard(obraReal, cardId, dados)
+      : await carregarDoBanco(obraReal)
     setDados(novo)
   }, [dados, modo, obraReal])
 
@@ -352,7 +456,9 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     await adicionarHistorico({ card_id: cardId, autor: 'Empresa', autor_tipo: 'empresa', texto: textoMsg })
     await atualizarCard(cardId, { aba: 'cliente', sub_status: 'Aguardando instalação do contra-marco e vão pronto' })
     await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Contra-marco entregue. Card movido para o Cliente.', interno: true })
-    const novo = await carregarDoBanco(obraReal)
+    const novo = dados
+      ? await recarregarCard(obraReal, cardId, dados)
+      : await carregarDoBanco(obraReal)
     setDados(novo)
   }, [dados, modo, obraReal])
 
@@ -389,7 +495,9 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     await adicionarHistorico({ card_id: cardId, autor, autor_tipo: perfil, texto: textoMsg })
     await atualizarCard(cardId, { aba: 'tecnica', sub_status: 'Aguardando 2ª medição (M2)' })
     await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Card movido para aba Técnica. Empresa precisa agendar visita para Medição 2.', interno: true })
-    const novo = await carregarDoBanco(obraReal)
+    const novo = dados
+      ? await recarregarCard(obraReal, cardId, dados)
+      : await carregarDoBanco(obraReal)
     setDados(novo)
   }, [dados, modo, obraReal])
 
@@ -421,7 +529,9 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     await adicionarHistorico({ card_id: cardId, autor: 'Empresa', autor_tipo: 'empresa', texto: textoCliente })
     await atualizarCard(cardId, { aba: 'conclusao', encerrado: true, sub_status: 'Apontamento resolvido' })
     await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Apontamento resolvido. Card encerrado.', interno: true })
-    const novo = await carregarDoBanco(obraReal)
+    const novo = dados
+      ? await recarregarCard(obraReal, cardId, dados)
+      : await carregarDoBanco(obraReal)
     setDados(novo)
   }, [dados, modo, obraReal])
 
@@ -452,7 +562,9 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     await adicionarHistorico({ card_id: cardId, autor: 'Cliente', autor_tipo: 'cliente', texto: textoCliente })
     await atualizarCard(cardId, { aba: 'conclusao', encerrado: true, sub_status: 'Apontamento encerrado' })
     await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Apontamento encerrado pelo cliente (ciente).', interno: true })
-    const novo = await carregarDoBanco(obraReal)
+    const novo = dados
+      ? await recarregarCard(obraReal, cardId, dados)
+      : await carregarDoBanco(obraReal)
     setDados(novo)
   }, [dados, modo, obraReal])
 
@@ -471,7 +583,10 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     if (!obraReal || !supabase) return
     const { error } = await supabase.from('cards').delete().eq('id', cardId)
     if (error) throw error
-    const novo = await carregarDoBanco(obraReal)
+    // recarregarCard detecta cardRow null (card apagado) e remove do state local.
+    const novo = dados
+      ? await recarregarCard(obraReal, cardId, dados)
+      : await carregarDoBanco(obraReal)
     setDados(novo)
   }, [dados, modo, obraReal])
 
@@ -503,7 +618,9 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     await adicionarHistorico({ card_id: cardId, autor: 'Empresa', autor_tipo: 'empresa', texto: textoCliente })
     await atualizarCard(cardId, { encerrado: true, aba: 'conclusao', sub_status: 'Encerrado pela empresa' })
     await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Card encerrado pela empresa. Removido do fluxo ativo.', interno: true })
-    const novo = await carregarDoBanco(obraReal)
+    const novo = dados
+      ? await recarregarCard(obraReal, cardId, dados)
+      : await carregarDoBanco(obraReal)
     setDados(novo)
   }, [dados, modo, obraReal])
 
@@ -543,7 +660,9 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     })
     await adicionarHistorico({ card_id: cardId, autor: 'Cliente', autor_tipo: 'cliente', texto: 'Aceite final confirmado. Item oficialmente entregue e garantia iniciada.' })
     await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Card encerrado. Inicio de garantia registrado.' })
-    const novo = await carregarDoBanco(obraReal)
+    const novo = dados
+      ? await recarregarCard(obraReal, cardId, dados)
+      : await carregarDoBanco(obraReal)
     setDados(novo)
   }, [dados, modo, obraReal])
 
@@ -578,7 +697,9 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     await adicionarHistorico({ card_id: cardId, autor: 'Cliente', autor_tipo: perfil, texto })
     await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Cliente identificou problema. Card reaberto e enviado para Empresa.', interno: true })
     await atualizarCard(cardId, { aba: 'empresa', sub_status: 'Reaberto pelo cliente — aguardando correção' })
-    const novo = await carregarDoBanco(obraReal)
+    const novo = dados
+      ? await recarregarCard(obraReal, cardId, dados)
+      : await carregarDoBanco(obraReal)
     setDados(novo)
   }, [dados, modo, obraReal])
 
@@ -609,7 +730,9 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     await adicionarHistorico({ card_id: cardId, autor: 'Empresa', autor_tipo: 'empresa', texto: textoMsg })
     await atualizarCard(cardId, { aba: 'conclusao', sub_status: 'Aguardando aceite final' })
     await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Card devolvido pra Conclusão. Aguardando aceite do cliente.', interno: true })
-    const novo = await carregarDoBanco(obraReal)
+    const novo = dados
+      ? await recarregarCard(obraReal, cardId, dados)
+      : await carregarDoBanco(obraReal)
     setDados(novo)
   }, [dados, modo, obraReal])
 
@@ -713,10 +836,12 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
       await uploadFoto({ arquivo, obraId: obraReal.id, cardId })
       count++
     }
-    const novo = await carregarDoBanco(obraReal)
+    const novo = dados
+      ? await recarregarCard(obraReal, cardId, dados)
+      : await carregarDoBanco(obraReal)
     setDados(novo)
     return count
-  }, [modo, obraReal])
+  }, [dados, modo, obraReal])
 
   const removerFoto = useCallback(async (cardId: string, fotoId: string): Promise<void> => {
     if (modo === 'demo' || !obraReal || !supabase) {
@@ -838,10 +963,12 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
       }
     } catch {}
 
-    const dd = await carregarDoBanco(obraReal)
+    const dd = dados
+      ? await recarregarCard(obraReal, cardId, dados)
+      : await carregarDoBanco(obraReal)
     setDados(dd)
     return novo
-  }, [modo, obraReal])
+  }, [dados, modo, obraReal])
 
   const salvarMedicao2Card = useCallback(async (cardId: string, dadosForm: DadosMedicao2, autorNome: string): Promise<Checklist> => {
     if (modo === 'demo' || !obraReal) {
@@ -905,10 +1032,12 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
       }
     } catch {}
 
-    const dd = await carregarDoBanco(obraReal)
+    const dd = dados
+      ? await recarregarCard(obraReal, cardId, dados)
+      : await carregarDoBanco(obraReal)
     setDados(dd)
     return novo
-  }, [modo, obraReal])
+  }, [dados, modo, obraReal])
 
   const resetar = useCallback(() => {
     if (modo !== 'demo') return
@@ -916,5 +1045,5 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     setDados(structuredClone(SEED))
   }, [modo, idOrToken])
 
-  return { dados, modo, obraReal, carregando, erro, alterarStatus, registrar, confirmarItem, marcarContraMarcoEntregue, marcarVaoPronto, marcarApontamentoResolvido, marcarApontamentoCiente, encerrarCard, apagarCard, marcarCorrigido, darAceite, reabrir, criarNovo, importarItens, adicionarFotos, removerFoto, salvarMedicao1Card, salvarMedicao2Card, resetar }
+  return { dados, modo, obraReal, carregando, ocupado, erro, alterarStatus, registrar, confirmarItem, marcarContraMarcoEntregue, marcarVaoPronto, marcarApontamentoResolvido, marcarApontamentoCiente, encerrarCard, apagarCard, marcarCorrigido, darAceite, reabrir, criarNovo, importarItens, adicionarFotos, removerFoto, salvarMedicao1Card, salvarMedicao2Card, resetar }
 }

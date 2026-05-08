@@ -52,7 +52,14 @@ export interface HistoricoRow {
 
 export async function pegarMinhaEmpresa() {
   if (!supabase) return null
-  const { data, error } = await supabase.from('empresas').select('*').limit(1).maybeSingle()
+  // Campos especificos — evita trazer onboarding_status (jsonb pesado) e
+  // colunas de auditoria. Onboarding status tem sua propria query.
+  // Audit Sprint B item P2.
+  const { data, error } = await supabase
+    .from('empresas')
+    .select('id, nome, cnpj, telefone, owner_user_id, atualizado_em')
+    .limit(1)
+    .maybeSingle()
   if (error) throw error
   return data
 }
@@ -120,9 +127,12 @@ export async function listarMeusAceites(): Promise<AceiteRow[]> {
 
 export async function listarObras() {
   if (!supabase) return []
+  // Campos especificos — pra listagem na tela /app/obras nao precisamos de
+  // cliente_email/telefone, e_encerrada (raro), nem outros pesados.
+  // Audit Sprint B item P2.
   const { data, error } = await supabase
     .from('obras')
-    .select('*')
+    .select('id, empresa_id, nome, endereco, cliente_nome, inicio, token_cliente, encerrada, created_at')
     .order('created_at', { ascending: false })
   if (error) throw error
   return (data ?? []) as ObraRow[]
