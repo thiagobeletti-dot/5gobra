@@ -366,11 +366,18 @@ export async function marcarOnboardingFlag(flag: keyof OnboardingStatus): Promis
   // Usa a function helper do banco (evita race condition na fusao do jsonb)
   const { error } = await supabase.rpc('marcar_onboarding', { p_flag: flag })
   if (error) {
-    // Fallback: update direto se a function ainda nao existir
-    const empresa = await pegarMinhaEmpresa()
-    if (!empresa) return
-    const novoStatus = { ...onboardingDefault, ...(empresa.onboarding_status ?? {}), [flag]: true }
-    await supabase.from('empresas').update({ onboarding_status: novoStatus }).eq('id', empresa.id)
+    // Fallback: update direto se a function ainda nao existir.
+    // Query especifica pra trazer apenas o jsonb (em vez de pegarMinhaEmpresa
+    // que foi otimizada pra nao trazer onboarding_status — Sprint B.2).
+    const { data: row } = await supabase
+      .from('empresas')
+      .select('id, onboarding_status')
+      .limit(1)
+      .maybeSingle()
+    if (!row) return
+    const statusAtual = (row as { onboarding_status?: Partial<OnboardingStatus> }).onboarding_status ?? {}
+    const novoStatus = { ...onboardingDefault, ...statusAtual, [flag]: true }
+    await supabase.from('empresas').update({ onboarding_status: novoStatus }).eq('id', row.id)
   }
 }
 
