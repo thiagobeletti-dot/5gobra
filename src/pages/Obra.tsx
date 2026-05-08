@@ -107,10 +107,24 @@ export default function Obra() {
     navigate('/')
   }
 
+  // CRITICAL: hooks (useMemo, useCallback, useEffect, useState) precisam ser chamados
+  // SEMPRE na mesma ordem em todo render, antes de qualquer early return. Caso contrario
+  // o React quebra com erro #310 ("Rendered more hooks than during the previous render").
+  // Use optional chaining + fallbacks pra lidar com data.dados=null durante carregamento.
   const cardAberto = useMemo(
     () => data.dados?.cards.find((c) => c.id === cardAbertoId) ?? null,
     [data.dados, cardAbertoId]
   )
+  const cardsDaAba = useMemo(
+    () => (data.dados?.cards ?? []).filter((c) => c.aba === abaAtiva),
+    [data.dados, abaAtiva],
+  )
+  const contagensPorAba = useMemo(() => {
+    const m = new Map<AbaId, number>()
+    for (const c of data.dados?.cards ?? []) m.set(c.aba, (m.get(c.aba) ?? 0) + 1)
+    return m
+  }, [data.dados])
+  const contagem = (a: AbaId) => contagensPorAba.get(a) ?? 0
 
   if (data.carregando) {
     return <div className="min-h-screen flex items-center justify-center text-slate-500">Carregando obra...</div>
@@ -126,19 +140,6 @@ export default function Obra() {
   }
 
   const dados = data.dados
-  // useMemo evita refiltrar a lista a cada render (re-render por toast,
-  // mudança de outros estados, etc). Audit Sprint B item P4.
-  const cardsDaAba = useMemo(
-    () => dados.cards.filter((c) => c.aba === abaAtiva),
-    [dados.cards, abaAtiva],
-  )
-  // Pré-computa contagem por aba uma vez por render (em vez de N filters).
-  const contagensPorAba = useMemo(() => {
-    const m = new Map<AbaId, number>()
-    for (const c of dados.cards) m.set(c.aba, (m.get(c.aba) ?? 0) + 1)
-    return m
-  }, [dados.cards])
-  const contagem = (a: AbaId) => contagensPorAba.get(a) ?? 0
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] min-h-screen">

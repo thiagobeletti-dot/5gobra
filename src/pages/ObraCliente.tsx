@@ -22,9 +22,27 @@ export default function ObraCliente() {
     window.setTimeout(() => setToastMsg(null), 4000)
   }
 
+  // CRITICAL: hooks SEMPRE antes de qualquer early return (Regras dos Hooks).
+  // React quebra com erro #310 se a ordem variar entre renders.
   const cardAberto = useMemo(
     () => data.dados?.cards.find((c) => c.id === cardAbertoId) ?? null,
     [data.dados, cardAbertoId]
+  )
+  const cardsDaAba = useMemo(
+    () => (data.dados?.cards ?? []).filter((c) => c.aba === abaAtiva),
+    [data.dados, abaAtiva],
+  )
+  const contagensPorAba = useMemo(() => {
+    const m = new Map<AbaId, number>()
+    for (const c of data.dados?.cards ?? []) m.set(c.aba, (m.get(c.aba) ?? 0) + 1)
+    return m
+  }, [data.dados])
+  const contagem = (a: AbaId) => contagensPorAba.get(a) ?? 0
+  const meusPendentes = useMemo(
+    () => (data.dados?.cards ?? []).filter((c) =>
+      !c.encerrado && (c.aba === 'cliente' || (c.aba === 'conclusao' && !c.aceiteFinal))
+    ).length,
+    [data.dados],
   )
 
   if (data.carregando) {
@@ -41,23 +59,6 @@ export default function ObraCliente() {
   }
 
   const dados = data.dados
-  // useMemo evita refilter a cada render. Audit Sprint B item P4.
-  const cardsDaAba = useMemo(
-    () => dados.cards.filter((c) => c.aba === abaAtiva),
-    [dados.cards, abaAtiva],
-  )
-  const contagensPorAba = useMemo(() => {
-    const m = new Map<AbaId, number>()
-    for (const c of dados.cards) m.set(c.aba, (m.get(c.aba) ?? 0) + 1)
-    return m
-  }, [dados.cards])
-  const contagem = (a: AbaId) => contagensPorAba.get(a) ?? 0
-  const meusPendentes = useMemo(
-    () => dados.cards.filter((c) =>
-      !c.encerrado && (c.aba === 'cliente' || (c.aba === 'conclusao' && !c.aceiteFinal))
-    ).length,
-    [dados.cards],
-  )
 
   return (
     <div className="min-h-screen flex flex-col">
