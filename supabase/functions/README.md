@@ -83,3 +83,68 @@ Cada PDF tem:
 - Texto integral do snapshot que foi aceito (mesmo conteúdo cuja versão e hash
   foram registrados em `aceites.documento_snapshot`)
 - Footer com paginação `1/N` e identificação do documento
+
+---
+
+## criar-assinatura-asaas + webhook-asaas
+
+Integração de cobrança recorrente com Asaas. 2 funções:
+- **`criar-assinatura-asaas`**: cliente clica "Ativar plano" no app → função cria
+  cliente no Asaas + assinatura mensal → retorna `invoiceUrl` pra redirect.
+- **`webhook-asaas`**: Asaas envia eventos (PAYMENT_CONFIRMED, PAYMENT_OVERDUE etc) →
+  função atualiza tabela `assinaturas` no Supabase.
+
+### Pré-requisitos pra deploy
+
+1. **Rodar SQL** `supabase/asaas-assinaturas.sql` no SQL Editor do Supabase Dashboard.
+2. **Conta Asaas** (sandbox primeiro): https://sandbox.asaas.com — criar conta de teste.
+3. **API Key Asaas**: painel Asaas → Integrações → Chave API → Gerar nova chave API.
+   - Sandbox começa com `$aact_hmlg_`
+   - Produção começa com `$aact_prod_`
+4. **Token de webhook personalizado**: gerar string aleatória forte (ex: `openssl rand -hex 32`)
+   pra usar como `ASAAS_WEBHOOK_TOKEN`. A mesma string vai no painel Asaas E no secret.
+
+### Secrets no Supabase
+
+Via Dashboard → Edge Functions → Secrets, adicionar:
+
+```
+ASAAS_API_KEY        = $aact_hmlg_xxxxxxxxxxxxxxxx
+ASAAS_API_URL        = https://api-sandbox.asaas.com/v3
+ASAAS_WEBHOOK_TOKEN  = <gerar string forte com openssl rand -hex 32>
+```
+
+Em produção, troca `ASAAS_API_KEY` pra `$aact_prod_...` e `ASAAS_API_URL` pra `https://api.asaas.com/v3`.
+
+### Deploy das funções
+
+Via Dashboard (sem CLI), pra cada função:
+
+1. Edge Functions → Deploy a new function → Via Editor
+2. Nome: `criar-assinatura-asaas` (depois repete pra `webhook-asaas`)
+3. Cola o conteúdo de `supabase/functions/<nome>/index.ts`
+4. Deploy → status verde "Active"
+
+### Configurar webhook no painel Asaas
+
+Painel Asaas → Integrações → Webhooks → Adicionar webhook:
+
+- **URL**: `https://romublbgvlmjuwazuqqu.supabase.co/functions/v1/webhook-asaas`
+- **E-mail pra notificações de erro**: thiagobeletti@gmail.com
+- **Token**: cole o mesmo `ASAAS_WEBHOOK_TOKEN` que pôs no Supabase
+- **Eventos a enviar**: marca todos os `PAYMENT_*` (CREATED, CONFIRMED, RECEIVED, OVERDUE, REFUNDED, DELETED) e `SUBSCRIPTION_INACTIVATED`
+- **Ativar fila**: sim
+- **Tipo de envio**: SEQUENTIALLY (evita duplicar processamento)
+
+### Testar fluxo (sandbox)
+
+1. App em produção (Vercel) → `/app/configuracoes` → bloco "Plano e cobrança" → "Ativar plano"
+2. Redireciona pra página Asaas em nova aba
+3. Pagar com cartão de teste: `4444 4444 4444 4444`, CVV `123`, qualquer data futura
+4. Volta pro app → status muda pra "Plano ativo" (via webhook em ~5s)
+
+### Quando ir pra produção
+
+1. Troca os 2 secrets (`ASAAS_API_KEY` pra `$aact_prod_` e `ASAAS_API_URL` pra `https://api.asaas.com/v3`)
+2. Cria webhook novo no painel **de produção** do Asaas (não no sandbox)
+3. Solicita ao gerente Asaas a habilitação de tokenização de cartão se um dia quiser checkout transparente (não precisa pra página hospedada)

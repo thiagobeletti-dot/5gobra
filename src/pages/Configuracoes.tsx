@@ -1,9 +1,10 @@
 // Pagina de Configuracoes do G Obra — rota /app/configuracoes
 //
-// 3 blocos:
+// 4 blocos:
 //   1. Dados da empresa (nome, CNPJ, telefone) — editaveis com botao Salvar
 //   2. Trocar senha — Supabase Auth updateUser
-//   3. Contratos aceitos — lista da tabela aceites com expandir pra ver texto
+//   3. Plano e cobrança — assinatura Asaas (status, próximo vencimento, ativar/pagar)
+//   4. Contratos aceitos — lista da tabela aceites com expandir pra ver texto
 
 import { useEffect, useState, FormEvent } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
@@ -17,6 +18,12 @@ import {
   type AceiteRow,
 } from '../lib/api'
 import { enviarPdfsDeAceite } from '../lib/email-aceites'
+import {
+  pegarMinhaAssinatura,
+  ativarAssinatura,
+  rotuloStatus,
+  type AssinaturaRow,
+} from '../lib/asaas'
 
 export default function Configuracoes() {
   const navigate = useNavigate()
@@ -39,7 +46,13 @@ export default function Configuracoes() {
   const [salvandoSenha, setSalvandoSenha] = useState(false)
   const [msgSenha, setMsgSenha] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null)
 
-  // Bloco 3: Contratos aceitos
+  // Bloco 3: Plano e cobrança (Asaas)
+  const [assinatura, setAssinatura] = useState<AssinaturaRow | null>(null)
+  const [carregandoAssinatura, setCarregandoAssinatura] = useState(true)
+  const [ativandoPlano, setAtivandoPlano] = useState(false)
+  const [msgPlano, setMsgPlano] = useState<{ tipo: 'ok' | 'erro' | 'aviso'; texto: string } | null>(null)
+
+  // Bloco 4: Contratos aceitos
   const [aceites, setAceites] = useState<AceiteRow[]>([])
   const [aceiteAberto, setAceiteAberto] = useState<string | null>(null)
   const [reenviando, setReenviando] = useState(false)
@@ -58,6 +71,11 @@ export default function Configuracoes() {
       }
       const lista = await listarMeusAceites()
       if (ativo) setAceites(lista)
+      const ass = await pegarMinhaAssinatura()
+      if (ativo) {
+        setAssinatura(ass)
+        setCarregandoAssinatura(false)
+      }
     })()
     return () => { ativo = false }
   }, [])
@@ -113,6 +131,47 @@ export default function Configuracoes() {
     }
   }
 
+  async function ativarPlano(e: FormEvent) {
+    e.preventDefault()
+    if (!empresaId) return
+    if (!nomeEmpresa.trim() || !cnpj.trim()) {
+      setMsgPlano({ tipo: 'erro', texto: 'Preenche e salve nome e CNPJ no bloco 1 antes de ativar o plano.' })
+      return
+    }
+    if (!user?.email) {
+      setMsgPlano({ tipo: 'erro', texto: 'E-mail do administrador nao disponivel.' })
+      return
+    }
+    setAtivandoPlano(true)
+    setMsgPlano(null)
+    try {
+      const r = await ativarAssinatura({
+        empresaId,
+        cpfCnpj: cnpj,
+        nomeCompleto: nomeEmpresa,
+        email: user.email,
+        telefone: telefone || undefined,
+      })
+      if (!r.ok) {
+        setMsgPlano({ tipo: 'erro', texto: r.error ?? 'Erro ao ativar plano' })
+        return
+      }
+      // Recarrega assinatura do banco e redireciona pro pagamento
+      const ass = await pegarMinhaAssinatura()
+      setAssinatura(ass)
+      if (r.invoiceUrl) {
+        window.open(r.invoiceUrl, '_blank', 'noopener,noreferrer')
+        setMsgPlano({ tipo: 'ok', texto: 'Pagina de pagamento aberta em nova aba. Concluido o pagamento, o plano fica ativo automaticamente.' })
+      } else {
+        setMsgPlano({ tipo: 'aviso', texto: 'Assinatura criada, mas nao consegui obter o link de pagamento. Atualize a pagina.' })
+      }
+    } catch (err) {
+      setMsgPlano({ tipo: 'erro', texto: (err as { message?: string })?.message ?? 'Erro inesperado' })
+    } finally {
+      setAtivandoPlano(false)
+    }
+  }
+
   async function reenviarPdfs() {
     if (!empresaId) return
     setReenviando(true)
@@ -148,6 +207,12 @@ export default function Configuracoes() {
 
   function formatarData(iso: string): string {
     return new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+  }
+
+  function formatarDataPtBr(yyyymmdd: string): string {
+    if (!yyyymmdd) return '-'
+    const [y, m, d] = yyyymmdd.split('-')
+    return d + '/' + m + '/' + y
   }
 
   return (
@@ -231,9 +296,112 @@ export default function Configuracoes() {
           </form>
         </section>
 
-        {/* Bloco 3: Contratos aceitos */}
+        {/* Bloco 3: Plano e cobrança (Asaas) */}
         <section className="mb-10">
-          <h2 className="text-lg font-bold mb-3">3. Contratos aceitos</h2>
+          <h2 className="text-lg font-bold mb-3">3. Plano e cobrança</h2>
+          {carregandoAssinatura ? (
+            <div className="bg-white border border-slate-200 rounded-xl p-6 text-center text-sm text-slate-500">
+              Carregando dados do plano...
+            </div>
+          ) : assinatura?.status === 'ativa' ? (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-6">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="bg-emerald-600 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">{rotuloStatus(assinatura.status)}</span>
+              </div>
+              <p className="text-sm text-emerald-900 mb-1">
+                Plano G Obra mensal: <strong>R$ {(assinatura.valor_centavos / 100).toFixed(2).replace('.', ',')}</strong>
+              </p>
+              {assinatura.proximo_vencimento && (
+                <p className="text-xs text-emerald-800">
+                  Próximo vencimento: {formatarDataPtBr(assinatura.proximo_vencimento)}
+                </p>
+              )}
+              {assinatura.fatura_atual_url && (
+                <a
+                  href={assinatura.fatura_atual_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block mt-3 text-xs text-emerald-700 hover:text-emerald-900 underline"
+                >
+                  Ver fatura atual no Asaas →
+                </a>
+              )}
+            </div>
+          ) : assinatura?.status === 'pendente' ? (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="bg-amber-600 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">{rotuloStatus(assinatura.status)}</span>
+              </div>
+              <p className="text-sm text-amber-900 mb-3">
+                Sua assinatura foi criada mas ainda não recebemos a confirmação do primeiro pagamento. Pague pelo link abaixo pra liberar o sistema.
+              </p>
+              {assinatura.fatura_atual_url && (
+                <a
+                  href={assinatura.fatura_atual_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-primary text-sm inline-block"
+                >
+                  Pagar agora →
+                </a>
+              )}
+            </div>
+          ) : assinatura?.status === 'atrasada' ? (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-6">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">{rotuloStatus(assinatura.status)}</span>
+              </div>
+              <p className="text-sm text-red-900 mb-3">
+                Sua fatura está vencida. Você ainda tem acesso por mais alguns dias, mas regularize pra evitar bloqueio.
+              </p>
+              {assinatura.fatura_atual_url && (
+                <a
+                  href={assinatura.fatura_atual_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-primary text-sm inline-block"
+                >
+                  Pagar agora →
+                </a>
+              )}
+            </div>
+          ) : (
+            <div className="bg-white border border-slate-200 rounded-xl p-6">
+              <p className="text-sm text-slate-700 mb-1">
+                Plano G Obra mensal: <strong>R$ 349,00</strong>
+              </p>
+              <p className="text-xs text-slate-500 mb-4">
+                Sem fidelidade. Garantia incondicional de 14 dias com reembolso integral. Cartão, boleto ou PIX.
+              </p>
+              <form onSubmit={ativarPlano}>
+                <button type="submit" className="btn-primary text-sm" disabled={ativandoPlano || !empresaId || !cnpj.trim()}>
+                  {ativandoPlano ? 'Criando assinatura...' : 'Ativar plano'}
+                </button>
+                {!cnpj.trim() && (
+                  <p className="text-xs text-amber-700 mt-2">⚠ Preencha CNPJ no bloco 1 e salve antes de ativar o plano.</p>
+                )}
+              </form>
+            </div>
+          )}
+          {msgPlano && (
+            <div
+              className={
+                'mt-4 text-sm rounded-md px-3 py-2 ' +
+                (msgPlano.tipo === 'ok'
+                  ? 'text-emerald-700 bg-emerald-50 border border-emerald-200'
+                  : msgPlano.tipo === 'aviso'
+                    ? 'text-amber-700 bg-amber-50 border border-amber-200'
+                    : 'text-red-700 bg-red-50 border border-red-200')
+              }
+            >
+              {msgPlano.texto}
+            </div>
+          )}
+        </section>
+
+        {/* Bloco 4: Contratos aceitos */}
+        <section className="mb-10">
+          <h2 className="text-lg font-bold mb-3">4. Contratos aceitos</h2>
           <p className="text-sm text-slate-500 mb-4">
             Histórico de tudo que você aceitou no sistema. Cada aceite tem data, hora, IP e hash do documento — prova jurídica.
           </p>
