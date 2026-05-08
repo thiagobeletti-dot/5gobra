@@ -62,7 +62,7 @@ export default function Obras() {
     if (obras.length > 0 && onboarding && !onboarding.primeira_obra_criada) {
       marcarOnboardingFlag('primeira_obra_criada')
         .then(() => setOnboarding({ ...onboarding, primeira_obra_criada: true }))
-        .catch(() => {})
+        .catch((e) => console.warn('[Obras] marcar primeira_obra_criada falhou:', e))
     }
   }, [obras.length, onboarding])
 
@@ -72,9 +72,9 @@ export default function Obras() {
 
   async function tourTerminado(dispensado: boolean) {
     setTourAtivo(false)
-    await marcarOnboardingFlag('tour_visto').catch(() => {})
+    await marcarOnboardingFlag('tour_visto').catch((e) => console.warn('[Obras] marcar tour_visto falhou:', e))
     if (dispensado) {
-      await marcarOnboardingFlag('tour_dispensado').catch(() => {})
+      await marcarOnboardingFlag('tour_dispensado').catch((e) => console.warn('[Obras] marcar tour_dispensado falhou:', e))
     }
     if (onboarding) {
       setOnboarding({
@@ -86,7 +86,7 @@ export default function Obras() {
   }
 
   async function dispensarBanner() {
-    await marcarOnboardingFlag('tour_dispensado').catch(() => {})
+    await marcarOnboardingFlag('tour_dispensado').catch((e) => console.warn('[Obras] marcar tour_dispensado falhou:', e))
     if (onboarding) setOnboarding({ ...onboarding, tour_dispensado: true })
   }
 
@@ -108,8 +108,10 @@ export default function Obras() {
       setLinkCopiado(obra.id)
       window.setTimeout(() => setLinkCopiado(null), 2400)
     } catch {
-      // Fallback: abre prompt pra copiar manualmente
-      window.prompt('Link do cliente (copie):', url)
+      // Fallback: alerta com o link pra copiar manualmente.
+      // Só roda em browsers muito antigos ou contextos sem HTTPS.
+      console.warn('[Obras] navigator.clipboard indisponivel, fallback pra alert')
+      alert('Copie esse link manualmente:\n\n' + url)
     }
   }
 

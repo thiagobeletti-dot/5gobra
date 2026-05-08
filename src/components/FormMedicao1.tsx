@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { DadosMedicao1, Tipologia } from '../types/checklist'
 import { VAZIO_MEDICAO1, ROTULOS_TIPOLOGIA } from '../types/checklist'
+import { useEscClose } from '../hooks/useEscClose'
 
 interface Props {
   inicial?: DadosMedicao1 | null
@@ -110,6 +111,7 @@ export default function FormMedicao1({ inicial, onSalvar, onCancelar }: Props) {
   const [d, setD] = useState<DadosMedicao1>(inicial ?? VAZIO_MEDICAO1)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  useEscClose(true, onCancelar)
 
   function up<K extends keyof DadosMedicao1>(k: K, v: DadosMedicao1[K]) {
     setD((s) => ({ ...s, [k]: v }))
@@ -232,7 +234,7 @@ export default function FormMedicao1({ inicial, onSalvar, onCancelar }: Props) {
             <div className="text-base md:text-lg font-bold">Triagem da obra</div>
             <div className="text-xs text-slate-500 mt-0.5">Decide se vai ter contra-marco e se o vão tá pronto pra tirar medida final.</div>
           </div>
-          <button onClick={onCancelar} className="w-8 h-8 rounded-md bg-slate-100 text-slate-500 grid place-items-center hover:bg-slate-200 hover:text-slate-900 transition">x</button>
+          <button onClick={onCancelar} className="w-8 h-8 rounded-md bg-slate-100 text-slate-500 grid place-items-center hover:bg-slate-200 hover:text-slate-900 transition" aria-label="Fechar">×</button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 md:px-6 py-4 md:py-5 space-y-4">

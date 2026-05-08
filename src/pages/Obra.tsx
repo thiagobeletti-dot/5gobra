@@ -15,6 +15,8 @@ import type { DadosMedicao1, DadosMedicao2 } from '../types/checklist'
 import { resumoMedicao1, resumoMedicao2, VAZIO_MEDICAO1, VAZIO_MEDICAO2, ROTULOS_TIPOLOGIA } from '../types/checklist'
 import TourObra from '../components/TourObra'
 import ModalDocumentos from '../components/ModalDocumentos'
+import { useConfirm } from '../hooks/useConfirm'
+import { useEscClose } from '../hooks/useEscClose'
 import { marcarOnboardingFlag, pegarOnboardingStatus, pegarMinhaEmpresa, type OnboardingStatus } from '../lib/api'
 
 export default function Obra() {
@@ -37,6 +39,7 @@ export default function Obra() {
   const [documentosAberto, setDocumentosAberto] = useState(false)
   const [empresaInfo, setEmpresaInfo] = useState<{ nome: string; cnpj?: string | null } | null>(null)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
+  const { confirmar, dialog: confirmDialog } = useConfirm()
 
   // Tour 2 — busca onboarding status do banco e decide se dispara o tour.
   // IMPORTANTE: estes hooks tem que ficar ANTES dos early returns abaixo,
@@ -44,10 +47,10 @@ export default function Obra() {
   // diferente entre renders -> tela branca).
   useEffect(() => {
     if (data.modo !== 'banco') return
-    pegarOnboardingStatus().then(setOnboarding).catch(() => {})
+    pegarOnboardingStatus().then(setOnboarding).catch((e) => console.warn('[Obra] pegarOnboardingStatus falhou:', e))
     pegarMinhaEmpresa().then((e) => {
       if (e) setEmpresaInfo({ nome: e.nome, cnpj: (e as { cnpj?: string }).cnpj })
-    }).catch(() => {})
+    }).catch((e) => console.warn('[Obra] pegarMinhaEmpresa falhou:', e))
   }, [data.modo])
 
   // Quando temos o onboarding, decidimos se o tour dispara:
@@ -73,12 +76,12 @@ export default function Obra() {
     // antes do banco devolver. Sem isso, ha uma janela onde tourObraAtivo=false e
     // onboarding.tour_obra_visto ainda eh false → useEffect reativa o tour.
     if (onboarding) setOnboarding({ ...onboarding, tour_obra_visto: true })
-    await marcarOnboardingFlag('tour_obra_visto').catch(() => {})
+    await marcarOnboardingFlag('tour_obra_visto').catch((e) => console.warn('[Obra] marcar tour_obra_visto falhou:', e))
   }
 
   function toast(msg: string) {
     setToastMsg(msg)
-    window.setTimeout(() => setToastMsg(null), 2400)
+    window.setTimeout(() => setToastMsg(null), 4000)
   }
 
   async function logout() {
@@ -97,7 +100,7 @@ export default function Obra() {
   if (data.erro || !data.dados) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-slate-600 px-6 text-center">
-        <p>Nao foi possivel carregar essa obra.</p>
+        <p>Não foi possível carregar essa obra.</p>
         <p className="text-sm text-slate-400">{data.erro ?? 'Obra inexistente'}</p>
         <Link to="/app/obras" className="btn-primary">Voltar pras obras</Link>
       </div>
@@ -150,11 +153,15 @@ export default function Obra() {
           </Link>
         )}
         {data.modo === 'demo' && (
-          <NavItem onClick={() => {
-            if (confirm('Reiniciar o prototipo e voltar aos dados-exemplo?')) {
-              data.resetar()
-              toast('Demo reiniciada')
-            }
+          <NavItem onClick={async () => {
+            const ok = await confirmar({
+              titulo: 'Reiniciar a demo?',
+              descricao: 'Tudo que você adicionou no protótipo vai voltar aos dados de exemplo. Essa ação não afeta dados reais.',
+              labelConfirmar: 'Reiniciar',
+            })
+            if (ok === null) return
+            data.resetar()
+            toast('Demo reiniciada')
           }}>Reiniciar demo</NavItem>
         )}
         <div className="mt-auto pt-4 border-t border-slate-200">
@@ -284,41 +291,76 @@ export default function Obra() {
           onAbrirMedicao1={() => setFormM1Aberto(cardAberto.id)}
           onAbrirMedicao2={() => setFormM2Aberto(cardAberto.id)}
           onMarcarContraMarcoEntregue={async () => {
+            const ok = await confirmar({
+              titulo: 'Marcar contra-marco como entregue em obra?',
+              descricao: 'O card vai pro cliente esperar a instalação.',
+              labelConfirmar: 'Marcar como entregue',
+            })
+            if (ok === null) return
             await data.marcarContraMarcoEntregue(cardAberto.id)
             setCardAbertoId(null)
             toast('Contra-marco marcado como entregue')
           }}
           onMarcarVaoPronto={async () => {
+            const ok = await confirmar({
+              titulo: 'Marcar vão como pronto?',
+              descricao: 'O card vai pra Técnica aguardando a Medição 2 (M2).',
+              labelConfirmar: 'Marcar como pronto',
+            })
+            if (ok === null) return
             await data.marcarVaoPronto(cardAberto.id, 'empresa')
             setCardAbertoId(null)
             toast('Vão marcado como pronto — aguardando M2')
           }}
           onEncerrar={async () => {
-            const motivo = prompt('Motivo do encerramento (vai aparecer pro cliente):')
-            if (!motivo || !motivo.trim()) { toast('Encerramento cancelado'); return }
-            if (!confirm('Confirma encerrar este item? Essa ação remove o item do fluxo ativo.')) return
+            const motivo = await confirmar({
+              titulo: 'Encerrar este item?',
+              descricao: 'O item sai do fluxo ativo. O motivo aparece pro cliente no histórico.',
+              pedirMotivo: true,
+              placeholderMotivo: 'Conte o motivo do encerramento (aparece pro cliente)',
+              labelConfirmar: 'Encerrar item',
+              destrutivo: true,
+            })
+            if (motivo === null) return
+            if (!motivo.trim()) { toast('Encerramento cancelado — sem motivo informado'); return }
             await data.encerrarCard(cardAberto.id, motivo)
             setCardAbertoId(null)
             toast('Item encerrado')
           }}
           onResolverApontamento={async () => {
-            const resolucao = prompt('O que foi feito pra resolver? (vai aparecer pro cliente)')
-            if (!resolucao || !resolucao.trim()) { toast('Resolução cancelada'); return }
-            if (!confirm('Confirma marcar como resolvido?')) return
+            const resolucao = await confirmar({
+              titulo: 'Marcar este apontamento como resolvido?',
+              descricao: 'A descrição do que foi feito aparece pro cliente no histórico.',
+              pedirMotivo: true,
+              placeholderMotivo: 'O que foi feito pra resolver (aparece pro cliente)',
+              labelConfirmar: 'Marcar como resolvido',
+            })
+            if (resolucao === null) return
+            if (!resolucao.trim()) { toast('Resolução cancelada — sem descrição'); return }
             await data.marcarApontamentoResolvido(cardAberto.id, resolucao)
             setCardAbertoId(null)
             toast('Apontamento resolvido')
           }}
           onMarcarCorrigido={async () => {
-            if (!confirm('Marcar como corrigido? O card volta pra Conclusão e cliente pode dar aceite novamente.')) return
+            const ok = await confirmar({
+              titulo: 'Marcar como corrigido?',
+              descricao: 'O card volta pra Conclusão e o cliente pode dar aceite novamente.',
+              labelConfirmar: 'Marcar como corrigido',
+            })
+            if (ok === null) return
             await data.marcarCorrigido(cardAberto.id)
             setCardAbertoId(null)
             toast('Marcado como corrigido — aguardando novo aceite')
           }}
           onApagar={async () => {
-            if (!confirm('APAGAR este item permanentemente? Toda informação (histórico, fotos, checklists) será apagada do banco. Cliente NÃO vai ver nenhum registro disso. Essa ação não pode ser desfeita.')) return
-            const confirmar = prompt('Pra confirmar, digite APAGAR:')
-            if (confirmar !== 'APAGAR') { toast('Apagamento cancelado'); return }
+            const ok = await confirmar({
+              titulo: 'Apagar este item permanentemente?',
+              descricao: 'Toda informação (histórico, fotos, checklists) será apagada do banco. O cliente NÃO vai ver nenhum registro disso. Essa ação não pode ser desfeita.',
+              digitacaoExigida: 'APAGAR',
+              destrutivo: true,
+              labelConfirmar: 'Apagar item permanentemente',
+            })
+            if (ok === null) return
             await data.apagarCard(cardAberto.id)
             setCardAbertoId(null)
             toast('Item apagado')
@@ -421,6 +463,8 @@ export default function Obra() {
         aberto={documentosAberto}
         onFechar={() => setDocumentosAberto(false)}
       />
+
+      {confirmDialog}
 
 
       {toastMsg && (
@@ -551,6 +595,7 @@ function ModalCard({
   onApagar: () => Promise<void>
 }) {
   const [texto, setTexto] = useState('')
+  useEscClose(true, onClose)
   const tipoLabel = { peca: 'Item', acordo: 'Acordo', reclamacao: 'Apontamento' }[card.tipo]
   const abaLabel = ABAS.find((a) => a.id === card.aba)?.rotulo
   const siglaCls = card.tipo === 'peca'
@@ -566,7 +611,7 @@ function ModalCard({
             <div className="text-lg font-bold mb-1">{card.nome}</div>
             <div className="text-sm text-slate-500">{card.descricao}</div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-md bg-slate-100 text-slate-500 grid place-items-center hover:bg-slate-200 hover:text-slate-900 transition">x</button>
+          <button onClick={onClose} className="w-8 h-8 rounded-md bg-slate-100 text-slate-500 grid place-items-center hover:bg-slate-200 hover:text-slate-900 transition" aria-label="Fechar">×</button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
@@ -614,7 +659,7 @@ function ModalCard({
             <div className="bg-laranja-soft border border-laranja-border rounded-lg px-4 py-4">
               <div className="font-bold text-sm text-laranja-dark mb-1">🛠 Em fabricação do contra-marco</div>
               <p className="text-xs text-slate-700 mb-3">Quando o contra-marco for fabricado e entregue na obra, marque abaixo. O card vai pra cliente esperar a instalação.</p>
-              <button className="btn-primary" onClick={async () => { if (confirm('Marcar contra-marco como entregue em obra?')) await onMarcarContraMarcoEntregue() }}>Marcar como entregue →</button>
+              <button className="btn-primary" onClick={onMarcarContraMarcoEntregue}>Marcar como entregue →</button>
             </div>
           )}
 
@@ -622,7 +667,7 @@ function ModalCard({
             <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-4">
               <div className="font-bold text-sm text-emerald-700 mb-1">📋 {card.subStatus}</div>
               <p className="text-xs text-slate-700 mb-3">Se o cliente já confirmou que o vão tá pronto pra próxima medição, você pode marcar em nome dele:</p>
-              <button className="btn-primary" onClick={async () => { if (confirm('Marcar vão como pronto?')) await onMarcarVaoPronto() }}>Marcar vão pronto → vai pra Técnica (M2)</button>
+              <button className="btn-primary" onClick={onMarcarVaoPronto}>Marcar vão pronto → vai pra Técnica (M2)</button>
             </div>
           )}
 
@@ -866,6 +911,7 @@ function ModalNovo({
   const [destino, setDestino] = useState<AbaId>(abaAtiva === 'conclusao' ? 'cliente' : abaAtiva)
   const [prazoContrato, setPrazoContrato] = useState('')
   const [salvando, setSalvando] = useState(false)
+  useEscClose(true, onClose)
 
   // Bug fix (07/05/2026): so 'peca' tem aba 'em andamento' (com prazo de producao).
   // Acordo e apontamento nao tem essa aba — se o usuario abre o modal estando
@@ -887,7 +933,7 @@ function ModalNovo({
             <div className="text-lg font-bold mb-1">+ Novo registro</div>
             <div className="text-sm text-slate-500">Crie um item, acordo ou apontamento nesta obra.</div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-md bg-slate-100 text-slate-500 grid place-items-center hover:bg-slate-200 hover:text-slate-900 transition">x</button>
+          <button onClick={onClose} className="w-8 h-8 rounded-md bg-slate-100 text-slate-500 grid place-items-center hover:bg-slate-200 hover:text-slate-900 transition" aria-label="Fechar">×</button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">

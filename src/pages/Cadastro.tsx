@@ -130,7 +130,7 @@ export default function Cadastro() {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Telefone (opcional)</label>
-                    <input className="input" value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(11) 99999-9999" />
+                    <input type="tel" inputMode="tel" autoComplete="tel" className="input" value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(11) 99999-9999" />
                   </div>
                 </div>
                 <div>

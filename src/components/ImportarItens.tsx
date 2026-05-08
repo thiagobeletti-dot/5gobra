@@ -6,6 +6,8 @@ import {
   type ItemImportado,
   type AlumisoftObra,
 } from '../lib/alumisoft'
+import { useEscClose } from '../hooks/useEscClose'
+import { mensagemDeErro } from '../lib/erros'
 
 interface ImportarItensProps {
   obraId: string  // pra log/debug, e pra criar os cards depois
@@ -22,6 +24,7 @@ export default function ImportarItens({ obraId, onClose, onImportar }: ImportarI
   const [obraAlumisoft, setObraAlumisoft] = useState<AlumisoftObra | null>(null)
   const [itens, setItens] = useState<ItemImportado[]>([])
   const [importando, setImportando] = useState(false)
+  useEscClose(true, onClose)
 
   async function processarArquivo(e: ChangeEvent<HTMLInputElement>) {
     const arquivo = e.target.files?.[0]
@@ -34,22 +37,22 @@ export default function ImportarItens({ obraId, onClose, onImportar }: ImportarI
       setObraAlumisoft(obra)
       setItens(lista)
       setModo('preview')
-    } catch (err: any) {
-      setErro(err?.message ?? 'Nao consegui ler o arquivo')
+    } catch (err) {
+      setErro('Não consegui ler o arquivo: ' + mensagemDeErro(err))
     }
   }
 
   function processarTexto() {
     setErro(null)
-    if (!textoXml.trim()) { setErro('Cola o XML antes de processar'); return }
+    if (!textoXml.trim()) { setErro('Cole o XML antes de processar'); return }
     try {
       const obra = parseXmlString(textoXml)
       const lista = tipologiasParaItens(obra)
       setObraAlumisoft(obra)
       setItens(lista)
       setModo('preview')
-    } catch (err: any) {
-      setErro(err?.message ?? 'Nao consegui interpretar o XML')
+    } catch (err) {
+      setErro('Não consegui interpretar o XML: ' + mensagemDeErro(err))
     }
   }
 
@@ -62,12 +65,12 @@ export default function ImportarItens({ obraId, onClose, onImportar }: ImportarI
   }
 
   async function confirmar() {
-    if (itens.length === 0) { setErro('Nao tem itens pra importar'); return }
+    if (itens.length === 0) { setErro('Não tem itens pra importar'); return }
     setImportando(true)
     try {
       await onImportar(itens)
-    } catch (err: any) {
-      setErro(err?.message ?? 'Erro ao importar')
+    } catch (err) {
+      setErro(mensagemDeErro(err))
       setImportando(false)
     }
   }
@@ -83,7 +86,7 @@ export default function ImportarItens({ obraId, onClose, onImportar }: ImportarI
               {modo === 'preview' && `${itens.length} ${itens.length === 1 ? 'item detectado' : 'itens detectados'}. Confira e ajuste antes de importar.`}
             </div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-md bg-slate-100 text-slate-500 grid place-items-center hover:bg-slate-200 hover:text-slate-900 transition">x</button>
+          <button onClick={onClose} className="w-8 h-8 rounded-md bg-slate-100 text-slate-500 grid place-items-center hover:bg-slate-200 hover:text-slate-900 transition" aria-label="Fechar">×</button>
         </div>
 
         {modo === 'alumisoft' && (

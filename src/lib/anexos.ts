@@ -106,7 +106,9 @@ export async function uploadFoto(opts: {
     .single()
   if (insertErr) {
     // tenta limpar o arquivo do storage se a row falhou
-    await supabase.storage.from(BUCKET).remove([path]).catch(() => {})
+    // Best-effort cleanup do arquivo orfao no storage. Se falhar, loga mas
+    // nao bloqueia: o erro principal e o do insert que sera relancado abaixo.
+    await supabase.storage.from(BUCKET).remove([path]).catch((e) => console.warn('[anexos] cleanup pos-insert-falho:', e))
     throw insertErr
   }
 
@@ -128,7 +130,9 @@ export async function uploadFoto(opts: {
  */
 export async function removerAnexo(anexo: Anexo): Promise<void> {
   if (!supabase) throw new Error('Supabase nao configurado')
-  await supabase.storage.from(BUCKET).remove([anexo.storage_path]).catch(() => {})
+  // Best-effort: tenta apagar do storage, mas se falhar (ex: arquivo ja
+  // foi movido/apagado manualmente) seguimos pra apagar a row mesmo assim.
+  await supabase.storage.from(BUCKET).remove([anexo.storage_path]).catch((e) => console.warn('[anexos] remove storage falhou:', e))
   const { error } = await supabase.from('anexos').delete().eq('id', anexo.id)
   if (error) throw error
 }

@@ -509,6 +509,12 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
 
   const darAceite = useCallback(async (cardId: string) => {
     if (!dados) return
+    // Guard: se ja deu aceite antes, nao gera duplicata. Audit Sprint A item L1.
+    const cardAtual = dados.cards.find((c) => c.id === cardId)
+    if (cardAtual?.aceiteFinal) {
+      console.warn('[darAceite] aceite ja registrado em', cardAtual.aceiteFinal, '— ignorando duplo clique')
+      return
+    }
     const quando = agora()
     if (modo === 'demo') {
       setDados((d) => {
@@ -543,6 +549,13 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
 
   const reabrir = useCallback(async (cardId: string, texto: string, perfil: 'empresa' | 'cliente') => {
     if (!dados || !texto.trim()) return
+    // Guard: card encerrado nao pode ser reaberto pelo fluxo normal — precisa
+    // passar por desencerramento explicito. Audit Sprint A item L4.
+    const cardAtual = dados.cards.find((c) => c.id === cardId)
+    if (cardAtual?.encerrado) {
+      console.warn('[reabrir] card encerrado, reabertura bloqueada')
+      return
+    }
     if (modo === 'demo') {
       setDados((d) => {
         if (!d) return d
@@ -741,6 +754,12 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
     if (modo === 'demo' || !obraReal) {
       throw new Error('Checklist técnico disponível só com Supabase conectado')
     }
+    // Guard: cards finalizados (com aceite ou em Conclusão) não devem ser
+    // movidos automaticamente. Apenas grava o checklist sem mexer na aba.
+    // Audit Sprint A item L3.
+    const cardAtual = dados?.cards.find((c) => c.id === cardId)
+    const cardJaFinalizado = !!cardAtual && (!!cardAtual.aceiteFinal || cardAtual.aba === 'conclusao' || cardAtual.encerrado)
+
     const novo = await salvarMedicao1({
       cardId,
       dados: dadosForm,
@@ -781,8 +800,9 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
       }
     }
 
-    // Aplica a movimentação no banco
-    if (novaAba !== null) {
+    // Aplica a movimentação no banco — exceto se o card ja estava finalizado.
+    // Cards com aceite/encerrados nao devem voltar pro fluxo ativo via M1.
+    if (novaAba !== null && !cardJaFinalizado) {
       try {
         const updates: any = { aba: novaAba, sub_status: novoSubStatus }
         if (novaAba === 'emandamento') {
@@ -792,6 +812,8 @@ export function useObraData(idOrToken: string, modoCarregamento: 'id' | 'token' 
       } catch (e) {
         console.warn('Falha ao mover card pós-M1:', e)
       }
+    } else if (cardJaFinalizado) {
+      console.warn('[salvarMedicao1Card] card ja finalizado, M1 gravada mas sem mover de aba')
     }
 
     try {

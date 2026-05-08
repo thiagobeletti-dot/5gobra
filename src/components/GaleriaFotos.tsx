@@ -1,5 +1,7 @@
 import { useState, useRef, ChangeEvent } from 'react'
 import type { FotoCard } from '../types/obra'
+import { useConfirm } from '../hooks/useConfirm'
+import { mensagemDeErro } from '../lib/erros'
 
 interface GaleriaFotosProps {
   fotos: FotoCard[]
@@ -14,6 +16,7 @@ export default function GaleriaFotos({ fotos, podeEditar, onAdicionar, onRemover
   const [erro, setErro] = useState<string | null>(null)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [removendoId, setRemovendoId] = useState<string | null>(null)
+  const { confirmar, dialog: confirmDialog } = useConfirm()
 
   async function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     const arquivos = Array.from(e.target.files ?? [])
@@ -22,8 +25,8 @@ export default function GaleriaFotos({ fotos, podeEditar, onAdicionar, onRemover
     setSubindo(true)
     try {
       await onAdicionar(arquivos)
-    } catch (err: any) {
-      setErro(err?.message ?? 'Erro ao subir foto')
+    } catch (err) {
+      setErro(mensagemDeErro(err))
     } finally {
       setSubindo(false)
       if (inputRef.current) inputRef.current.value = ''
@@ -31,12 +34,18 @@ export default function GaleriaFotos({ fotos, podeEditar, onAdicionar, onRemover
   }
 
   async function remover(foto: FotoCard) {
-    if (!confirm('Remover essa foto? Essa acao nao pode ser desfeita.')) return
+    const ok = await confirmar({
+      titulo: 'Remover essa foto?',
+      descricao: 'Essa ação não pode ser desfeita.',
+      labelConfirmar: 'Remover',
+      destrutivo: true,
+    })
+    if (ok === null) return
     setRemovendoId(foto.id)
     try {
       await onRemover(foto)
-    } catch (err: any) {
-      setErro(err?.message ?? 'Erro ao remover')
+    } catch (err) {
+      setErro(mensagemDeErro(err))
     } finally {
       setRemovendoId(null)
     }
@@ -114,6 +123,8 @@ export default function GaleriaFotos({ fotos, podeEditar, onAdicionar, onRemover
           onClose={() => setLightboxIndex(null)}
         />
       )}
+
+      {confirmDialog}
     </div>
   )
 }

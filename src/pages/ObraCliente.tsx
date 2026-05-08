@@ -6,6 +6,7 @@ import type { AbaId, Card } from '../types/obra'
 import { diasAte, formataData, formataDataHora, statusSemantico } from '../lib/helpers'
 import { useObraData } from '../hooks/useObraData'
 import GaleriaFotos from '../components/GaleriaFotos'
+import { useConfirm } from '../hooks/useConfirm'
 
 export default function ObraCliente() {
   const { token = '' } = useParams<{ token: string }>()
@@ -14,10 +15,11 @@ export default function ObraCliente() {
   const [abaAtiva, setAbaAtiva] = useState<AbaId>('cliente')
   const [cardAbertoId, setCardAbertoId] = useState<string | null>(null)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
+  const { confirmar, dialog: confirmDialog } = useConfirm()
 
   function toast(msg: string) {
     setToastMsg(msg)
-    window.setTimeout(() => setToastMsg(null), 2400)
+    window.setTimeout(() => setToastMsg(null), 4000)
   }
 
   const cardAberto = useMemo(
@@ -140,7 +142,12 @@ export default function ObraCliente() {
               toast('Antes de reabrir, descreva o problema no campo de mensagem acima')
               return
             }
-            if (!confirm('Reabrir este item? A empresa receberá seu motivo pra revisar e corrigir.')) return
+            const ok = await confirmar({
+              titulo: 'Reabrir este item?',
+              descricao: 'A empresa receberá seu motivo pra revisar e corrigir.',
+              labelConfirmar: 'Reabrir item',
+            })
+            if (ok === null) return
             await data.reabrir(cardAberto.id, texto, 'cliente')
             setCardAbertoId(null)
             toast('Problema enviado pra empresa')
@@ -159,13 +166,20 @@ export default function ObraCliente() {
             toast('Vão marcado como pronto — empresa vai agendar a próxima visita')
           }}
           onMarcarCiente={async () => {
-            if (!confirm('Marcar este apontamento como ciente? O apontamento será encerrado.')) return
+            const ok = await confirmar({
+              titulo: 'Marcar este apontamento como ciente?',
+              descricao: 'O apontamento será encerrado depois disso.',
+              labelConfirmar: 'Estou ciente',
+            })
+            if (ok === null) return
             await data.marcarApontamentoCiente(cardAberto.id)
             setCardAbertoId(null)
             toast('Apontamento encerrado')
           }}
         />
       )}
+
+      {confirmDialog}
 
       {toastMsg && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white border border-slate-300 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2.5 text-sm z-50">
@@ -279,7 +293,7 @@ function ModalCardCliente({
             <div className="text-base md:text-lg font-bold mb-1">{card.nome}</div>
             <div className="text-sm text-slate-500">{card.descricao}</div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-md bg-slate-100 text-slate-500 grid place-items-center hover:bg-slate-200 hover:text-slate-900 transition">x</button>
+          <button onClick={onClose} className="w-8 h-8 rounded-md bg-slate-100 text-slate-500 grid place-items-center hover:bg-slate-200 hover:text-slate-900 transition" aria-label="Fechar">×</button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 md:px-6 py-4 md:py-5 space-y-5">

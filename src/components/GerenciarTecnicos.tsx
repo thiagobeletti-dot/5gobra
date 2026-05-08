@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import type { TecnicoObra } from '../types/tecnico'
 import { listarTecnicosDaObra, criarTecnico, revogarTecnico, reativarTecnico } from '../lib/tecnico'
+import { useConfirm } from '../hooks/useConfirm'
+import { useEscClose } from '../hooks/useEscClose'
+import { mensagemDeErro } from '../lib/erros'
 
 interface Props {
   obraId: string
@@ -15,6 +18,8 @@ export default function GerenciarTecnicos({ obraId, onClose }: Props) {
   const [novoPapel, setNovoPapel] = useState('')
   const [criando, setCriando] = useState(false)
   const [copiadoId, setCopiadoId] = useState<string | null>(null)
+  const { confirmar, dialog: confirmDialog } = useConfirm()
+  useEscClose(true, onClose)
 
   async function recarregar() {
     setCarregando(true)
@@ -22,8 +27,8 @@ export default function GerenciarTecnicos({ obraId, onClose }: Props) {
     try {
       const lista = await listarTecnicosDaObra(obraId)
       setTecnicos(lista)
-    } catch (e: any) {
-      setErro(e?.message ?? 'Erro ao carregar técnicos')
+    } catch (e) {
+      setErro(mensagemDeErro(e))
     } finally {
       setCarregando(false)
     }
@@ -40,8 +45,8 @@ export default function GerenciarTecnicos({ obraId, onClose }: Props) {
       setNovoNome('')
       setNovoPapel('')
       await recarregar()
-    } catch (e: any) {
-      setErro(e?.message ?? 'Erro ao criar')
+    } catch (e) {
+      setErro(mensagemDeErro(e))
     } finally {
       setCriando(false)
     }
@@ -54,22 +59,28 @@ export default function GerenciarTecnicos({ obraId, onClose }: Props) {
       setCopiadoId(id)
       setTimeout(() => setCopiadoId(null), 2000)
     } catch {
-      // fallback
-      prompt('Copie o link:', url)
+      // fallback: pelo menos selecionar pra copiar manual
+      setErro('Não consegui copiar automaticamente. Link: ' + url)
     }
   }
 
   async function toggleAtivo(t: TecnicoObra) {
     try {
       if (t.ativo) {
-        if (!confirm('Revogar acesso de ' + t.nome + '? O link vai parar de funcionar imediatamente.')) return
+        const ok = await confirmar({
+          titulo: 'Revogar acesso de ' + t.nome + '?',
+          descricao: 'O link vai parar de funcionar imediatamente. Ele não conseguirá mais entrar com o link atual.',
+          labelConfirmar: 'Revogar acesso',
+          destrutivo: true,
+        })
+        if (ok === null) return
         await revogarTecnico(t.id)
       } else {
         await reativarTecnico(t.id)
       }
       await recarregar()
-    } catch (e: any) {
-      setErro(e?.message ?? 'Erro')
+    } catch (e) {
+      setErro(mensagemDeErro(e))
     }
   }
 
@@ -81,7 +92,7 @@ export default function GerenciarTecnicos({ obraId, onClose }: Props) {
             <div className="text-lg font-bold mb-1">Técnicos da obra</div>
             <div className="text-sm text-slate-500">Cadastre técnicos pra essa obra. Cada um recebe um link mágico pra preencher checklists e fotos no celular.</div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-md bg-slate-100 text-slate-500 grid place-items-center hover:bg-slate-200 hover:text-slate-900 transition">x</button>
+          <button onClick={onClose} className="w-8 h-8 rounded-md bg-slate-100 text-slate-500 grid place-items-center hover:bg-slate-200 hover:text-slate-900 transition" aria-label="Fechar">×</button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
@@ -160,6 +171,7 @@ export default function GerenciarTecnicos({ obraId, onClose }: Props) {
           </div>
         </div>
       </div>
+      {confirmDialog}
     </div>
   )
 }

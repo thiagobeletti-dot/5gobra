@@ -10,6 +10,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Card, DadosObra } from '../types/obra'
 import { listarHistoricoEmLote } from '../lib/api'
+import { useEscClose } from '../hooks/useEscClose'
+import { mensagemDeErro } from '../lib/erros'
 import {
   gerarPdfMedicao,
   gerarPdfDossie,
@@ -34,6 +36,7 @@ export default function ModalDocumentos({ obra, empresa, aberto, onFechar }: Pro
   const [gerando, setGerando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
+  useEscClose(aberto, onFechar)
 
   const pecas = useMemo(() => obra.cards.filter((c) => c.tipo === 'peca'), [obra.cards])
 
@@ -96,9 +99,9 @@ export default function ModalDocumentos({ obra, empresa, aberto, onFechar }: Pro
 
       baixarPdf(bytes, filename)
       setInfo('PDF gerado: ' + filename)
-    } catch (e: any) {
+    } catch (e) {
       console.error('[ModalDocumentos] erro ao gerar PDF:', e)
-      setErro(e?.message ?? 'Erro ao gerar PDF.')
+      setErro(mensagemDeErro(e))
     } finally {
       setGerando(false)
     }

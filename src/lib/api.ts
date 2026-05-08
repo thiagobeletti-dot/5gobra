@@ -60,7 +60,7 @@ export async function pegarMinhaEmpresa() {
 export async function criarEmpresa(nome: string, extras: { cnpj?: string; telefone?: string } = {}) {
   if (!supabase) throw new Error('Supabase nao configurado')
   const { data: user } = await supabase.auth.getUser()
-  if (!user.user) throw new Error('Nao autenticado')
+  if (!user.user) throw new Error('Não autenticado')
   const payload: Record<string, unknown> = { nome, owner_user_id: user.user.id }
   if (extras.cnpj) payload.cnpj = extras.cnpj
   if (extras.telefone) payload.telefone = extras.telefone

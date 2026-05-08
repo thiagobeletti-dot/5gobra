@@ -122,7 +122,7 @@ export default function Configuracoes() {
       if (!r.ok) {
         setMsgReenvio({ tipo: 'erro', texto: r.error ?? 'Erro ao reenviar' })
       } else if (r.dryRun) {
-        setMsgReenvio({ tipo: 'aviso', texto: 'PDFs gerados em modo de teste — Resend ainda nao foi configurado pelo administrador. Avise o suporte.' })
+        setMsgReenvio({ tipo: 'aviso', texto: 'PDFs gerados em modo de teste — Resend ainda não foi configurado pelo administrador. Avise o suporte.' })
       } else {
         setMsgReenvio({ tipo: 'ok', texto: `PDFs reenviados pra ${r.destinatario}. Verifique a caixa de entrada (e o spam).` })
       }
@@ -190,7 +190,7 @@ export default function Configuracoes() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Telefone</label>
-                <input className="input" value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(11) 99999-9999" />
+                <input type="tel" inputMode="tel" autoComplete="tel" className="input" value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(11) 99999-9999" />
               </div>
             </div>
             {msgEmpresa && (

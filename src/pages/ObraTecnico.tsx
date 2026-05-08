@@ -33,7 +33,7 @@ export default function ObraTecnico() {
 
   function toast(msg: string) {
     setToastMsg(msg)
-    window.setTimeout(() => setToastMsg(null), 2400)
+    window.setTimeout(() => setToastMsg(null), 4000)
   }
 
   async function recarregar(obraId: string) {
@@ -466,7 +466,7 @@ function ModalCardTecnico({ card, onClose, onAbrirM1, onAbrirM2, onAdicionarFoto
             <div className="text-base md:text-lg font-bold mb-1">{card.nome}</div>
             <div className="text-sm text-slate-500">{card.descricao}</div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-md bg-slate-100 text-slate-500 grid place-items-center hover:bg-slate-200 hover:text-slate-900 transition">x</button>
+          <button onClick={onClose} className="w-8 h-8 rounded-md bg-slate-100 text-slate-500 grid place-items-center hover:bg-slate-200 hover:text-slate-900 transition" aria-label="Fechar">×</button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 md:px-6 py-4 md:py-5 space-y-4">
