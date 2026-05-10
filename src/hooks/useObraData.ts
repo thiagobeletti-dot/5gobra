@@ -925,12 +925,14 @@ export function useObraData(
         novoSubStatus = 'Aguardando lote'
         mensagemHistorico = 'Medição 1 preenchida. Decisão: SEM contra-marco, vão pronto. Card movido para Em Andamento aguardando lote de produção.'
       } else if (dadosForm.vao_pronto === 'nao') {
-        // Regra 3: vão precisa correção → volta pra EMPRESA pra empresa redigir orientação ao cliente
-        // (princípio: cliente não vê info técnica crua)
-        novaAba = 'empresa'
-        novoSubStatus = 'Vão não pronto — comunicar cliente'
+        // Regra 3: vão precisa correção → vai DIRETO pro cliente ajustar.
+        // Decisão de produto (10/05/2026): cliente vê o registro técnico cru,
+        // sem etapa intermediária da empresa redigir orientação. Sub-status
+        // amigável + registro como público (interno: false).
+        novaAba = 'cliente'
+        novoSubStatus = 'Aguardando ajustar o vão'
         const pendencias = dadosForm.precisa_correcao.trim() || '(sem detalhes)'
-        mensagemHistorico = 'Medição 1 preenchida. Decisão: SEM contra-marco, vão NÃO está pronto. Pendências para empresa orientar cliente: ' + pendencias
+        mensagemHistorico = 'Medição 1 preenchida. Decisão: SEM contra-marco, vão NÃO está pronto. Pendências apontadas pelo técnico: ' + pendencias
       }
     }
 
@@ -950,15 +952,17 @@ export function useObraData(
       console.warn('[salvarMedicao1Card] card ja finalizado, M1 gravada mas sem mover de aba')
     }
 
+    // Quando card vai pra Cliente (vão não pronto), o registro técnico vai como
+    // público pra cliente ler as pendências cruas. Em outros cenários
+    // (M1 OK, contra-marco SIM, tipologia não executável) fica interno.
+    const registroPublicoM1 = novaAba === 'cliente'
     try {
-      // Marca como interno — registro técnico não deve aparecer pro cliente.
-      // Empresa decide o que publicar pro cliente via mensagem regular.
       await adicionarHistorico({
         card_id: cardId,
         autor: autorNome || 'Empresa',
         autor_tipo: 'empresa',
         texto: mensagemHistorico,
-        interno: true,
+        interno: !registroPublicoM1,
       }, client)
       // Registro público amigável quando card vai pra Em Andamento (cliente entende o pulo)
       if (novaAba === 'emandamento') {

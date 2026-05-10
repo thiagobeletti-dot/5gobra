@@ -119,8 +119,11 @@ export default function ObraTecnico() {
         novoSubStatus = 'Aguardando lote'
         mensagemHistorico = 'Medição 1 (técnico ' + autorTecnico + '). SEM contra-marco, vão pronto.'
       } else if (dadosForm.vao_pronto === 'nao') {
-        novaAba = 'empresa'
-        novoSubStatus = 'Vão não pronto — comunicar cliente'
+        // Vão não pronto sem contra-marco → cliente precisa ajustar o vão.
+        // Vai direto pra Cliente; o registro técnico vai como público pra
+        // cliente ler as pendências apontadas pelo técnico.
+        novaAba = 'cliente'
+        novoSubStatus = 'Aguardando ajustar o vão'
         const pendencias = dadosForm.precisa_correcao.trim() || '(sem detalhes)'
         mensagemHistorico = 'Medição 1 (técnico ' + autorTecnico + '). SEM contra-marco, vão NÃO pronto. Pendências: ' + pendencias
       }
@@ -134,13 +137,17 @@ export default function ObraTecnico() {
       } catch {}
     }
 
+    // Quando card vai pra Cliente (vão não pronto), o registro técnico vai como
+    // público pra cliente ler as pendências cruas. Em outros cenários (M1 OK,
+    // contra-marco SIM, tipologia não executável) fica interno como antes.
+    const registroPublico = novaAba === 'cliente'
     try {
       await adicionarHistorico({
         card_id: cardId,
         autor: autorTecnico,
         autor_tipo: 'tecnico',
         texto: mensagemHistorico,
-        interno: true,
+        interno: !registroPublico,
       }, supabasePublico)
       if (novaAba === 'emandamento') {
         await adicionarHistorico({
