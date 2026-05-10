@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { supabase, type DbClient } from './supabase'
 
 export interface Anexo {
   id: string
@@ -41,9 +41,9 @@ export async function listarAnexos(cardId: string): Promise<Anexo[]> {
 /**
  * Lista anexos de varios cards de uma vez (otimizacao pra carga inicial).
  */
-export async function listarAnexosDeVariosCards(cardIds: string[]): Promise<Record<string, Anexo[]>> {
-  if (!supabase || cardIds.length === 0) return {}
-  const { data, error } = await supabase
+export async function listarAnexosDeVariosCards(cardIds: string[], client: DbClient | null = supabase): Promise<Record<string, Anexo[]>> {
+  if (!client || cardIds.length === 0) return {}
+  const { data, error } = await client
     .from('anexos')
     .select('*')
     .in('card_id', cardIds)
@@ -56,7 +56,7 @@ export async function listarAnexosDeVariosCards(cardIds: string[]): Promise<Reco
       card_id: row.card_id,
       historico_id: row.historico_id ?? null,
       storage_path: row.storage_path,
-      url: urlPublica(row.storage_path),
+      url: urlPublica(row.storage_path, client),
       nome_arquivo: row.nome_arquivo ?? null,
       tamanho_bytes: row.tamanho_bytes ?? null,
       content_type: row.content_type ?? null,
@@ -74,8 +74,8 @@ export async function uploadFoto(opts: {
   arquivo: File
   obraId: string
   cardId: string
-}): Promise<Anexo> {
-  if (!supabase) throw new Error('Supabase nao configurado')
+}, client: DbClient | null = supabase): Promise<Anexo> {
+  if (!client) throw new Error('Supabase nao configurado')
 
   // Comprime antes de subir (max 1920px largura, JPEG 85%)
   const arquivoComprimido = await comprimirImagem(opts.arquivo)
@@ -85,7 +85,7 @@ export async function uploadFoto(opts: {
   const nomeArquivo = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`
   const path = `${opts.obraId}/${opts.cardId}/${nomeArquivo}`
 
-  const { error: upErr } = await supabase.storage
+  const { error: upErr } = await client.storage
     .from(BUCKET)
     .upload(path, arquivoComprimido, {
       contentType: 'image/jpeg',
@@ -93,7 +93,7 @@ export async function uploadFoto(opts: {
     })
   if (upErr) throw upErr
 
-  const { data, error: insertErr } = await supabase
+  const { data, error: insertErr } = await client
     .from('anexos')
     .insert({
       card_id: opts.cardId,
@@ -108,7 +108,7 @@ export async function uploadFoto(opts: {
     // tenta limpar o arquivo do storage se a row falhou
     // Best-effort cleanup do arquivo orfao no storage. Se falhar, loga mas
     // nao bloqueia: o erro principal e o do insert que sera relancado abaixo.
-    await supabase.storage.from(BUCKET).remove([path]).catch((e) => console.warn('[anexos] cleanup pos-insert-falho:', e))
+    await client.storage.from(BUCKET).remove([path]).catch((e) => console.warn('[anexos] cleanup pos-insert-falho:', e))
     throw insertErr
   }
 
@@ -117,7 +117,7 @@ export async function uploadFoto(opts: {
     card_id: data.card_id,
     historico_id: data.historico_id ?? null,
     storage_path: data.storage_path,
-    url: urlPublica(data.storage_path),
+    url: urlPublica(data.storage_path, client),
     nome_arquivo: data.nome_arquivo ?? null,
     tamanho_bytes: data.tamanho_bytes ?? null,
     content_type: data.content_type ?? null,
@@ -128,18 +128,18 @@ export async function uploadFoto(opts: {
 /**
  * Apaga um anexo (storage + row).
  */
-export async function removerAnexo(anexo: Anexo): Promise<void> {
-  if (!supabase) throw new Error('Supabase nao configurado')
+export async function removerAnexo(anexo: Anexo, client: DbClient | null = supabase): Promise<void> {
+  if (!client) throw new Error('Supabase nao configurado')
   // Best-effort: tenta apagar do storage, mas se falhar (ex: arquivo ja
   // foi movido/apagado manualmente) seguimos pra apagar a row mesmo assim.
-  await supabase.storage.from(BUCKET).remove([anexo.storage_path]).catch((e) => console.warn('[anexos] remove storage falhou:', e))
-  const { error } = await supabase.from('anexos').delete().eq('id', anexo.id)
+  await client.storage.from(BUCKET).remove([anexo.storage_path]).catch((e) => console.warn('[anexos] remove storage falhou:', e))
+  const { error } = await client.from('anexos').delete().eq('id', anexo.id)
   if (error) throw error
 }
 
-function urlPublica(path: string): string {
-  if (!supabase) return ''
-  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path)
+function urlPublica(path: string, client: DbClient | null = supabase): string {
+  if (!client) return ''
+  const { data } = client.storage.from(BUCKET).getPublicUrl(path)
   return data.publicUrl
 }
 

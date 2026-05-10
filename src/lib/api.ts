@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { supabase, type DbClient } from './supabase'
 import type { Card, DadosObra, ObraInfo, RegistroHistorico, AbaId, TipoCard, FotoCard } from '../types/obra'
 import type { Checklist } from '../types/checklist'
 import type { Anexo } from './anexos'
@@ -138,16 +138,16 @@ export async function listarObras() {
   return (data ?? []) as ObraRow[]
 }
 
-export async function pegarObraPorId(id: string) {
-  if (!supabase) return null
-  const { data, error } = await supabase.from('obras').select('*').eq('id', id).maybeSingle()
+export async function pegarObraPorId(id: string, client: DbClient | null = supabase) {
+  if (!client) return null
+  const { data, error } = await client.from('obras').select('*').eq('id', id).maybeSingle()
   if (error) throw error
   return data as ObraRow | null
 }
 
-export async function pegarObraPorToken(token: string) {
-  if (!supabase) return null
-  const { data, error } = await supabase
+export async function pegarObraPorToken(token: string, client: DbClient | null = supabase) {
+  if (!client) return null
+  const { data, error } = await client
     .from('obras')
     .select('*')
     .eq('token_cliente', token)
@@ -176,9 +176,9 @@ export async function criarObra(dados: {
 
 // =============== Cards ===============
 
-export async function listarCardsDaObra(obraId: string) {
-  if (!supabase) return []
-  const { data, error } = await supabase
+export async function listarCardsDaObra(obraId: string, client: DbClient | null = supabase) {
+  if (!client) return []
+  const { data, error } = await client
     .from('cards')
     .select('*')
     .eq('obra_id', obraId)
@@ -196,9 +196,9 @@ export async function criarCard(dados: {
   aba: AbaId
   status_em_andamento?: string | null
   prazo_contrato?: string | null
-}) {
-  if (!supabase) throw new Error('Supabase nao configurado')
-  const { data, error } = await supabase.from('cards').insert(dados).select().single()
+}, client: DbClient | null = supabase) {
+  if (!client) throw new Error('Supabase nao configurado')
+  const { data, error } = await client.from('cards').insert(dados).select().single()
   if (error) throw error
   return data as CardRow
 }
@@ -212,17 +212,17 @@ export async function criarVariosCards(dados: Array<{
   aba: AbaId
   status_em_andamento?: string | null
   prazo_contrato?: string | null
-}>) {
-  if (!supabase) throw new Error('Supabase nao configurado')
+}>, client: DbClient | null = supabase) {
+  if (!client) throw new Error('Supabase nao configurado')
   if (dados.length === 0) return []
-  const { data, error } = await supabase.from('cards').insert(dados).select()
+  const { data, error } = await client.from('cards').insert(dados).select()
   if (error) throw error
   return (data ?? []) as CardRow[]
 }
 
-export async function atualizarCard(id: string, mudancas: Partial<CardRow>) {
-  if (!supabase) throw new Error('Supabase nao configurado')
-  const { data, error } = await supabase.from('cards').update(mudancas).eq('id', id).select().single()
+export async function atualizarCard(id: string, mudancas: Partial<CardRow>, client: DbClient | null = supabase) {
+  if (!client) throw new Error('Supabase nao configurado')
+  const { data, error } = await client.from('cards').update(mudancas).eq('id', id).select().single()
   if (error) throw error
   return data as CardRow
 }
@@ -269,10 +269,10 @@ export async function adicionarHistorico(dados: {
   autor_tipo: 'empresa' | 'cliente' | 'sistema' | 'tecnico'
   texto: string
   interno?: boolean
-}) {
-  if (!supabase) throw new Error('Supabase nao configurado')
+}, client: DbClient | null = supabase) {
+  if (!client) throw new Error('Supabase nao configurado')
   const payload = { ...dados, interno: dados.interno ?? false }
-  const { data, error } = await supabase.from('historico_card').insert(payload).select().single()
+  const { data, error } = await client.from('historico_card').insert(payload).select().single()
   if (error) throw error
   return data as HistoricoRow
 }

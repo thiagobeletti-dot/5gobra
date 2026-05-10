@@ -5,12 +5,17 @@ import { ABAS } from '../types/obra'
 import type { AbaId, Card } from '../types/obra'
 import { diasAte, formataData, formataDataHora, statusSemantico } from '../lib/helpers'
 import { useObraData } from '../hooks/useObraData'
+import { supabasePublico } from '../lib/supabase'
 import GaleriaFotos from '../components/GaleriaFotos'
 import { useConfirm } from '../hooks/useConfirm'
 
 export default function ObraCliente() {
   const { token = '' } = useParams<{ token: string }>()
-  const data = useObraData(token, 'token')
+  // Passa supabasePublico (sem sessão persistida) pra forçar contexto anon
+  // mesmo se o usuário estiver logado no app na mesma origem. Sem isso, o
+  // JWT authenticated entra na policy obras_authenticated_all e o cliente
+  // não vê a obra dele (RLS bloqueia).
+  const data = useObraData(token, 'token', supabasePublico)
 
   const [abaAtiva, setAbaAtiva] = useState<AbaId>('cliente')
   const [cardAbertoId, setCardAbertoId] = useState<string | null>(null)

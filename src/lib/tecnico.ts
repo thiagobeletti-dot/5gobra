@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { supabase, type DbClient } from './supabase'
 import type { TecnicoObra } from '../types/tecnico'
 
 interface TecnicoRow {
@@ -66,9 +66,14 @@ export async function reativarTecnico(id: string): Promise<void> {
 }
 
 // Busca técnico ativo pelo token (link mágico). Retorna o técnico + dados da obra dele.
-export async function pegarTecnicoPorToken(token: string): Promise<{ tecnico: TecnicoObra; obraId: string } | null> {
-  if (!supabase) return null
-  const { data, error } = await supabase
+// Aceita client opcional pra usar supabasePublico nas rotas /tec/[token]
+// (evita conflito com sessão authenticated do app principal).
+export async function pegarTecnicoPorToken(
+  token: string,
+  client: DbClient | null = supabase,
+): Promise<{ tecnico: TecnicoObra; obraId: string } | null> {
+  if (!client) return null
+  const { data, error } = await client
     .from('tecnicos_obra')
     .select('*')
     .eq('token', token)

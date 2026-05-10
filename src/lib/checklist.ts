@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { supabase, type DbClient } from './supabase'
 import type { Checklist, ChecklistTipo, ChecklistAutorTipo, DadosMedicao1, DadosMedicao2 } from '../types/checklist'
 
 interface ChecklistRow {
@@ -27,9 +27,9 @@ function rowParaChecklist(r: ChecklistRow): Checklist {
 }
 
 // Lista todos os checklists de varios cards de uma vez (batch)
-export async function listarChecklistsDeVariosCards(cardIds: string[]): Promise<Record<string, Checklist[]>> {
-  if (!supabase || cardIds.length === 0) return {}
-  const { data, error } = await supabase
+export async function listarChecklistsDeVariosCards(cardIds: string[], client: DbClient | null = supabase): Promise<Record<string, Checklist[]>> {
+  if (!client || cardIds.length === 0) return {}
+  const { data, error } = await client
     .from('checklists')
     .select('*')
     .in('card_id', cardIds)
@@ -60,8 +60,8 @@ export async function salvarMedicao1(args: {
   dados: DadosMedicao1
   autor: string
   autorTipo: ChecklistAutorTipo
-}): Promise<Checklist> {
-  if (!supabase) throw new Error('Supabase nao configurado')
+}, client: DbClient | null = supabase): Promise<Checklist> {
+  if (!client) throw new Error('Supabase nao configurado')
   // upsert: 1 registro de cada tipo por card
   const payload = {
     card_id: args.cardId,
@@ -71,7 +71,7 @@ export async function salvarMedicao1(args: {
     autor_tipo: args.autorTipo,
     preenchido_em: new Date().toISOString(),
   }
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from('checklists')
     .upsert(payload, { onConflict: 'card_id,tipo' })
     .select()
@@ -85,8 +85,8 @@ export async function salvarMedicao2(args: {
   dados: DadosMedicao2
   autor: string
   autorTipo: ChecklistAutorTipo
-}): Promise<Checklist> {
-  if (!supabase) throw new Error('Supabase nao configurado')
+}, client: DbClient | null = supabase): Promise<Checklist> {
+  if (!client) throw new Error('Supabase nao configurado')
   const payload = {
     card_id: args.cardId,
     tipo: 'medicao2' as ChecklistTipo,
@@ -95,7 +95,7 @@ export async function salvarMedicao2(args: {
     autor_tipo: args.autorTipo,
     preenchido_em: new Date().toISOString(),
   }
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from('checklists')
     .upsert(payload, { onConflict: 'card_id,tipo' })
     .select()

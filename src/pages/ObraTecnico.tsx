@@ -11,7 +11,7 @@ import { listarAnexosDeVariosCards, uploadFoto, type Anexo } from '../lib/anexos
 import { listarChecklistsDeVariosCards, salvarMedicao1, salvarMedicao2 } from '../lib/checklist'
 import type { Checklist, DadosMedicao1, DadosMedicao2 } from '../types/checklist'
 import { resumoMedicao1, resumoMedicao2, ROTULOS_TIPOLOGIA, VAZIO_MEDICAO1, VAZIO_MEDICAO2 } from '../types/checklist'
-import { supabase } from '../lib/supabase'
+import { supabasePublico } from '../lib/supabase'
 import GaleriaFotos from '../components/GaleriaFotos'
 import FormMedicao1 from '../components/FormMedicao1'
 import FormMedicao2 from '../components/FormMedicao2'
@@ -37,17 +37,17 @@ export default function ObraTecnico() {
   }
 
   async function recarregar(obraId: string) {
-    if (!supabase) return
-    const obra = await pegarObraPorId(obraId)
+    if (!supabasePublico) return
+    const obra = await pegarObraPorId(obraId, supabasePublico)
     if (!obra) { setErro('Obra não encontrada'); return }
     setObraReal(obra)
-    const cardsRows = await listarCardsDaObra(obra.id)
+    const cardsRows = await listarCardsDaObra(obra.id, supabasePublico)
     const histPorCard: Record<string, HistoricoRow[]> = {}
     let anexosPorCard: Record<string, Anexo[]> = {}
     let checklistsPorCard: Record<string, Checklist[]> = {}
     if (cardsRows.length > 0) {
       const ids = cardsRows.map((c) => c.id)
-      const { data: hists } = await supabase
+      const { data: hists } = await supabasePublico
         .from('historico_card')
         .select('*')
         .in('card_id', ids)
@@ -55,9 +55,9 @@ export default function ObraTecnico() {
       for (const h of (hists ?? []) as HistoricoRow[]) {
         ;(histPorCard[h.card_id] ??= []).push(h)
       }
-      anexosPorCard = await listarAnexosDeVariosCards(ids)
+      anexosPorCard = await listarAnexosDeVariosCards(ids, supabasePublico)
       try {
-        checklistsPorCard = await listarChecklistsDeVariosCards(ids)
+        checklistsPorCard = await listarChecklistsDeVariosCards(ids, supabasePublico)
       } catch {}
     }
     setDados(rowsParaDadosObra(obra, cardsRows, histPorCard, anexosPorCard, checklistsPorCard))
@@ -69,7 +69,7 @@ export default function ObraTecnico() {
     setErro(null)
     ;(async () => {
       try {
-        const r = await pegarTecnicoPorToken(token)
+        const r = await pegarTecnicoPorToken(token, supabasePublico)
         if (!ativo) return
         if (!r) { setErro('Link inválido ou revogado'); return }
         setTecnico(r.tecnico)
@@ -97,7 +97,7 @@ export default function ObraTecnico() {
       dados: dadosForm,
       autor: autorTecnico,
       autorTipo: 'tecnico',
-    })
+    }, supabasePublico)
 
     // Auto-move pós-M1 (mesma lógica da empresa)
     let novaAba: AbaId | null = null
@@ -130,7 +130,7 @@ export default function ObraTecnico() {
       try {
         const updates: any = { aba: novaAba, sub_status: novoSubStatus }
         if (novaAba === 'emandamento') updates.status_em_andamento = 'Aguardando lote'
-        await atualizarCard(cardId, updates)
+        await atualizarCard(cardId, updates, supabasePublico)
       } catch {}
     }
 
@@ -141,7 +141,7 @@ export default function ObraTecnico() {
         autor_tipo: 'tecnico',
         texto: mensagemHistorico,
         interno: true,
-      })
+      }, supabasePublico)
       if (novaAba === 'emandamento') {
         await adicionarHistorico({
           card_id: cardId,
@@ -149,7 +149,7 @@ export default function ObraTecnico() {
           autor_tipo: 'sistema',
           texto: 'Visita técnica realizada. Vão está pronto. Item aprovado para produção.',
           interno: false,
-        })
+        }, supabasePublico)
       }
     } catch {}
 
@@ -163,7 +163,7 @@ export default function ObraTecnico() {
       dados: dadosForm,
       autor: autorTecnico,
       autorTipo: 'tecnico',
-    })
+    }, supabasePublico)
 
     let novaAba: AbaId | null = null
     let novoSubStatus: string | null = null
@@ -186,7 +186,7 @@ export default function ObraTecnico() {
       try {
         const updates: any = { aba: novaAba, sub_status: novoSubStatus }
         if (novaAba === 'emandamento') updates.status_em_andamento = 'Aguardando lote'
-        await atualizarCard(cardId, updates)
+        await atualizarCard(cardId, updates, supabasePublico)
       } catch {}
     }
 
@@ -197,7 +197,7 @@ export default function ObraTecnico() {
         autor_tipo: 'tecnico',
         texto: mensagemInterno,
         interno: true,
-      })
+      }, supabasePublico)
       if (mensagemPublico) {
         await adicionarHistorico({
           card_id: cardId,
@@ -205,7 +205,7 @@ export default function ObraTecnico() {
           autor_tipo: 'sistema',
           texto: mensagemPublico,
           interno: false,
-        })
+        }, supabasePublico)
       }
     } catch {}
 
@@ -214,7 +214,7 @@ export default function ObraTecnico() {
 
   async function adicionarFotoTecnico(cardId: string, arquivos: File[]) {
     if (!obraReal) return
-    for (const a of arquivos) await uploadFoto({ arquivo: a, obraId: obraReal.id, cardId })
+    for (const a of arquivos) await uploadFoto({ arquivo: a, obraId: obraReal.id, cardId }, supabasePublico)
     try {
       await adicionarHistorico({
         card_id: cardId,
@@ -222,7 +222,7 @@ export default function ObraTecnico() {
         autor_tipo: 'tecnico',
         texto: 'Foto adicionada pelo técnico (' + arquivos.length + ').',
         interno: true,
-      })
+      }, supabasePublico)
     } catch {}
     await recarregar(obraReal.id)
   }
