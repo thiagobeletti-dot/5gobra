@@ -7,7 +7,7 @@ import type { TecnicoObra } from '../types/tecnico'
 import { diasAte, formataData, statusSemantico } from '../lib/helpers'
 import { pegarTecnicoPorToken } from '../lib/tecnico'
 import { pegarObraPorId, listarCardsDaObra, adicionarHistorico, atualizarCard, rowsParaDadosObra, type ObraRow, type HistoricoRow } from '../lib/api'
-import { listarAnexosDeVariosCards, uploadFoto, type Anexo } from '../lib/anexos'
+import { listarAnexosDeVariosCards, uploadFoto, removerAnexo, type Anexo } from '../lib/anexos'
 import { listarChecklistsDeVariosCards, salvarMedicao1, salvarMedicao2 } from '../lib/checklist'
 import type { Checklist, DadosMedicao1, DadosMedicao2 } from '../types/checklist'
 import { resumoMedicao1, resumoMedicao2, ROTULOS_TIPOLOGIA, VAZIO_MEDICAO1, VAZIO_MEDICAO2 } from '../types/checklist'
@@ -234,6 +234,39 @@ export default function ObraTecnico() {
     await recarregar(obraReal.id)
   }
 
+  async function removerFotoTecnico(cardId: string, fotoId: string) {
+    if (!obraReal || !supabasePublico) return
+    // Busca o anexo pra ter o storage_path antes de remover
+    const { data, error } = await supabasePublico
+      .from('anexos')
+      .select('*')
+      .eq('id', fotoId)
+      .single()
+    if (error || !data) return
+    const anexo: Anexo = {
+      id: data.id,
+      card_id: data.card_id,
+      historico_id: data.historico_id ?? null,
+      storage_path: data.storage_path,
+      url: '',
+      nome_arquivo: data.nome_arquivo ?? null,
+      tamanho_bytes: data.tamanho_bytes ?? null,
+      content_type: data.content_type ?? null,
+      created_at: data.created_at,
+    }
+    await removerAnexo(anexo, supabasePublico)
+    try {
+      await adicionarHistorico({
+        card_id: cardId,
+        autor: autorTecnico,
+        autor_tipo: 'tecnico',
+        texto: 'Foto removida pelo técnico.',
+        interno: true,
+      }, supabasePublico)
+    } catch {}
+    await recarregar(obraReal.id)
+  }
+
   if (carregando) return <div className="min-h-screen flex items-center justify-center text-slate-500">Carregando...</div>
 
   if (erro || !tecnico || !dados || !obraReal) {
@@ -320,6 +353,10 @@ export default function ObraTecnico() {
             const n = arquivos.length
             await adicionarFotoTecnico(cardAberto.id, arquivos)
             toast(n + (n === 1 ? ' foto adicionada' : ' fotos adicionadas'))
+          }}
+          onRemoverFoto={async (fotoId) => {
+            await removerFotoTecnico(cardAberto.id, fotoId)
+            toast('Foto removida')
           }}
         />
       )}
@@ -437,12 +474,13 @@ function CardTecView({ card, onClick }: { card: Card; onClick: () => void }) {
   )
 }
 
-function ModalCardTecnico({ card, onClose, onAbrirM1, onAbrirM2, onAdicionarFotos }: {
+function ModalCardTecnico({ card, onClose, onAbrirM1, onAbrirM2, onAdicionarFotos, onRemoverFoto }: {
   card: Card
   onClose: () => void
   onAbrirM1: () => void
   onAbrirM2: () => void
   onAdicionarFotos: (arquivos: File[]) => Promise<void>
+  onRemoverFoto: (fotoId: string) => Promise<void>
 }) {
   const tipoLabel = { peca: 'Item', acordo: 'Acordo', reclamacao: 'Apontamento' }[card.tipo]
   const m1 = card.checklists.find((c) => c.tipo === 'medicao1')
@@ -531,7 +569,7 @@ function ModalCardTecnico({ card, onClose, onAbrirM1, onAbrirM2, onAdicionarFoto
             fotos={card.fotos}
             podeEditar={!card.encerrado}
             onAdicionar={onAdicionarFotos}
-            onRemover={async () => { /* técnico não remove fotos por enquanto */ }}
+            onRemover={async (foto) => onRemoverFoto(foto.id)}
           />
 
           {/* Histórico (técnico vê tudo, exceto interno por padrão; vê interno também por contexto) */}
