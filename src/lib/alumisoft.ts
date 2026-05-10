@@ -145,20 +145,39 @@ function enderecoConcat(end: Element | null | undefined): string {
 
 /**
  * Recebe a obra do Alumisoft e expande as tipologias em itens (1 card por unidade).
- * Gera siglas baseadas no tipo detectado pelo DESCR (P pra porta, J pra janela, F pra fixo, etc).
+ *
+ * Sigla de cada peça segue o padrão `<TIPO>_<n>`, onde <TIPO> vem do XML
+ * (ex: J1, P3) e <n> é a posição da peça dentro daquela tipologia.
+ * Tipologia J1 com QTDE=8 vira J1_1 ... J1_8.
+ *
+ * Se duas tipologias diferentes vierem com mesmo TIPO no XML (caso raro),
+ * o contador continua incrementando dentro daquele bucket pra evitar colisão.
+ *
+ * Fallback: se TIPO vier vazio do XML, cai no padrão antigo (prefixo do
+ * DESCR detectado: P pra porta, J pra janela, F pra fixo, etc).
  */
 export function tipologiasParaItens(obra: AlumisoftObra): ItemImportado[] {
-  const contadores: Record<string, number> = {}
+  const contadoresPorTipo: Record<string, number> = {}
+  const contadoresPorPrefixo: Record<string, number> = {}
   const itens: ItemImportado[] = []
 
   for (const tp of obra.tipologias) {
+    const tipoCru = (tp.tipo || '').trim()
     const prefixo = detectarPrefixo(tp.descricao)
     const nomeCurto = nomeResumido(tp.descricao)
 
     for (let i = 0; i < tp.qtde; i++) {
-      contadores[prefixo] = (contadores[prefixo] || 0) + 1
-      const numero = contadores[prefixo]
-      const sigla = `${prefixo}${numero}`
+      let sigla: string
+      if (tipoCru) {
+        // Caminho preferido: usa o codigo TIPO do XML (J1, P3) + sufixo
+        contadoresPorTipo[tipoCru] = (contadoresPorTipo[tipoCru] || 0) + 1
+        const n = contadoresPorTipo[tipoCru]
+        sigla = `${tipoCru}_${n}`
+      } else {
+        // Fallback (TIPO vazio): mantem comportamento antigo
+        contadoresPorPrefixo[prefixo] = (contadoresPorPrefixo[prefixo] || 0) + 1
+        sigla = `${prefixo}${contadoresPorPrefixo[prefixo]}`
+      }
 
       const dimensoes = `${tp.larguraMm}x${tp.alturaMm}mm`
       const partesDescricao = [
