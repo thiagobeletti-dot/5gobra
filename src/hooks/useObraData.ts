@@ -266,7 +266,7 @@ export function useObraData(
             if (c.id !== cardId) return c
             const hist = [...c.historico, { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Status: "' + (c.statusEmAndamento ?? '-') + '" -> "' + novoStatus + '".', interno: true }]
             if (novoStatus === 'Concluido' || novoStatus === 'Concluído') {
-              hist.push({ autor: 'Sistema', tipo: 'sistema', data: agora(), texto: 'Item concluído. Movido para aba Conclusão. Aguardando aceite do cliente.', interno: false })
+              hist.push({ autor: 'Sistema', tipo: 'sistema', data: agora(), texto: 'Item concluído pela empresa. Aguardando aceite final do cliente.', interno: false })
               return { ...c, statusEmAndamento: novoStatus, aba: 'conclusao' as AbaId, subStatus: 'Aguardando aceite final', historico: hist }
             }
             return { ...c, statusEmAndamento: novoStatus, historico: hist }
@@ -286,7 +286,7 @@ export function useObraData(
     await atualizarCard(cardId, updates, client)
     await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Status: "' + (card.statusEmAndamento ?? '-') + '" -> "' + novoStatus + '".', interno: true }, client)
     if (novoStatus === 'Concluido' || novoStatus === 'Concluído') {
-      await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Item concluído. Movido para aba Conclusão. Aguardando aceite do cliente.' }, client)
+      await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Item concluído pela empresa. Aguardando aceite final do cliente.' }, client)
     }
     const novo = dados
       ? await recarregarCard(obraReal, cardId, dados, client)
@@ -326,7 +326,7 @@ export function useObraData(
                 if (c.aba === 'emandamento') novaAba = perfil === 'empresa' ? 'cliente' : 'empresa'
                 else if (c.aba === 'cliente') novaAba = 'empresa'
                 else if (c.aba === 'empresa') novaAba = 'cliente'
-                hist.push({ autor: 'Sistema', tipo: 'sistema', data: agora(), texto: 'Movido para aba ' + (novaAba === 'cliente' ? 'Cliente' : novaAba === 'empresa' ? 'Empresa' : novaAba) + '.', interno: true })
+                hist.push({ autor: 'Sistema', tipo: 'sistema', data: agora(), texto: 'Item enviado para ' + (novaAba === 'cliente' ? 'o cliente' : novaAba === 'empresa' ? 'a empresa' : novaAba) + '.', interno: true })
                 // Se empresa move pra cliente e tem sub-status interno, traduz
                 if (perfil === 'empresa' && novaAba === 'cliente') {
                   novoSubStatus = traduzirSubStatusParaCliente(c.subStatus)
@@ -354,7 +354,7 @@ export function useObraData(
             updates.sub_status = traduzirSubStatusParaCliente(card.subStatus)
           }
           await atualizarCard(cardId, updates, client)
-          await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Movido para aba ' + (novaAba === 'cliente' ? 'Cliente' : 'Empresa') + '.', interno: true }, client)
+          await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Item enviado para ' + (novaAba === 'cliente' ? 'o cliente' : 'a empresa') + '.', interno: true }, client)
         }
       }
       // Patch otimista: recarregar só o card afetado, em vez de a obra inteira.
@@ -421,7 +421,7 @@ export function useObraData(
             const hist = [
               ...c.historico,
               { autor: 'Cliente', tipo: 'cliente' as AutorTipo, data: agora(), texto, interno: false },
-              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Card movido para aba Técnica. Empresa precisa agendar visita técnica para Medição 1.', interno: true },
+              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Item enviado para o setor técnico. Aguardando agendamento da visita técnica (Medição 1).', interno: true },
             ]
             return { ...c, aba: 'tecnica' as AbaId, subStatus: 'Aguardando visita técnica', historico: hist }
           }),
@@ -432,7 +432,7 @@ export function useObraData(
     if (!obraReal) return
     await adicionarHistorico({ card_id: cardId, autor: 'Cliente', autor_tipo: 'cliente', texto }, client)
     await atualizarCard(cardId, { aba: 'tecnica', sub_status: 'Aguardando visita técnica' }, client)
-    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Card movido para aba Técnica. Empresa precisa agendar visita técnica para Medição 1.', interno: true }, client)
+    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Item enviado para o setor técnico. Aguardando agendamento da visita técnica (Medição 1).', interno: true }, client)
     const novo = dados
       ? await recarregarCard(obraReal, cardId, dados, client)
       : await carregarDoBanco(obraReal, client)
@@ -442,7 +442,7 @@ export function useObraData(
   // Empresa marca contra-marco entregue em obra — card vai pro Cliente esperando ele instalar.
   const marcarContraMarcoEntregue = useCallback(async (cardId: string) => {
     if (!dados) return
-    const textoMsg = 'Contra-marco entregue em obra. Aguardamos você instalar e deixar o vão pronto pra próxima visita técnica.'
+    const textoMsg = 'Contra-marco entregue em obra. Cliente notificado para instalação e finalização do vão antes da próxima visita técnica.'
     if (modo === 'demo') {
       setDados((d) => {
         if (!d) return d
@@ -453,7 +453,7 @@ export function useObraData(
             const hist = [
               ...c.historico,
               { autor: 'Empresa', tipo: 'empresa' as AutorTipo, data: agora(), texto: textoMsg, interno: false },
-              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Contra-marco entregue. Card movido para o Cliente.', interno: true },
+              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Contra-marco entregue. Item devolvido ao cliente para instalação.', interno: true },
             ]
             return { ...c, aba: 'cliente' as AbaId, subStatus: 'Aguardando instalação do contra-marco e vão pronto', historico: hist }
           }),
@@ -464,7 +464,7 @@ export function useObraData(
     if (!obraReal) return
     await adicionarHistorico({ card_id: cardId, autor: 'Empresa', autor_tipo: 'empresa', texto: textoMsg }, client)
     await atualizarCard(cardId, { aba: 'cliente', sub_status: 'Aguardando instalação do contra-marco e vão pronto' }, client)
-    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Contra-marco entregue. Card movido para o Cliente.', interno: true }, client)
+    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Contra-marco entregue. Item devolvido ao cliente para instalação.', interno: true }, client)
     const novo = dados
       ? await recarregarCard(obraReal, cardId, dados, client)
       : await carregarDoBanco(obraReal, client)
@@ -479,8 +479,8 @@ export function useObraData(
     // Texto adapta ao contexto: contra-marco instalado vs vão finalizado
     const tinhaContraMarco = card.subStatus?.toLowerCase().includes('contra-marco')
     const textoMsg = tinhaContraMarco
-      ? 'Contra-marco instalado e vão pronto. Aguardando 2ª medição (M2).'
-      : 'Vão finalizado, pronto pra 2ª medição (M2).'
+      ? 'Contra-marco instalado e vão finalizado. Aguardando 2ª medição (M2).'
+      : 'Vão finalizado. Pronto para a 2ª medição (M2).'
     const autor = perfil === 'empresa' ? 'Empresa' : 'Cliente'
     if (modo === 'demo') {
       setDados((d) => {
@@ -492,7 +492,7 @@ export function useObraData(
             const hist = [
               ...c.historico,
               { autor, tipo: perfil as AutorTipo, data: agora(), texto: textoMsg, interno: false },
-              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Card movido para aba Técnica. Empresa precisa agendar visita para Medição 2.', interno: true },
+              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Item enviado para o setor técnico. Aguardando agendamento da visita técnica (Medição 2).', interno: true },
             ]
             return { ...c, aba: 'tecnica' as AbaId, subStatus: 'Aguardando 2ª medição (M2)', historico: hist }
           }),
@@ -503,7 +503,7 @@ export function useObraData(
     if (!obraReal) return
     await adicionarHistorico({ card_id: cardId, autor, autor_tipo: perfil, texto: textoMsg }, client)
     await atualizarCard(cardId, { aba: 'tecnica', sub_status: 'Aguardando 2ª medição (M2)' }, client)
-    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Card movido para aba Técnica. Empresa precisa agendar visita para Medição 2.', interno: true }, client)
+    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Item enviado para o setor técnico. Aguardando agendamento da visita técnica (Medição 2).', interno: true }, client)
     const novo = dados
       ? await recarregarCard(obraReal, cardId, dados, client)
       : await carregarDoBanco(obraReal, client)
@@ -526,7 +526,7 @@ export function useObraData(
             const hist = [
               ...c.historico,
               { autor: 'Empresa', tipo: 'empresa' as AutorTipo, data: agora(), texto: textoCliente, interno: false },
-              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Apontamento resolvido. Card encerrado.', interno: true },
+              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Apontamento resolvido. Item encerrado.', interno: true },
             ]
             return { ...c, aba: 'conclusao' as AbaId, encerrado: true, subStatus: 'Apontamento resolvido', historico: hist }
           }),
@@ -537,7 +537,7 @@ export function useObraData(
     if (!obraReal) return
     await adicionarHistorico({ card_id: cardId, autor: 'Empresa', autor_tipo: 'empresa', texto: textoCliente }, client)
     await atualizarCard(cardId, { aba: 'conclusao', encerrado: true, sub_status: 'Apontamento resolvido' }, client)
-    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Apontamento resolvido. Card encerrado.', interno: true }, client)
+    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Apontamento resolvido. Item encerrado.', interno: true }, client)
     const novo = dados
       ? await recarregarCard(obraReal, cardId, dados, client)
       : await carregarDoBanco(obraReal, client)
@@ -615,7 +615,7 @@ export function useObraData(
             const hist = [
               ...c.historico,
               { autor: 'Empresa', tipo: 'empresa' as AutorTipo, data: agora(), texto: textoCliente, interno: false },
-              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Card encerrado pela empresa. Removido do fluxo ativo.', interno: true },
+              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Item encerrado pela empresa. Removido do fluxo ativo.', interno: true },
             ]
             return { ...c, encerrado: true, aba: 'conclusao' as AbaId, subStatus: 'Encerrado pela empresa', historico: hist }
           }),
@@ -626,7 +626,7 @@ export function useObraData(
     if (!obraReal) return
     await adicionarHistorico({ card_id: cardId, autor: 'Empresa', autor_tipo: 'empresa', texto: textoCliente }, client)
     await atualizarCard(cardId, { encerrado: true, aba: 'conclusao', sub_status: 'Encerrado pela empresa' }, client)
-    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Card encerrado pela empresa. Removido do fluxo ativo.', interno: true }, client)
+    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Item encerrado pela empresa. Removido do fluxo ativo.', interno: true }, client)
     const novo = dados
       ? await recarregarCard(obraReal, cardId, dados, client)
       : await carregarDoBanco(obraReal, client)
@@ -652,7 +652,7 @@ export function useObraData(
             const hist = [
               ...c.historico,
               { autor: 'Cliente', tipo: 'cliente' as AutorTipo, data: quando, texto: 'Aceite final confirmado. Item oficialmente entregue e garantia iniciada.', interno: false },
-              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: quando, texto: 'Card encerrado. Início de garantia registrado.', interno: false },
+              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: quando, texto: 'Item encerrado. Início de garantia registrado.', interno: false },
             ]
             return { ...c, aceiteFinal: quando, encerrado: true, subStatus: 'Aceite confirmado — garantia iniciada', historico: hist }
           }),
@@ -668,7 +668,7 @@ export function useObraData(
       sub_status: 'Aceite confirmado — garantia iniciada',
     }, client)
     await adicionarHistorico({ card_id: cardId, autor: 'Cliente', autor_tipo: 'cliente', texto: 'Aceite final confirmado. Item oficialmente entregue e garantia iniciada.' }, client)
-    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Card encerrado. Início de garantia registrado.' }, client)
+    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Item encerrado. Início de garantia registrado.' }, client)
     const novo = dados
       ? await recarregarCard(obraReal, cardId, dados, client)
       : await carregarDoBanco(obraReal, client)
@@ -694,7 +694,7 @@ export function useObraData(
             const hist = [
               ...c.historico,
               { autor: 'Cliente', tipo: 'cliente' as AutorTipo, data: agora(), texto, interno: false },
-              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Cliente identificou problema. Card reaberto e enviado para Empresa.', interno: true },
+              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Cliente identificou problema. Item reaberto e enviado à empresa.', interno: true },
             ]
             return { ...c, aba: 'empresa' as AbaId, subStatus: 'Reaberto pelo cliente — aguardando correção', historico: hist }
           }),
@@ -704,7 +704,7 @@ export function useObraData(
     }
     if (!obraReal) return
     await adicionarHistorico({ card_id: cardId, autor: 'Cliente', autor_tipo: perfil, texto }, client)
-    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Cliente identificou problema. Card reaberto e enviado para Empresa.', interno: true }, client)
+    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Cliente identificou problema. Item reaberto e enviado à empresa.', interno: true }, client)
     await atualizarCard(cardId, { aba: 'empresa', sub_status: 'Reaberto pelo cliente — aguardando correção' }, client)
     const novo = dados
       ? await recarregarCard(obraReal, cardId, dados, client)
@@ -727,7 +727,7 @@ export function useObraData(
             const hist = [
               ...c.historico,
               { autor: 'Empresa', tipo: 'empresa' as AutorTipo, data: agora(), texto: textoMsg, interno: false },
-              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Card devolvido pra Conclusão. Aguardando aceite do cliente.', interno: true },
+              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Item devolvido para Conclusão. Aguardando aceite do cliente.', interno: true },
             ]
             return { ...c, aba: 'conclusao' as AbaId, subStatus: 'Aguardando aceite final', historico: hist }
           }),
@@ -738,7 +738,7 @@ export function useObraData(
     if (!obraReal) return
     await adicionarHistorico({ card_id: cardId, autor: 'Empresa', autor_tipo: 'empresa', texto: textoMsg }, client)
     await atualizarCard(cardId, { aba: 'conclusao', sub_status: 'Aguardando aceite final' }, client)
-    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Card devolvido pra Conclusão. Aguardando aceite do cliente.', interno: true }, client)
+    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Item devolvido para Conclusão. Aguardando aceite do cliente.', interno: true }, client)
     const novo = dados
       ? await recarregarCard(obraReal, cardId, dados, client)
       : await carregarDoBanco(obraReal, client)
