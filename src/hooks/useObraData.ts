@@ -652,7 +652,7 @@ export function useObraData(
             const hist = [
               ...c.historico,
               { autor: 'Cliente', tipo: 'cliente' as AutorTipo, data: quando, texto: 'Aceite final confirmado. Item oficialmente entregue e garantia iniciada.', interno: false },
-              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: quando, texto: 'Card encerrado. Inicio de garantia registrado.', interno: false },
+              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: quando, texto: 'Card encerrado. Início de garantia registrado.', interno: false },
             ]
             return { ...c, aceiteFinal: quando, encerrado: true, subStatus: 'Aceite confirmado — garantia iniciada', historico: hist }
           }),
@@ -668,7 +668,7 @@ export function useObraData(
       sub_status: 'Aceite confirmado — garantia iniciada',
     }, client)
     await adicionarHistorico({ card_id: cardId, autor: 'Cliente', autor_tipo: 'cliente', texto: 'Aceite final confirmado. Item oficialmente entregue e garantia iniciada.' }, client)
-    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Card encerrado. Inicio de garantia registrado.' }, client)
+    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Card encerrado. Início de garantia registrado.' }, client)
     const novo = dados
       ? await recarregarCard(obraReal, cardId, dados, client)
       : await carregarDoBanco(obraReal, client)

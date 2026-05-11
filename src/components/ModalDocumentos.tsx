@@ -1,11 +1,11 @@
 // Modal de Documentos da obra — sidebar Documentos abre essa tela.
 //
 // 2 abas:
-//   - Medicao: gera PDF com M1/M2 das pecas selecionadas
-//   - Dossie: gera PDF com timeline de eventos publicos das pecas
-//
-// Selecao por checkbox. So lista cards do tipo 'peca' (acordos e
-// apontamentos ficam fora — eles tem proposito diferente).
+//   - Medicao: gera PDF com M1/M2 das PEÇAS selecionadas (so peca, ja que
+//     acordos/apontamentos nao tem M1/M2).
+//   - Dossie: gera PDF com timeline de eventos publicos. Inclui pecas + acordos
+//     + apontamentos (dossie e prova oficial da obra inteira — decisoes
+//     contratuais e problemas resolvidos tambem entram).
 
 import { useEffect, useMemo, useState } from 'react'
 import type { Card, DadosObra } from '../types/obra'
@@ -38,7 +38,14 @@ export default function ModalDocumentos({ obra, empresa, aberto, onFechar }: Pro
   const [info, setInfo] = useState<string | null>(null)
   useEscClose(aberto, onFechar)
 
-  const pecas = useMemo(() => obra.cards.filter((c) => c.tipo === 'peca'), [obra.cards])
+  // Medicao: so pecas (M1/M2 nao se aplica a acordo/apontamento).
+  // Dossie: todos os cards (a timeline tem valor pra qualquer tipo).
+  const cardsParaListar = useMemo(
+    () => aba === 'medicao'
+      ? obra.cards.filter((c) => c.tipo === 'peca')
+      : obra.cards,
+    [obra.cards, aba],
+  )
 
   useEffect(() => {
     // Reseta selecao quando troca de aba
@@ -67,10 +74,10 @@ export default function ModalDocumentos({ obra, empresa, aberto, onFechar }: Pro
   }
 
   function selecionarTodos() {
-    if (selecionados.size === pecas.length) {
+    if (selecionados.size === cardsParaListar.length) {
       setSelecionados(new Set())
     } else {
-      setSelecionados(new Set(pecas.map((p) => p.id)))
+      setSelecionados(new Set(cardsParaListar.map((p) => p.id)))
     }
   }
 
@@ -78,12 +85,14 @@ export default function ModalDocumentos({ obra, empresa, aberto, onFechar }: Pro
     setErro(null)
     setInfo(null)
     if (selecionados.size === 0) {
-      setErro('Selecione pelo menos uma peca pra exportar.')
+      setErro(aba === 'medicao'
+        ? 'Selecione pelo menos uma peça pra exportar.'
+        : 'Selecione pelo menos um item pra exportar.')
       return
     }
     setGerando(true)
     try {
-      const cardsSelecionados = pecas.filter((p) => selecionados.has(p.id))
+      const cardsSelecionados = cardsParaListar.filter((p) => selecionados.has(p.id))
       let bytes: Uint8Array
       let filename: string
 
@@ -121,7 +130,9 @@ export default function ModalDocumentos({ obra, empresa, aberto, onFechar }: Pro
           <div>
             <h2 className="text-lg font-bold">Documentos da obra</h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Exporta PDF com varias pecas de uma vez. So pecas (acordos e apontamentos ficam fora).
+              {aba === 'medicao'
+                ? 'Ficha de Medição: dados de M1/M2 das peças selecionadas.'
+                : 'Dossiê: linha do tempo de peças, acordos e apontamentos.'}
             </p>
           </div>
           <button
@@ -136,24 +147,26 @@ export default function ModalDocumentos({ obra, empresa, aberto, onFechar }: Pro
         {/* Tabs */}
         <div className="flex border-b border-slate-200">
           <TabBtn ativo={aba === 'medicao'} onClick={() => setAba('medicao')}>
-            Medicao
+            Medição
             <span className="block text-[10px] font-normal text-slate-500 mt-0.5">
               M1 e M2 estruturadas
             </span>
           </TabBtn>
           <TabBtn ativo={aba === 'dossie'} onClick={() => setAba('dossie')}>
-            Dossie
+            Dossiê
             <span className="block text-[10px] font-normal text-slate-500 mt-0.5">
-              Timeline de eventos publicos
+              Linha do tempo da obra
             </span>
           </TabBtn>
         </div>
 
         {/* Conteudo */}
         <div className="flex-1 overflow-y-auto p-6">
-          {pecas.length === 0 ? (
+          {cardsParaListar.length === 0 ? (
             <div className="text-center py-10 text-slate-500 text-sm">
-              Essa obra ainda nao tem pecas cadastradas.
+              {aba === 'medicao'
+                ? 'Essa obra ainda não tem peças cadastradas.'
+                : 'Essa obra ainda não tem cards.'}
             </div>
           ) : (
             <>
@@ -162,16 +175,16 @@ export default function ModalDocumentos({ obra, empresa, aberto, onFechar }: Pro
                   onClick={selecionarTodos}
                   className="text-xs text-laranja-dark hover:text-laranja font-semibold"
                 >
-                  {selecionados.size === pecas.length ? 'Desmarcar todas' : 'Selecionar todas'}
+                  {selecionados.size === cardsParaListar.length ? 'Desmarcar todos' : 'Selecionar todos'}
                 </button>
                 <span className="text-xs text-slate-500">
-                  {selecionados.size} de {pecas.length} selecionada{pecas.length === 1 ? '' : 's'}
+                  {selecionados.size} de {cardsParaListar.length} selecionado{cardsParaListar.length === 1 ? '' : 's'}
                 </span>
               </div>
 
               <div className="space-y-2">
-                {pecas.map((c) => (
-                  <ItemPeca
+                {cardsParaListar.map((c) => (
+                  <ItemCard
                     key={c.id}
                     card={c}
                     aba={aba}
@@ -222,10 +235,16 @@ function TabBtn({ ativo, onClick, children }: { ativo: boolean; onClick: () => v
   )
 }
 
-function ItemPeca({ card, aba, marcado, onToggle }: { card: Card; aba: Aba; marcado: boolean; onToggle: () => void }) {
+function ItemCard({ card, aba, marcado, onToggle }: { card: Card; aba: Aba; marcado: boolean; onToggle: () => void }) {
   const m1 = card.checklists.find((c) => c.tipo === 'medicao1')
   const m2 = card.checklists.find((c) => c.tipo === 'medicao2')
   const eventosPublicos = card.historico.filter((h) => !h.interno).length
+  const tipoLabel = { peca: 'Item', acordo: 'Acordo', reclamacao: 'Apontamento' }[card.tipo]
+  const tipoClasses = {
+    peca: 'bg-peca-soft text-peca-dark border-peca-border',
+    acordo: 'bg-acordo-soft text-acordo-dark border-acordo-border',
+    reclamacao: 'bg-amber-50 text-amber-700 border-amber-200',
+  }[card.tipo]
 
   return (
     <label className="flex items-start gap-3 bg-white border border-slate-200 rounded-lg p-3 cursor-pointer hover:border-laranja transition">
@@ -237,6 +256,9 @@ function ItemPeca({ card, aba, marcado, onToggle }: { card: Card; aba: Aba; marc
       />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
+          <span className={'inline-block text-[10px] font-bold border rounded-full px-2 py-0.5 ' + tipoClasses}>
+            {tipoLabel}
+          </span>
           <span className="font-bold text-sm">{card.sigla}</span>
           <span className="text-sm text-slate-700 truncate">{card.nome}</span>
         </div>
@@ -245,12 +267,12 @@ function ItemPeca({ card, aba, marcado, onToggle }: { card: Card; aba: Aba; marc
             <>
               <Pill ok={!!m1}>M1 {m1 ? 'preenchida' : 'pendente'}</Pill>
               <Pill ok={!!m2} neutralIfFalse>
-                M2 {m2 ? 'preenchida' : 'nao realizada'}
+                M2 {m2 ? 'preenchida' : 'não realizada'}
               </Pill>
             </>
           ) : (
             <Pill ok={eventosPublicos > 0}>
-              {eventosPublicos} evento{eventosPublicos === 1 ? '' : 's'} publico{eventosPublicos === 1 ? '' : 's'}
+              {eventosPublicos} evento{eventosPublicos === 1 ? '' : 's'} público{eventosPublicos === 1 ? '' : 's'}
             </Pill>
           )}
         </div>
