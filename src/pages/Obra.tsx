@@ -416,7 +416,7 @@ export default function Obra() {
             inicial={inicial}
             onCancelar={() => setFormM1Aberto(null)}
             onSalvar={async (dadosForm) => {
-              await data.salvarMedicao1Card(cardId, dadosForm, user?.email ?? 'Empresa')
+              await data.salvarMedicao1Card(cardId, dadosForm, empresaInfo?.nome ?? 'Empresa')
               setFormM1Aberto(null)
               if (dadosForm.tipologia_executavel === 'nao') {
                 toast('Reportado pra empresa — card devolvido')
@@ -443,7 +443,7 @@ export default function Obra() {
             m1={m1Dados}
             onCancelar={() => setFormM2Aberto(null)}
             onSalvar={async (dadosForm) => {
-              await data.salvarMedicao2Card(cardId, dadosForm, user?.email ?? 'Empresa')
+              await data.salvarMedicao2Card(cardId, dadosForm, empresaInfo?.nome ?? 'Empresa')
               setFormM2Aberto(null)
               if (dadosForm.liberado_producao === 'sim') {
                 toast('Medição 2 aprovada — card movido para produção')
