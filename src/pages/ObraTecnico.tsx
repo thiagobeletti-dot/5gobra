@@ -183,10 +183,12 @@ export default function ObraTecnico() {
       mensagemInterno = 'Medição 2 (técnico ' + autorTecnico + '). Vão liberado. Medida final: ' + dadosForm.medida_largura + ' x ' + dadosForm.medida_altura
       mensagemPublico = '2ª medição realizada. Vão está pronto. Item aprovado e aguardando lote de produção.'
     } else if (dadosForm.liberado_producao === 'nao') {
-      novaAba = 'empresa'
-      novoSubStatus = 'Vão M2 reprovado — comunicar cliente'
+      // Vão M2 não liberado → vai direto pro cliente ajustar.
+      // Mesmo padrão da M1: registro técnico vai como público pra cliente ler as pendências.
+      novaAba = 'cliente'
+      novoSubStatus = 'Aguardando ajustar o vão'
       const pendencias = dadosForm.pendencias.trim() || '(sem detalhes)'
-      mensagemInterno = 'Medição 2 (técnico ' + autorTecnico + '). Vão NÃO liberado. Pendências: ' + pendencias
+      mensagemInterno = 'Medição 2 (técnico ' + autorTecnico + '). Vão NÃO liberado. Pendências apontadas pelo técnico: ' + pendencias
     }
 
     if (novaAba !== null) {
@@ -197,13 +199,15 @@ export default function ObraTecnico() {
       } catch {}
     }
 
+    // Quando vai pra Cliente (vão M2 não liberado), o registro técnico vai como público.
+    const registroPublico = novaAba === 'cliente'
     try {
       await adicionarHistorico({
         card_id: cardId,
         autor: autorTecnico,
         autor_tipo: 'tecnico',
         texto: mensagemInterno,
-        interno: true,
+        interno: !registroPublico,
       }, supabasePublico)
       if (mensagemPublico) {
         await adicionarHistorico({

@@ -132,48 +132,88 @@ export default function FormMedicao1({ inicial, onSalvar, onCancelar }: Props) {
   // Regra: meia cana interna só vale se sem contra-marco + montagem no eixo
   const podeMeiaCanaInterna = cmNao && d.instalacao === 'eixo'
 
+  // Valida o checklist por completo de acordo com o caminho escolhido.
+  // Retorna mensagem de erro (string) ou null se ok.
+  function validarCompleto(): string | null {
+    // Cabeçalho — sempre obrigatório
+    if (!d.data.trim()) return 'Preencha a data da medição.'
+    if (!d.tecnico.trim()) return 'Preencha o nome do técnico.'
+    if (!d.responsavel_obra.trim()) return 'Preencha o nome do responsável da obra.'
+
+    // Decisão inicial: conseguimos executar a tipologia contratada?
+    if (!d.tipologia_executavel) return 'Confirme se conseguimos executar a tipologia contratada.'
+
+    if (naoExecutavel) {
+      if (!d.tipologia_problema.trim()) return 'Descreva o problema da tipologia pra empresa avaliar.'
+      return null // Caminho "não executável" termina aqui
+    }
+
+    // Sim, executável → contra-marco?
+    if (!d.contra_marco) return 'Decida se vai ter contra-marco antes de salvar (define o próximo passo da obra).'
+
+    if (cmSim) {
+      // CM = SIM: só medida do vão pra fabricar contra-marco
+      if (!d.medida_largura.trim() || !d.medida_altura.trim()) {
+        return 'Preencha a medida do vão (largura e altura) pra fabricar o contra-marco.'
+      }
+      return null
+    }
+
+    // CM = NÃO → estado do vão?
+    if (!d.vao_pronto) return 'Responda se o vão está acabado.'
+
+    if (vaoNao) {
+      // Vão NÃO pronto: pendências obrigatórias
+      if (!d.precisa_correcao.trim()) {
+        return 'Liste o que falta no vão pra ele ficar pronto. O cliente vai receber essa lista pra corrigir.'
+      }
+      return null
+    }
+
+    // Form completo (CM=NÃO + vão=SIM): tudo obrigatório
+    if (!d.tipologia) return 'Escolha a tipologia da peça.'
+
+    // Specs de correr
+    if (d.tipologia === 'correr') {
+      if (!d.correr_abertura_lado) return 'Preencha o lado de abertura (Correr).'
+      if (!d.correr_fecho) return 'Preencha o tipo de fecho (Correr).'
+      if (!d.correr_trilho) return 'Preencha o tipo de trilho (Correr).'
+    }
+
+    // Specs de giro
+    if (d.tipologia === 'giro') {
+      if (!d.giro_abertura) return 'Preencha o sentido de abertura (Giro).'
+      if (!d.giro_fechadura_lado) return 'Preencha o lado da fechadura (Giro).'
+    }
+
+    // Estrutura
+    if (!d.soleira) return 'Preencha se a peça tem soleira.'
+
+    if (d.tem_motor) {
+      if (!d.motor_lado) return 'Preencha o lado do motor.'
+      if (!d.motor_tensao) return 'Preencha a tensão do motor.'
+    }
+
+    if (!d.instalacao) return 'Preencha a orientação de instalação do trilho.'
+
+    if (d.arremate_externo && !d.arremate_externo_tipo) {
+      return 'Preencha o tipo do arremate externo (cantoneira ou meia-cana).'
+    }
+
+    // Medida final
+    if (!d.medida_largura.trim() || !d.medida_altura.trim()) {
+      return 'Preencha a medida final (largura e altura) pra fabricação.'
+    }
+
+    return null
+  }
+
   async function salvar() {
     setErro(null)
-    if (!d.tipologia_executavel) {
-      setErro('Confirme se conseguimos executar a tipologia contratada.')
+    const mensagemErro = validarCompleto()
+    if (mensagemErro) {
+      setErro(mensagemErro)
       return
-    }
-    if (naoExecutavel) {
-      if (!d.tipologia_problema.trim()) {
-        setErro('Descreva o problema da tipologia pra empresa avaliar.')
-        return
-      }
-    } else {
-      if (!d.contra_marco) {
-        setErro('Decida se vai ter contra-marco antes de salvar (essa decisão define o próximo passo da obra).')
-        return
-      }
-      if (cmSim) {
-        if (!d.medida_largura.trim() || !d.medida_altura.trim()) {
-          setErro('Preencha a medida do vão pra fabricar o contra-marco.')
-          return
-        }
-      } else if (cmNao) {
-        if (!d.vao_pronto) {
-          setErro('Responda se o vão está acabado.')
-          return
-        }
-        if (vaoNao) {
-          if (!d.precisa_correcao.trim()) {
-            setErro('Liste o que falta no vão pra ele ficar pronto. Empresa vai usar essa lista pra orientar o cliente.')
-            return
-          }
-        } else if (vaoSim) {
-          if (!d.tipologia) {
-            setErro('Escolha a tipologia da peça antes de salvar.')
-            return
-          }
-          if (!d.medida_largura.trim() || !d.medida_altura.trim()) {
-            setErro('Preencha a medida final (largura e altura) pra fabricação.')
-            return
-          }
-        }
-      }
     }
 
     // Limpa campos não preenchidos baseado no caminho escolhido
@@ -316,11 +356,11 @@ export default function FormMedicao1({ inicial, onSalvar, onCancelar }: Props) {
               />
               {vaoNao && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-2">
-                  <Campo label="Lista de pendências (orientação pra obra)">
-                    <TextoArea valor={d.precisa_correcao} onChange={(v) => up('precisa_correcao', v)} placeholder="Ex: nivelar contra-piso, instalar soleira, requadrar vão, deixar ponto de energia. Empresa vai usar essa lista pra orientar o cliente." />
+                  <Campo label="Lista de pendências do vão">
+                    <TextoArea valor={d.precisa_correcao} onChange={(v) => up('precisa_correcao', v)} placeholder="Ex: nivelar contra-piso, instalar soleira, requadrar vão, deixar ponto de energia. O cliente recebe essa lista pra corrigir." />
                   </Campo>
                   <div className="text-[11px] text-red-700 mt-1.5">
-                    Vão NÃO está pronto. Card vai pra Empresa redigir orientação ao cliente.
+                    Vão NÃO está pronto. Item vai direto pro cliente com a lista de pendências.
                   </div>
                 </div>
               )}

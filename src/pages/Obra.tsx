@@ -35,9 +35,9 @@ export default function Obra() {
   const [tourObraAtivo, setTourObraAtivo] = useState(false)
   const { status: onboarding, marcar: marcarOnb } = useOnboarding()
   // Hardcoded 'empresa': o toggle "Visão Cliente" foi removido em 10/05/2026
-  // (preservar integridade do histórico). State mantido pra não quebrar as
-  // condicionais espalhadas pelo arquivo — todas as branches `perfil === 'cliente'`
-  // viraram código morto, mas continuam compilando.
+  // (preservar integridade do histórico). State mantido pra continuar passando
+  // perfil pras funções de useObraData (registrar/reabrir/criarNovo) que aceitam
+  // 'empresa' | 'cliente' como arg. Branches `perfil === 'cliente'` foram limpos em 11/05.
   const [perfil] = useState<Perfil>('empresa')
   const [abaAtiva, setAbaAtiva] = useState<AbaId>('cliente')
   const [cardAbertoId, setCardAbertoId] = useState<string | null>(null)
@@ -565,10 +565,9 @@ function CardView({ card, perfil, onClick }: { card: Card; perfil: Perfil; onCli
     }
   }
 
-  const novoParaVoce =
-    (perfil === 'empresa' && card.aba === 'empresa') ||
-    (perfil === 'cliente' && card.aba === 'cliente') ||
-    (perfil === 'cliente' && card.aba === 'conclusao' && !card.aceiteFinal)
+  // Como o toggle "Visão Cliente" foi removido (10/05/2026), perfil sempre é 'empresa'.
+  // Mantida só a condição que ainda se aplica.
+  const novoParaVoce = card.aba === 'empresa'
 
   const corLado = card.tipo === 'peca' ? 'bg-peca' : 'bg-acordo'
   const siglaCls = card.tipo === 'peca'
@@ -660,7 +659,7 @@ function ModalCard({
           </div>
 
           {/* Card reaberto pelo cliente — destaque o motivo + botão Corrigido */}
-          {perfil === 'empresa' && !card.encerrado && card.subStatus === 'Reaberto pelo cliente — aguardando correção' && (() => {
+          {!card.encerrado && card.subStatus === 'Reaberto pelo cliente — aguardando correção' && (() => {
             // Pega a última mensagem do cliente (motivo da reabertura)
             const ultimaCliente = (card.historico ?? []).slice().reverse().find((h) => h.tipo === 'cliente')
             return (
@@ -679,7 +678,7 @@ function ModalCard({
           })()}
 
           {/* Apontamento aberto — empresa pode marcar como resolvido */}
-          {perfil === 'empresa' && !card.encerrado && card.tipo === 'reclamacao' && (
+          {!card.encerrado && card.tipo === 'reclamacao' && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-4">
               <div className="font-bold text-sm text-amber-800 mb-1">📌 Apontamento aberto</div>
               <p className="text-xs text-slate-700 mb-3">Quando a empresa atender o que foi pedido, marque como resolvido. O item vai pra Conclusão e o cliente é notificado.</p>
@@ -688,7 +687,7 @@ function ModalCard({
           )}
 
           {/* Botões contextuais de transição (só Visão Empresa) */}
-          {perfil === 'empresa' && !card.encerrado && card.subStatus === 'Fabricando contra-marco' && (
+          {!card.encerrado && card.subStatus === 'Fabricando contra-marco' && (
             <div className="bg-laranja-soft border border-laranja-border rounded-lg px-4 py-4">
               <div className="font-bold text-sm text-laranja-dark mb-1">🛠 Em fabricação do contra-marco</div>
               <p className="text-xs text-slate-700 mb-3">Quando o contra-marco for fabricado e entregue na obra, marque abaixo. O card vai pra cliente esperar a instalação.</p>
@@ -696,7 +695,7 @@ function ModalCard({
             </div>
           )}
 
-          {perfil === 'empresa' && !card.encerrado && (card.subStatus === 'Aguardando instalação do contra-marco e vão pronto' || card.subStatus === 'Aguardando finalizar vão') && (
+          {!card.encerrado && (card.subStatus === 'Aguardando instalação do contra-marco e vão pronto' || card.subStatus === 'Aguardando finalizar vão') && (
             <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-4">
               <div className="font-bold text-sm text-emerald-700 mb-1">📋 {card.subStatus}</div>
               <p className="text-xs text-slate-700 mb-3">Se o cliente já confirmou que o vão tá pronto pra próxima medição, você pode marcar em nome dele:</p>
@@ -717,12 +716,6 @@ function ModalCard({
                 <div className="bg-emerald-50 border border-emerald-200 px-4 py-3 rounded-lg text-xs text-slate-700">
                   <span className="text-emerald-700 font-bold">✓ Aceite confirmado</span> pelo cliente em {formataDataHora(card.aceiteFinal)}. Garantia iniciada nesta data.
                 </div>
-              ) : perfil === 'cliente' ? (
-                <div className="bg-emerald-50 border border-emerald-200 px-4 py-4 rounded-lg">
-                  <div className="font-bold text-sm text-emerald-700 mb-1">Dar aceite final</div>
-                  <p className="text-xs text-slate-600 mb-3">A peca foi instalada pela empresa. Ao confirmar, voce aceita oficialmente a entrega desta peca e inicia a garantia.</p>
-                  <button className="btn-primary" onClick={onAceitar}>Confirmar aceite</button>
-                </div>
               ) : (
                 <div className="bg-emerald-50 border border-emerald-200 px-4 py-4 rounded-lg">
                   <div className="font-bold text-sm text-emerald-700 mb-1">Aguardando aceite do cliente</div>
@@ -732,7 +725,7 @@ function ModalCard({
             </div>
           )}
 
-          {card.aba === 'emandamento' && perfil === 'empresa' && !card.encerrado && (
+          {card.aba === 'emandamento' && !card.encerrado && (
             <div>
               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">Status do processo (empresa)</div>
               <select
@@ -756,22 +749,16 @@ function ModalCard({
               />
               <div className="flex gap-2 flex-wrap mt-2.5">
                 <button className="btn-primary" onClick={() => onRegistrar(texto, true)}>
-                  Registrar {perfil === 'empresa' ? '(joga pro cliente)' : '(joga pra empresa)'}
+                  Registrar (joga pro cliente)
                 </button>
                 {card.aba === 'emandamento' && (
                   <button className="btn-ghost" onClick={() => onRegistrar(texto, false)}>Registrar sem mover</button>
-                )}
-                {card.aba === 'conclusao' && perfil === 'cliente' && !card.aceiteFinal && (
-                  <button
-                    className="btn bg-transparent text-red-600 border border-red-200 hover:bg-red-50"
-                    onClick={() => onReabrir(texto)}
-                  >Tem problema - reabrir</button>
                 )}
               </div>
             </div>
           )}
 
-          {perfil === 'empresa' && podeChecklist && card.tipo === 'peca' && !card.encerrado && (
+          {podeChecklist && card.tipo === 'peca' && !card.encerrado && (
             <ChecklistTecnico card={card} onAbrirMedicao1={onAbrirMedicao1} onAbrirMedicao2={onAbrirMedicao2} />
           )}
 
@@ -822,7 +809,7 @@ function ModalCard({
             </div>
           </div>
 
-          {perfil === 'empresa' && (
+          {(
             <div className="pt-3 border-t border-slate-200 flex justify-end gap-3">
               {!card.encerrado && (
                 <button

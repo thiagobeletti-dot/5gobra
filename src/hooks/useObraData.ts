@@ -1006,10 +1006,13 @@ export function useObraData(
       mensagemHistoricoInterno = 'Medição 2 preenchida. Vão liberado. Card movido para Em Andamento aguardando lote. Medida final: ' + dadosForm.medida_largura + ' x ' + dadosForm.medida_altura
       mensagemHistoricoPublico = '2ª medição realizada. Vão está pronto. Item aprovado e aguardando lote de produção.'
     } else if (dadosForm.liberado_producao === 'nao') {
-      novaAba = 'empresa'
-      novoSubStatus = 'Vão M2 reprovado — comunicar cliente'
+      // Decisão de produto (10/05/2026 — simétrico ao M1): vai direto pro cliente
+      // ajustar o vão, sem etapa intermediária da empresa redigir orientação.
+      // O registro técnico vai como público pra cliente ler as pendências.
+      novaAba = 'cliente'
+      novoSubStatus = 'Aguardando ajustar o vão'
       const pendencias = dadosForm.pendencias.trim() || '(sem detalhes)'
-      mensagemHistoricoInterno = 'Medição 2 preenchida. Vão NÃO liberado. Pendências para empresa orientar cliente: ' + pendencias
+      mensagemHistoricoInterno = 'Medição 2 preenchida. Vão NÃO liberado. Pendências apontadas pelo técnico: ' + pendencias
     }
 
     if (novaAba !== null) {
@@ -1024,16 +1027,18 @@ export function useObraData(
       }
     }
 
+    // Quando card vai pra Cliente (vão M2 não liberado), o registro técnico
+    // vai como público pra cliente ler as pendências. Caso contrário fica interno.
+    const registroPublicoM2 = novaAba === 'cliente'
     try {
-      // Registro técnico interno (cliente não vê o detalhe cru)
       await adicionarHistorico({
         card_id: cardId,
         autor: autorNome || 'Empresa',
         autor_tipo: 'empresa',
         texto: mensagemHistoricoInterno,
-        interno: true,
+        interno: !registroPublicoM2,
       }, client)
-      // Registro público quando vai pra produção
+      // Registro público amigável quando vai pra produção
       if (mensagemHistoricoPublico) {
         await adicionarHistorico({
           card_id: cardId,

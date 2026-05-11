@@ -111,26 +111,67 @@ export default function FormMedicao2({ inicial, m1, onSalvar, onCancelar }: Prop
   // Condicionais baseadas no M1
   const m1Cm = m1?.contra_marco === 'sim'
 
-  async function salvar() {
-    setErro(null)
-    if (!d.liberado_producao) {
-      setErro('Decida se o vão está liberado pra produção (Sim ou Não).')
-      return
+  // Valida o checklist por completo. Retorna mensagem de erro (string) ou null se ok.
+  function validarCompleto(): string | null {
+    // Cabeçalho
+    if (!d.data.trim()) return 'Preencha a data da medição.'
+    if (!d.tecnico.trim()) return 'Preencha o nome do técnico.'
+    if (!d.responsavel_obra.trim()) return 'Preencha o nome do responsável da obra.'
+
+    // Estado do vão
+    if (m1Cm && !d.contra_marco_instalado) return 'Responda se o contra-marco foi instalado corretamente.'
+    if (!d.piso_acabado) return 'Responda se o piso está acabado.'
+    if (!d.vao_acabado) return 'Responda se o vão (paredes/teto) está acabado.'
+    if (!d.nivel_ok) return 'Responda se o nível está OK.'
+    if (!d.prumo_ok) return 'Responda se o prumo está OK.'
+
+    // Specs finais (sempre obrigatorias na M2, pois e o momento que define a fabricacao)
+    if (!d.tipologia) return 'Escolha a tipologia da peça.'
+
+    if (d.tipologia === 'correr') {
+      if (!d.correr_abertura_lado) return 'Preencha o lado de abertura (Correr).'
+      if (!d.correr_fecho) return 'Preencha o tipo de fecho (Correr).'
+      if (!d.correr_trilho) return 'Preencha o tipo de trilho (Correr).'
     }
+
+    if (d.tipologia === 'giro') {
+      if (!d.giro_abertura) return 'Preencha o sentido de abertura (Giro).'
+      if (!d.giro_fechadura_lado) return 'Preencha o lado da fechadura (Giro).'
+    }
+
+    if (!d.soleira) return 'Preencha se a peça tem soleira.'
+
+    if (d.tem_motor) {
+      if (!d.motor_lado) return 'Preencha o lado do motor.'
+      if (!d.motor_tensao) return 'Preencha a tensão do motor.'
+    }
+
+    if (d.arremate_externo && !d.arremate_externo_tipo) {
+      return 'Preencha o tipo do arremate externo (cantoneira ou meia-cana).'
+    }
+
+    // Resultado
+    if (!d.liberado_producao) return 'Decida se o vão está liberado pra produção (Sim ou Não).'
+
     if (d.liberado_producao === 'sim') {
-      if (!d.tipologia) {
-        setErro('Escolha a tipologia da peça antes de liberar pra produção.')
-        return
-      }
       if (!d.medida_largura.trim() || !d.medida_altura.trim()) {
-        setErro('Preencha a medida final (largura e altura) pra liberar pra produção.')
-        return
+        return 'Preencha a medida final (largura e altura) pra liberar pra produção.'
       }
     } else if (d.liberado_producao === 'nao') {
       if (!d.pendencias.trim()) {
-        setErro('Liste as pendências pra empresa orientar o cliente.')
-        return
+        return 'Liste as pendências do vão. O cliente vai receber essa lista pra corrigir.'
       }
+    }
+
+    return null
+  }
+
+  async function salvar() {
+    setErro(null)
+    const mensagemErro = validarCompleto()
+    if (mensagemErro) {
+      setErro(mensagemErro)
+      return
     }
 
     // Limpa campos da tipologia não escolhida
@@ -335,7 +376,7 @@ export default function FormMedicao2({ inicial, m1, onSalvar, onCancelar }: Prop
 
           <Secao titulo="Resultado" destaque>
             <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-900 mb-2">
-              <strong>Decisão final:</strong> liberar pra produção significa que a peça vai entrar na fila de fabricação. Se reprovado, card volta pra empresa redigir orientação ao cliente.
+              <strong>Decisão final:</strong> liberar pra produção significa que a peça vai entrar na fila de fabricação. Se reprovado, o item vai direto pro cliente com a lista de pendências.
             </div>
             <GrupoRadio
               label="Vão liberado pra produção?"
@@ -357,11 +398,11 @@ export default function FormMedicao2({ inicial, m1, onSalvar, onCancelar }: Prop
 
             {d.liberado_producao === 'nao' && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-3">
-                <Campo label="Lista de pendências (orientação pra obra)">
-                  <TextoArea valor={d.pendencias} onChange={(v) => up('pendencias', v)} placeholder="Ex: nivelar contra-piso, ajustar requadro. Empresa vai usar essa lista pra orientar o cliente." />
+                <Campo label="Lista de pendências do vão">
+                  <TextoArea valor={d.pendencias} onChange={(v) => up('pendencias', v)} placeholder="Ex: nivelar contra-piso, ajustar requadro. O cliente recebe essa lista pra corrigir." />
                 </Campo>
                 <div className="text-[11px] text-red-700 mt-1.5">
-                  Vão NÃO está liberado. Card vai voltar pra Empresa redigir orientação ao cliente.
+                  Vão NÃO está liberado. Item vai direto pro cliente com a lista de pendências.
                 </div>
               </div>
             )}
