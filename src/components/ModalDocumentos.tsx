@@ -40,10 +40,16 @@ export default function ModalDocumentos({ obra, empresa, aberto, onFechar }: Pro
 
   // Medicao: so pecas (M1/M2 nao se aplica a acordo/apontamento).
   // Dossie: todos os cards (a timeline tem valor pra qualquer tipo).
+  // Ordena por sigla com natural sort (J1_1 < J1_3 < J1_10) pra UI bater com o PDF.
   const cardsParaListar = useMemo(
-    () => aba === 'medicao'
-      ? obra.cards.filter((c) => c.tipo === 'peca')
-      : obra.cards,
+    () => {
+      const filtrado = aba === 'medicao'
+        ? obra.cards.filter((c) => c.tipo === 'peca')
+        : obra.cards
+      return [...filtrado].sort((a, b) =>
+        a.sigla.localeCompare(b.sigla, 'pt-BR', { numeric: true })
+      )
+    },
     [obra.cards, aba],
   )
 

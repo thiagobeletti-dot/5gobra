@@ -72,9 +72,10 @@ export async function gerarPdfMedicao(
   empresa: EmpresaInfo,
   cards: Card[],
 ): Promise<Uint8Array> {
+  const cardsOrdenados = ordenarPorSigla(cards)
   const ctx = await criarContexto('Ficha de Medição')
-  desenharCapa(ctx, 'Ficha de Medição', obra, empresa, cards.length, 'peças com M1/M2')
-  for (const card of cards) {
+  desenharCapa(ctx, 'Ficha de Medição', obra, empresa, cardsOrdenados.length, 'peças com M1/M2')
+  for (const card of cardsOrdenados) {
     desenharSecaoMedicao(ctx, card)
   }
   desenharFooters(ctx, 'Ficha de Medição')
@@ -87,14 +88,24 @@ export async function gerarPdfDossie(
   cards: Card[],
   historicoPorCard: Map<string, HistoricoRow[]>,
 ): Promise<Uint8Array> {
+  const cardsOrdenados = ordenarPorSigla(cards)
   const ctx = await criarContexto('Dossiê da obra')
-  desenharCapa(ctx, 'Dossiê da obra', obra, empresa, cards.length, 'peças com histórico')
-  for (const card of cards) {
+  desenharCapa(ctx, 'Dossiê da obra', obra, empresa, cardsOrdenados.length, 'peças com histórico')
+  for (const card of cardsOrdenados) {
     const eventos = historicoPorCard.get(card.id) ?? []
     desenharSecaoDossie(ctx, card, eventos)
   }
   desenharFooters(ctx, 'Dossiê da obra')
   return await ctx.pdf.save()
+}
+
+// Ordena por sigla usando natural sort (J1_1 < J1_3 < J1_10 < J2_1).
+// Aceita acordo/apontamento misturados — siglas com letras + numero + sufixo
+// caem todas nessa ordenacao consistente.
+function ordenarPorSigla(cards: Card[]): Card[] {
+  return [...cards].sort((a, b) =>
+    a.sigla.localeCompare(b.sigla, 'pt-BR', { numeric: true })
+  )
 }
 
 // Helper que dispara o download no browser (cria Blob URL e clica num <a>).
