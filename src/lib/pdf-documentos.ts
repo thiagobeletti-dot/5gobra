@@ -78,7 +78,8 @@ export async function gerarPdfMedicao(
   for (const card of cardsOrdenados) {
     desenharSecaoMedicao(ctx, card)
   }
-  desenharFooters(ctx, 'Ficha de Medição')
+  desenharBrandingTopo(ctx)
+  desenharFooters(ctx, empresa)
   return await ctx.pdf.save()
 }
 
@@ -95,7 +96,8 @@ export async function gerarPdfDossie(
     const eventos = historicoPorCard.get(card.id) ?? []
     desenharSecaoDossie(ctx, card, eventos)
   }
-  desenharFooters(ctx, 'Dossiê da obra')
+  desenharBrandingTopo(ctx)
+  desenharFooters(ctx, empresa)
   return await ctx.pdf.save()
 }
 
@@ -148,6 +150,18 @@ const COR_SOFT = rgb(0.45, 0.45, 0.45)
 const COR_LABEL = rgb(0.3, 0.3, 0.3)
 const COR_LINHA = rgb(0.85, 0.85, 0.85)
 const COR_DESTAQUE = rgb(0.92, 0.45, 0.04) // laranja G Obra
+const COR_CARD_BG = rgb(0.985, 0.985, 0.99) // cinza muito claro pra fundo de evento
+
+// Cores por autor — facilita ler "quem fez o quê" no dossiê
+const COR_AUTOR: Record<string, ReturnType<typeof rgb>> = {
+  empresa: rgb(0.92, 0.45, 0.04),   // laranja
+  cliente: rgb(0.20, 0.50, 0.85),   // azul
+  tecnico: rgb(0.05, 0.55, 0.45),   // verde-azulado / teal
+  sistema: rgb(0.55, 0.55, 0.55),   // cinza
+}
+function corDoAutor(tipo: string): ReturnType<typeof rgb> {
+  return COR_AUTOR[tipo] ?? COR_SOFT
+}
 
 async function criarContexto(documentoTitulo: string): Promise<Ctx> {
   const pdf = await PDFDocument.create()
@@ -234,15 +248,16 @@ function desenharCapa(ctx: Ctx, titulo: string, obra: ObraInfo, empresa: Empresa
   desenharLinha(ctx)
   ctx.y -= 14
 
+  // So mostra campos preenchidos (escondendo "-" feio quando vazio)
   const bloco: [string, string][] = [
-    ['Obra', obra.nome ?? '(sem nome)'],
-    ['Endereço', obra.endereco ?? '-'],
-    ['Cliente', obra.cliente ?? '-'],
-    ['Início da obra', obra.inicio ?? '-'],
-    ['Empresa emitente', empresa.nome + (empresa.cnpj ? ' (CNPJ ' + empresa.cnpj + ')' : '')],
-    ['Data de emissão', formatarDataLonga(new Date().toISOString())],
-    ['Conteúdo', String(qtde) + ' ' + sufixo],
+    ['Obra', obra.nome || '(sem nome)'],
   ]
+  if (obra.endereco) bloco.push(['Endereço', obra.endereco])
+  if (obra.cliente) bloco.push(['Cliente', obra.cliente])
+  if (obra.inicio) bloco.push(['Início da obra', obra.inicio])
+  bloco.push(['Empresa emitente', empresa.nome + (empresa.cnpj ? ' (CNPJ ' + empresa.cnpj + ')' : '')])
+  bloco.push(['Data de emissão', formatarDataHoraCompacta(new Date().toISOString())])
+  bloco.push(['Conteúdo', String(qtde) + ' ' + sufixo])
   for (const [k, v] of bloco) {
     ctx.page.drawText(k + ':', { x: MARGIN, y: ctx.y - 4, size: 8, font: ctx.fontBold, color: COR_LABEL })
     const linhas = quebrarLinhas(String(v), ctx.fontRegular, 9, PAGE_W - MARGIN * 2 - 130)
@@ -465,28 +480,64 @@ function desenharSecaoDossie(ctx: Ctx, card: Card, eventos: HistoricoRow[]) {
 }
 
 function desenharEventoTimeline(ctx: Ctx, ev: HistoricoRow) {
-  const headerLine = formatarDataLonga(ev.created_at) + ' — ' + (ev.autor || '(autor não informado)') + ' (' + traduzirAutorTipo(ev.autor_tipo) + ')'
-  const corpoLinhas = quebrarLinhas(ev.texto || '(sem texto)', ctx.fontRegular, FONT_BODY, PAGE_W - MARGIN * 2 - 16)
+  // Layout: caixa cinza-clarinha cercando cada evento. Barra colorida à esquerda
+  // (cor do autor: laranja=Empresa, azul=Cliente, teal=Técnico, cinza=Sistema).
+  // Header da caixa: autor (cor) + data/hora compacta (cinza).
+  // Corpo: texto do evento.
+  const corAutor = corDoAutor(ev.autor_tipo)
+  const dataCompacta = formatarDataHoraCompacta(ev.created_at)
+  const autorLabel = (ev.autor || '(autor não informado)')
+  const tipoLabel = traduzirAutorTipo(ev.autor_tipo)
 
-  garantirEspaco(ctx, 16 + corpoLinhas.length * LINE_H + 4)
+  const larguraConteudo = PAGE_W - MARGIN * 2 - 16
+  const corpoLinhas = quebrarLinhas(ev.texto || '(sem texto)', ctx.fontRegular, FONT_BODY, larguraConteudo - 8)
 
-  ctx.page.drawCircle({
-    x: MARGIN + 3, y: ctx.y - 4,
-    size: 2, color: COR_DESTAQUE,
+  const alturaConteudo = LINE_H + corpoLinhas.length * LINE_H + 8
+  garantirEspaco(ctx, alturaConteudo + 6)
+
+  // Fundo da caixa
+  ctx.page.drawRectangle({
+    x: MARGIN, y: ctx.y - alturaConteudo,
+    width: PAGE_W - MARGIN * 2, height: alturaConteudo,
+    color: COR_CARD_BG,
+    borderColor: COR_LINHA,
+    borderWidth: 0.5,
   })
-  ctx.page.drawText(sanitize(headerLine), {
-    x: MARGIN + 12, y: ctx.y - 4, size: 8, font: ctx.fontBold, color: COR_LABEL,
+  // Barra colorida à esquerda (3px)
+  ctx.page.drawRectangle({
+    x: MARGIN, y: ctx.y - alturaConteudo,
+    width: 3, height: alturaConteudo,
+    color: corAutor,
   })
-  ctx.y -= LINE_H
 
+  // Header: autor (em cor) + tipo (cinza) à esquerda, data à direita
+  const yHeader = ctx.y - 4
+  ctx.page.drawText(sanitize(autorLabel), {
+    x: MARGIN + 10, y: yHeader - 8,
+    size: 9, font: ctx.fontBold, color: corAutor,
+  })
+  const autorW = ctx.fontBold.widthOfTextAtSize(sanitize(autorLabel), 9)
+  ctx.page.drawText(' · ' + sanitize(tipoLabel), {
+    x: MARGIN + 10 + autorW, y: yHeader - 8,
+    size: 8, font: ctx.fontRegular, color: COR_SOFT,
+  })
+  // Data alinhada à direita
+  const dataW = ctx.fontRegular.widthOfTextAtSize(sanitize(dataCompacta), 8)
+  ctx.page.drawText(sanitize(dataCompacta), {
+    x: PAGE_W - MARGIN - 10 - dataW, y: yHeader - 8,
+    size: 8, font: ctx.fontRegular, color: COR_SOFT,
+  })
+  ctx.y -= LINE_H + 4
+
+  // Corpo: texto
   for (const linha of corpoLinhas) {
-    garantirEspaco(ctx, LINE_H)
     ctx.page.drawText(linha, {
-      x: MARGIN + 12, y: ctx.y - FONT_BODY, size: FONT_BODY, font: ctx.fontRegular, color: COR_TEXTO,
+      x: MARGIN + 10, y: ctx.y - FONT_BODY,
+      size: FONT_BODY, font: ctx.fontRegular, color: COR_TEXTO,
     })
     ctx.y -= LINE_H
   }
-  ctx.y -= 4
+  ctx.y -= 6 // espaço entre caixas
 }
 
 // =============== Tabela chave-valor ===============
@@ -515,17 +566,56 @@ function desenharTabelaChaveValor(ctx: Ctx, linhas: [string, string][]) {
   }
 }
 
-// =============== Footer com paginacao ===============
+// =============== Branding e Footer ===============
 
-function desenharFooters(ctx: Ctx, titulo: string) {
+// Marca G Obra discreta no canto superior direito de todas as paginas.
+// Esmaecida (cor laranja com transparencia) pra nao competir com conteudo.
+function desenharBrandingTopo(ctx: Ctx) {
   const total = ctx.pdf.getPageCount()
   for (let i = 0; i < total; i++) {
     const p = ctx.pdf.getPage(i)
-    p.drawText('G Obra — ' + sanitize(titulo), {
-      x: MARGIN, y: 22, size: 8, font: ctx.fontRegular, color: COR_SOFT,
+    const texto = 'G Obra'
+    const w = ctx.fontBold.widthOfTextAtSize(texto, 9)
+    // Pula a primeira pagina porque a capa ja tem o titulo grande
+    if (i === 0) continue
+    p.drawText(texto, {
+      x: PAGE_W - MARGIN - w, y: PAGE_H - MARGIN + 6,
+      size: 9, font: ctx.fontBold, color: COR_DESTAQUE,
+      opacity: 0.35,
     })
-    p.drawText((i + 1) + ' / ' + total, {
-      x: PAGE_W - MARGIN - 30, y: 22, size: 8, font: ctx.fontRegular, color: COR_SOFT,
+  }
+}
+
+// Rodape em todas as paginas: identidade da empresa emitente + atribuicao G Obra + paginacao.
+function desenharFooters(ctx: Ctx, empresa: EmpresaInfo) {
+  const total = ctx.pdf.getPageCount()
+  const linhaEmpresa = empresa.cnpj
+    ? empresa.nome + ' · CNPJ ' + empresa.cnpj
+    : empresa.nome
+  const linhaGerado = 'Documento gerado pelo G Obra em ' + formatarDataHoraCompacta(new Date().toISOString())
+
+  for (let i = 0; i < total; i++) {
+    const p = ctx.pdf.getPage(i)
+    // Linha separadora fininha acima do rodape
+    p.drawLine({
+      start: { x: MARGIN, y: 38 },
+      end: { x: PAGE_W - MARGIN, y: 38 },
+      thickness: 0.4,
+      color: COR_LINHA,
+    })
+    // Linha 1: empresa emitente + CNPJ (esquerda)
+    p.drawText(sanitize(linhaEmpresa), {
+      x: MARGIN, y: 26, size: 8, font: ctx.fontBold, color: COR_TEXTO,
+    })
+    // Linha 2: atribuicao (esquerda, abaixo)
+    p.drawText(sanitize(linhaGerado), {
+      x: MARGIN, y: 14, size: 7, font: ctx.fontRegular, color: COR_SOFT,
+    })
+    // Paginacao (direita)
+    const pagTxt = 'Página ' + (i + 1) + ' de ' + total
+    const pagW = ctx.fontRegular.widthOfTextAtSize(pagTxt, 8)
+    p.drawText(pagTxt, {
+      x: PAGE_W - MARGIN - pagW, y: 20, size: 8, font: ctx.fontRegular, color: COR_SOFT,
     })
   }
 }
@@ -537,6 +627,22 @@ function formatarDataLonga(iso: string): string {
     return new Date(iso).toLocaleString('pt-BR', {
       dateStyle: 'long', timeStyle: 'short', timeZone: 'America/Sao_Paulo',
     }) + ' (BRT)'
+  } catch {
+    return iso
+  }
+}
+
+// Versao compacta pra timeline e cabecalhos: "10/05/26 · 22:18"
+function formatarDataHoraCompacta(iso: string): string {
+  try {
+    const d = new Date(iso)
+    const data = d.toLocaleDateString('pt-BR', {
+      day: '2-digit', month: '2-digit', year: '2-digit', timeZone: 'America/Sao_Paulo',
+    })
+    const hora = d.toLocaleTimeString('pt-BR', {
+      hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
+    })
+    return data + ' · ' + hora
   } catch {
     return iso
   }

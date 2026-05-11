@@ -230,16 +230,15 @@ function nomeResumido(descr: string): string {
   // Pega primeiras 2 partes, ignora linha/serie no final
   const semLinha = partes.filter((p) => !/^LINHA\b/i.test(p.trim()))
   const escolhidas = semLinha.slice(0, 2)
-  return escolhidas
+  // Sentence case: maiuscula só na primeira letra. "PORTA DE CORRER 3 FOLHAS"
+  // vira "Porta de correr 3 folhas" — mais legivel pt-BR (preposicoes minusculas).
+  const limpo = escolhidas
     .join(' ')
-    // Remove placeholders nao-substituidos do SmartCEM/Alumisoft (ex: %MODULOS%, %FOLHA%)
+    // Remove placeholders nao-substituidos do SmartCEM/Alumisoft (ex: %MODULOS%)
     .replace(/%[^%\s]+%/g, '')
-    // Normaliza espacos multiplos (que viraram dos placeholders removidos)
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase()
-    // Capitaliza só primeira letra após espaço ou início da string.
-    // Antes usava \b\w/g que tambem capitalizava após parenteses ("Folha(S)") —
-    // agora exige espaco ou inicio explicito.
-    .replace(/(^|\s)([a-zà-ÿ])/g, (_, sep, c) => sep + c.toUpperCase())
+  if (!limpo) return ''
+  return limpo.charAt(0).toUpperCase() + limpo.slice(1)
 }
