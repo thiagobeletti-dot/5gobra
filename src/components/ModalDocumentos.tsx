@@ -33,6 +33,7 @@ interface Props {
 export default function ModalDocumentos({ obra, empresa, aberto, onFechar }: Props) {
   const [aba, setAba] = useState<Aba>('medicao')
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set())
+  const [incluirFotos, setIncluirFotos] = useState(false)
   const [gerando, setGerando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
@@ -103,12 +104,12 @@ export default function ModalDocumentos({ obra, empresa, aberto, onFechar }: Pro
       let filename: string
 
       if (aba === 'medicao') {
-        bytes = await gerarPdfMedicao(obra.obra, empresa, cardsSelecionados)
+        bytes = await gerarPdfMedicao(obra.obra, empresa, cardsSelecionados, { incluirFotos })
         filename = nomeArquivoMedicao(obra.obra)
       } else {
         const ids = cardsSelecionados.map((c) => c.id)
         const historicoMap = await listarHistoricoEmLote(ids) // ja filtra interno=false
-        bytes = await gerarPdfDossie(obra.obra, empresa, cardsSelecionados, historicoMap)
+        bytes = await gerarPdfDossie(obra.obra, empresa, cardsSelecionados, historicoMap, { incluirFotos })
         filename = nomeArquivoDossie(obra.obra)
       }
 
@@ -207,17 +208,30 @@ export default function ModalDocumentos({ obra, empresa, aberto, onFechar }: Pro
         <div className="border-t border-slate-200 px-6 py-4 bg-slate-50">
           {erro && <div className="text-sm text-red-600 mb-3">{erro}</div>}
           {info && <div className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-3 py-2 mb-3">{info}</div>}
-          <div className="flex items-center justify-end gap-3">
-            <button onClick={onFechar} className="btn-ghost text-sm" disabled={gerando}>
-              Fechar
-            </button>
-            <button
-              onClick={exportar}
-              disabled={gerando || selecionados.size === 0}
-              className="btn-primary text-sm"
-            >
-              {gerando ? 'Gerando PDF...' : 'Exportar PDF (' + selecionados.size + ')'}
-            </button>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <label className="inline-flex items-center gap-2 text-sm text-slate-700 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={incluirFotos}
+                onChange={(e) => setIncluirFotos(e.target.checked)}
+                className="w-4 h-4 accent-orange-600"
+                disabled={gerando}
+              />
+              Incluir fotos no PDF
+              <span className="text-xs text-slate-400">(até 4 por peça)</span>
+            </label>
+            <div className="flex items-center gap-3">
+              <button onClick={onFechar} className="btn-ghost text-sm" disabled={gerando}>
+                Fechar
+              </button>
+              <button
+                onClick={exportar}
+                disabled={gerando || selecionados.size === 0}
+                className="btn-primary text-sm"
+              >
+                {gerando ? 'Gerando PDF...' : 'Exportar PDF (' + selecionados.size + ')'}
+              </button>
+            </div>
           </div>
         </div>
       </div>

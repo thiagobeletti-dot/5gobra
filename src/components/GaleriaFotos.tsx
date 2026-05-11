@@ -160,6 +160,7 @@ export default function GaleriaFotos({ fotos, podeEditar, onAdicionar, onRemover
 
 function Lightbox({ fotos, indexInicial, onClose }: { fotos: FotoCard[]; indexInicial: number; onClose: () => void }) {
   const [index, setIndex] = useState(indexInicial)
+  const [baixando, setBaixando] = useState(false)
   const foto = fotos[index]
   if (!foto) return null
 
@@ -170,12 +171,43 @@ function Lightbox({ fotos, indexInicial, onClose }: { fotos: FotoCard[]; indexIn
     setIndex((i) => (i < fotos.length - 1 ? i + 1 : 0))
   }
 
+  async function baixar() {
+    setBaixando(true)
+    try {
+      // Baixa via fetch+blob pra forçar download (URLs do Supabase Storage podem
+      // abrir inline no browser se usar so <a download>). Funciona em mobile tambem.
+      const resp = await fetch(foto.url)
+      const blob = await resp.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = foto.nome ?? `foto-${Date.now()}.jpg`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch (e) {
+      console.warn('[GaleriaFotos] Falha ao baixar foto:', e)
+    } finally {
+      setBaixando(false)
+    }
+  }
+
   return (
     <div className="fixed inset-0 bg-black/90 z-50 grid place-items-center p-4" onClick={onClose} role="dialog" aria-modal="true" aria-label="Visualizador de foto">
-      <div className="absolute top-4 right-4 z-10">
+      <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+        <button
+          onClick={(e) => { e.stopPropagation(); baixar() }}
+          disabled={baixando}
+          className="px-3 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-50"
+          title="Baixar foto pro celular"
+        >
+          {baixando ? 'Baixando…' : '↓ Baixar'}
+        </button>
         <button
           onClick={onClose}
           className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white text-xl grid place-items-center"
+          aria-label="Fechar"
         >x</button>
       </div>
       <div className="absolute top-4 left-4 z-10 text-white text-sm">

@@ -72,13 +72,22 @@ export async function gerarPdfMedicao(
   obra: ObraInfo,
   empresa: EmpresaInfo,
   cards: Card[],
+  opts?: { incluirFotos?: boolean },
 ): Promise<Uint8Array> {
   const cardsOrdenados = ordenarPorSigla(cards)
   const ctx = await criarContexto('Ficha de Medição')
   const logoImg = await carregarLogoEmpresa(ctx, empresa.logoUrl)
+  // Pre-carrega fotos de TODAS as pecas em paralelo (so se opt-in)
+  const fotosPorCard = opts?.incluirFotos
+    ? await carregarFotosDosCards(ctx, cardsOrdenados)
+    : new Map<string, any[]>()
   desenharCapa(ctx, 'Ficha de Medição', obra, empresa, cardsOrdenados.length, 'peças com M1/M2', logoImg)
   for (const card of cardsOrdenados) {
     desenharSecaoMedicao(ctx, card)
+    if (opts?.incluirFotos) {
+      const fotos = fotosPorCard.get(card.id) ?? []
+      if (fotos.length > 0) desenharGaleriaPeca(ctx, fotos)
+    }
   }
   desenharBrandingTopo(ctx)
   desenharFooters(ctx, empresa)
@@ -90,19 +99,98 @@ export async function gerarPdfDossie(
   empresa: EmpresaInfo,
   cards: Card[],
   historicoPorCard: Map<string, HistoricoRow[]>,
+  opts?: { incluirFotos?: boolean },
 ): Promise<Uint8Array> {
   const cardsOrdenados = ordenarPorSigla(cards)
   const ctx = await criarContexto('Dossiê da obra')
   const logoImg = await carregarLogoEmpresa(ctx, empresa.logoUrl)
+  const fotosPorCard = opts?.incluirFotos
+    ? await carregarFotosDosCards(ctx, cardsOrdenados)
+    : new Map<string, any[]>()
   desenharCapa(ctx, 'Dossiê da obra', obra, empresa, cardsOrdenados.length, 'peças com histórico', logoImg)
   desenharSumarioDossie(ctx, cardsOrdenados)
   for (const card of cardsOrdenados) {
     const eventos = historicoPorCard.get(card.id) ?? []
-    desenharSecaoDossie(ctx, card, eventos)
+    const fotos = fotosPorCard.get(card.id) ?? []
+    desenharSecaoDossie(ctx, card, eventos, fotos)
   }
   desenharBrandingTopo(ctx)
   desenharFooters(ctx, empresa)
   return await ctx.pdf.save()
+}
+
+// Baixa as fotos de todos os cards em paralelo e embed no PDF.
+// Limita 4 fotos por peca (decisao de produto pra controlar tamanho do PDF).
+// Mais antigas primeiro pra casar com timeline cronologica do dossie.
+async function carregarFotosDosCards(ctx: Ctx, cards: Card[]): Promise<Map<string, any[]>> {
+  const mapa = new Map<string, any[]>()
+  const LIMITE_FOTOS = 4
+
+  await Promise.all(cards.map(async (card) => {
+    const fotos = card.fotos ?? []
+    if (fotos.length === 0) return
+    // Card.fotos vem do banco ordenado DESC (mais recente primeiro). Pegamos 4
+    // mais recentes e reordena ASC pra casar com cronologia da timeline.
+    const selecionadas = fotos.slice(0, LIMITE_FOTOS).slice().reverse()
+    const embedded = await Promise.all(selecionadas.map(async (f) => {
+      try {
+        const resp = await fetch(f.url)
+        if (!resp.ok) return null
+        const buf = await resp.arrayBuffer()
+        const bytes = new Uint8Array(buf)
+        const img = (bytes[0] === 0x89 && bytes[1] === 0x50)
+          ? await ctx.pdf.embedPng(bytes)
+          : await ctx.pdf.embedJpg(bytes)
+        return { img, createdAt: f.createdAt }
+      } catch (e) {
+        console.warn('[pdf] Falha ao baixar foto:', e)
+        return null
+      }
+    }))
+    const filtradas = embedded.filter((x): x is { img: any; createdAt: string } => x !== null)
+    if (filtradas.length > 0) mapa.set(card.id, filtradas)
+  }))
+
+  return mapa
+}
+
+// Desenha grade de fotos (4 por linha). Mantem aspect ratio dentro da caixa.
+function desenharGaleriaPeca(ctx: Ctx, fotos: { img: any; createdAt: string }[]) {
+  if (fotos.length === 0) return
+  const colunas = 4
+  const gap = 8
+  const larguraDisponivel = PAGE_W - MARGIN * 2
+  const caixaW = (larguraDisponivel - gap * (colunas - 1)) / colunas
+  const caixaH = caixaW * 0.75 // proporcao 4:3
+  const linhas = Math.ceil(fotos.length / colunas)
+  const alturaTotal = linhas * caixaH + (linhas - 1) * gap + 18
+
+  garantirEspaco(ctx, alturaTotal)
+
+  desenharTexto(ctx, 'Fotos da peça (' + fotos.length + ')', { size: 10, font: ctx.fontBold, color: COR_LABEL })
+  ctx.y -= 14
+
+  for (let i = 0; i < fotos.length; i++) {
+    const col = i % colunas
+    const linha = Math.floor(i / colunas)
+    const x = MARGIN + col * (caixaW + gap)
+    const y = ctx.y - (linha + 1) * caixaH - linha * gap
+    desenharFotoEnquadrada(ctx, fotos[i].img, x, y, caixaW, caixaH)
+  }
+  ctx.y -= linhas * caixaH + (linhas - 1) * gap + 8
+}
+
+// Desenha uma foto centrada/contida numa caixa (x, y, w, h) mantendo proporcao.
+function desenharFotoEnquadrada(ctx: Ctx, img: any, x: number, y: number, w: number, h: number) {
+  // Fundo cinza claro pra "caixa"
+  ctx.page.drawRectangle({ x, y, width: w, height: h, color: rgb(0.96, 0.96, 0.96), borderColor: COR_LINHA, borderWidth: 0.5 })
+  // Calcula tamanho da foto pra caber mantendo proporcao
+  const escala = Math.min(w / img.width, h / img.height)
+  const fw = img.width * escala
+  const fh = img.height * escala
+  const fx = x + (w - fw) / 2
+  const fy = y + (h - fh) / 2
+  ctx.page.drawImage(img, { x: fx, y: fy, width: fw, height: fh })
 }
 
 // Baixa o logo da empresa (URL publica do Supabase Storage) e embed no PDF.
@@ -612,7 +700,7 @@ function truncarTexto(texto: string, font: PDFFont, size: number, maxWidth: numb
 
 // =============== Secao DOSSIE ===============
 
-function desenharSecaoDossie(ctx: Ctx, card: Card, eventos: HistoricoRow[]) {
+function desenharSecaoDossie(ctx: Ctx, card: Card, eventos: HistoricoRow[], fotos: { img: any; createdAt: string }[] = []) {
   garantirEspaco(ctx, 80)
   desenharCabecalhoPeca(ctx, card)
 
@@ -626,10 +714,71 @@ function desenharSecaoDossie(ctx: Ctx, card: Card, eventos: HistoricoRow[]) {
   desenharTexto(ctx, 'Linha do tempo (' + eventos.length + ' evento' + (eventos.length === 1 ? '' : 's') + ')', { size: 10, font: ctx.fontBold })
   ctx.y -= 14
 
+  // Itera eventos. Quando achar evento "Foto adicionada", mostra fotos
+  // proximas no tempo (dentro de uma janela de 1 minuto) embedded apos a caixa
+  // do evento. Cada foto so usada uma vez (consome do array).
+  const fotosRestantes = [...fotos]
   for (const ev of eventos) {
     desenharEventoTimeline(ctx, ev)
+    if (eventoTemFoto(ev)) {
+      const fotosDoEvento = consumirFotosProximas(fotosRestantes, ev.created_at)
+      if (fotosDoEvento.length > 0) {
+        desenharFotosInline(ctx, fotosDoEvento)
+      }
+    }
+  }
+  // Sobrou foto que nao casou com nenhum evento? Mostra em galeria no fim.
+  if (fotosRestantes.length > 0) {
+    desenharGaleriaPeca(ctx, fotosRestantes)
   }
   ctx.y -= 8
+}
+
+// Detecta se evento e do tipo "adicionou foto" (texto começa com "Foto adicionada")
+function eventoTemFoto(ev: HistoricoRow): boolean {
+  return /^Foto[s]?\s+adicionada/i.test(ev.texto || '')
+}
+
+// Pega ate N fotos do array cuja data esta dentro de 60s do timestamp do evento.
+// Remove as escolhidas do array (mutate).
+function consumirFotosProximas(fotos: { img: any; createdAt: string }[], iso: string): { img: any; createdAt: string }[] {
+  if (fotos.length === 0) return []
+  const tEvento = new Date(iso).getTime()
+  const janelaMs = 60 * 1000 // 60 segundos
+  const escolhidas: { img: any; createdAt: string }[] = []
+  for (let i = fotos.length - 1; i >= 0; i--) {
+    const tFoto = new Date(fotos[i].createdAt).getTime()
+    if (Math.abs(tFoto - tEvento) <= janelaMs) {
+      escolhidas.unshift(fotos[i])
+      fotos.splice(i, 1)
+    }
+  }
+  return escolhidas
+}
+
+// Versao compacta da galeria pra ficar dentro/abaixo de um evento da timeline.
+// Limite implicito de 4 por linha (ja respeita os 4 do limite por peca).
+function desenharFotosInline(ctx: Ctx, fotos: { img: any; createdAt: string }[]) {
+  const colunas = 4
+  const gap = 8
+  // Indentado pra ficar visualmente "dentro" do evento (margem +10)
+  const larguraDisponivel = PAGE_W - MARGIN * 2 - 10
+  const caixaW = (larguraDisponivel - gap * (colunas - 1)) / colunas
+  const caixaH = caixaW * 0.75
+  const linhas = Math.ceil(fotos.length / colunas)
+  const alturaTotal = linhas * caixaH + (linhas - 1) * gap + 4
+
+  garantirEspaco(ctx, alturaTotal)
+  ctx.y -= 2
+
+  for (let i = 0; i < fotos.length; i++) {
+    const col = i % colunas
+    const linha = Math.floor(i / colunas)
+    const x = MARGIN + 10 + col * (caixaW + gap)
+    const y = ctx.y - (linha + 1) * caixaH - linha * gap
+    desenharFotoEnquadrada(ctx, fotos[i].img, x, y, caixaW, caixaH)
+  }
+  ctx.y -= linhas * caixaH + (linhas - 1) * gap + 8
 }
 
 function desenharEventoTimeline(ctx: Ctx, ev: HistoricoRow) {
