@@ -34,7 +34,11 @@ export default function Obra() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [tourObraAtivo, setTourObraAtivo] = useState(false)
   const { status: onboarding, marcar: marcarOnb } = useOnboarding()
-  const [perfil, setPerfil] = useState<Perfil>('empresa')
+  // Hardcoded 'empresa': o toggle "Visão Cliente" foi removido em 10/05/2026
+  // (preservar integridade do histórico). State mantido pra não quebrar as
+  // condicionais espalhadas pelo arquivo — todas as branches `perfil === 'cliente'`
+  // viraram código morto, mas continuam compilando.
+  const [perfil] = useState<Perfil>('empresa')
   const [abaAtiva, setAbaAtiva] = useState<AbaId>('cliente')
   const [cardAbertoId, setCardAbertoId] = useState<string | null>(null)
   const [formM1Aberto, setFormM1Aberto] = useState<string | null>(null)
@@ -218,16 +222,11 @@ export default function Obra() {
               {dados.obra.empresa && <> | Empresa: {dados.obra.empresa}</>}
             </div>
           </div>
-          <div className="flex bg-slate-100 p-0.5 rounded-lg gap-0.5 border border-slate-200">
-            <button
-              className={'px-3.5 py-1.5 rounded-md text-xs font-semibold transition ' + (perfil === 'empresa' ? 'bg-laranja text-white' : 'text-slate-600 hover:text-slate-900')}
-              onClick={() => setPerfil('empresa')}
-            >Visao Empresa</button>
-            <button
-              className={'px-3.5 py-1.5 rounded-md text-xs font-semibold transition ' + (perfil === 'cliente' ? 'bg-laranja text-white' : 'text-slate-600 hover:text-slate-900')}
-              onClick={() => setPerfil('cliente')}
-            >Visao Cliente</button>
-          </div>
+          {/* Toggle "Visão Cliente" REMOVIDO em 10/05/2026 por decisão de produto.
+              Permitia que a empresa registrasse mensagens, desse aceite final e
+              reabrisse cards atuando como cliente — comprometia a integridade do
+              histórico (prova oficial). Pra ver o que o cliente vê, abrir o link
+              do cliente em outra aba. State `perfil` ficou hardcoded 'empresa'. */}
         </div>
 
         {/* Faixa de ações: fica acima das abas pra não competir com a descrição
