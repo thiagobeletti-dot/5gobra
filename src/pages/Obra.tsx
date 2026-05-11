@@ -706,7 +706,14 @@ function ModalCard({
 
           {card.aba === 'conclusao' && (
             <div>
-              {card.aceiteFinal ? (
+              {card.encerrado ? (
+                // Card encerrado (acordo aceito/recusado, apontamento resolvido,
+                // empresa cancelou o item). Nesses casos NÃO há aceite a aguardar.
+                <div className="bg-slate-100 border border-slate-300 px-4 py-3 rounded-lg text-xs text-slate-700">
+                  <div className="font-bold text-sm text-slate-800 mb-0.5">⊘ Item encerrado{card.subStatus ? ' — ' + card.subStatus : ''}</div>
+                  <p className="text-slate-500">Veja o motivo e o histórico completo abaixo.</p>
+                </div>
+              ) : card.aceiteFinal ? (
                 <div className="bg-emerald-50 border border-emerald-200 px-4 py-3 rounded-lg text-xs text-slate-700">
                   <span className="text-emerald-700 font-bold">✓ Aceite confirmado</span> pelo cliente em {formataDataHora(card.aceiteFinal)}. Garantia iniciada nesta data.
                 </div>
