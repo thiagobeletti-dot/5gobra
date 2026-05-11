@@ -15,6 +15,8 @@ import {
   atualizarMinhaEmpresa,
   trocarSenha,
   listarMeusAceites,
+  uploadLogoEmpresa,
+  atualizarLogoEmpresa,
   type AceiteRow,
 } from '../lib/api'
 import { enviarPdfsDeAceite } from '../lib/email-aceites'
@@ -37,6 +39,9 @@ export default function Configuracoes() {
   const [nomeEmpresa, setNomeEmpresa] = useState('')
   const [cnpj, setCnpj] = useState('')
   const [telefone, setTelefone] = useState('')
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [salvandoLogo, setSalvandoLogo] = useState(false)
+  const [msgLogo, setMsgLogo] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null)
   const [salvandoEmpresa, setSalvandoEmpresa] = useState(false)
   const [msgEmpresa, setMsgEmpresa] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null)
 
@@ -68,6 +73,7 @@ export default function Configuracoes() {
         setNomeEmpresa(e.nome ?? '')
         setCnpj((e as { cnpj?: string }).cnpj ?? '')
         setTelefone((e as { telefone?: string }).telefone ?? '')
+        setLogoUrl((e as { logo_url?: string | null }).logo_url ?? null)
       }
       const lista = await listarMeusAceites()
       if (ativo) setAceites(lista)
@@ -104,6 +110,45 @@ export default function Configuracoes() {
       setMsgEmpresa({ tipo: 'erro', texto: err?.message ?? 'Erro ao salvar.' })
     } finally {
       setSalvandoEmpresa(false)
+    }
+  }
+
+  async function uploadLogo(arquivo: File) {
+    setMsgLogo(null)
+    if (!arquivo.type.startsWith('image/')) {
+      setMsgLogo({ tipo: 'erro', texto: 'Selecione um arquivo de imagem (PNG ou JPG).' })
+      return
+    }
+    // Limite 2MB pra logo (suficiente pra qualidade boa em PDF)
+    if (arquivo.size > 2 * 1024 * 1024) {
+      setMsgLogo({ tipo: 'erro', texto: 'Logo muito grande. Máximo 2MB.' })
+      return
+    }
+    setSalvandoLogo(true)
+    try {
+      const url = await uploadLogoEmpresa(arquivo)
+      await atualizarLogoEmpresa(url)
+      setLogoUrl(url)
+      setMsgLogo({ tipo: 'ok', texto: 'Logo atualizado. Vai aparecer nos próximos PDFs gerados.' })
+    } catch (err: any) {
+      setMsgLogo({ tipo: 'erro', texto: err?.message ?? 'Erro ao enviar logo.' })
+    } finally {
+      setSalvandoLogo(false)
+    }
+  }
+
+  async function removerLogo() {
+    setMsgLogo(null)
+    if (!window.confirm('Remover o logo da empresa? Os PDFs voltam a sair sem ele.')) return
+    setSalvandoLogo(true)
+    try {
+      await atualizarLogoEmpresa(null)
+      setLogoUrl(null)
+      setMsgLogo({ tipo: 'ok', texto: 'Logo removido.' })
+    } catch (err: any) {
+      setMsgLogo({ tipo: 'erro', texto: err?.message ?? 'Erro ao remover logo.' })
+    } finally {
+      setSalvandoLogo(false)
     }
   }
 
@@ -269,6 +314,58 @@ export default function Configuracoes() {
               {salvandoEmpresa ? 'Salvando...' : 'Salvar dados'}
             </button>
           </form>
+
+          {/* Logo da empresa — aparece no header dos PDFs gerados */}
+          <div className="bg-white border border-slate-200 rounded-xl p-6 mt-4">
+            <h3 className="font-semibold text-sm mb-2">Logo da empresa</h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Faz parte da identidade visual dos PDFs (Ficha de Medição e Dossiê). PNG ou JPG, máximo 2MB.
+            </p>
+            <div className="flex items-start gap-4 flex-wrap">
+              {logoUrl ? (
+                <div className="flex-shrink-0">
+                  <img src={logoUrl} alt="Logo da empresa" className="max-w-[160px] max-h-[120px] border border-slate-200 rounded-md p-2 bg-white" />
+                </div>
+              ) : (
+                <div className="w-32 h-24 flex-shrink-0 border border-dashed border-slate-300 rounded-md grid place-items-center text-xs text-slate-400">
+                  Sem logo
+                </div>
+              )}
+              <div className="flex-1 min-w-0 space-y-2">
+                <label className="btn-ghost text-sm cursor-pointer inline-block">
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    className="hidden"
+                    disabled={salvandoLogo}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0]
+                      if (f) uploadLogo(f)
+                      e.target.value = ''
+                    }}
+                  />
+                  {salvandoLogo ? 'Enviando...' : (logoUrl ? 'Trocar logo' : 'Enviar logo')}
+                </label>
+                {logoUrl && (
+                  <button
+                    type="button"
+                    onClick={removerLogo}
+                    disabled={salvandoLogo}
+                    className="btn-ghost text-sm text-red-600 hover:text-red-700 ml-2"
+                  >
+                    Remover
+                  </button>
+                )}
+              </div>
+            </div>
+            {msgLogo && (
+              <div className={'mt-3 text-sm rounded-md px-3 py-2 ' + (msgLogo.tipo === 'ok'
+                ? 'text-emerald-700 bg-emerald-50 border border-emerald-200'
+                : 'text-red-700 bg-red-50 border border-red-200')}>
+                {msgLogo.texto}
+              </div>
+            )}
+          </div>
         </section>
 
         {/* Bloco 2: Trocar senha */}

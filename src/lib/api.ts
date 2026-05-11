@@ -54,14 +54,58 @@ export async function pegarMinhaEmpresa() {
   if (!supabase) return null
   // Campos especificos — evita trazer onboarding_status (jsonb pesado) e
   // colunas de auditoria. Onboarding status tem sua propria query.
-  // Audit Sprint B item P2.
+  // Audit Sprint B item P2. logo_url adicionado em 11/05/2026.
   const { data, error } = await supabase
     .from('empresas')
-    .select('id, nome, cnpj, telefone, owner_user_id, atualizado_em')
+    .select('id, nome, cnpj, telefone, logo_url, owner_user_id, atualizado_em')
     .limit(1)
     .maybeSingle()
-  if (error) throw error
+  if (error) {
+    // Fallback: se a coluna logo_url ainda nao foi adicionada via SQL
+    // empresa-logo.sql, retry sem ela
+    if (String(error.message ?? '').includes('logo_url')) {
+      const r = await supabase
+        .from('empresas')
+        .select('id, nome, cnpj, telefone, owner_user_id, atualizado_em')
+        .limit(1)
+        .maybeSingle()
+      if (r.error) throw r.error
+      return r.data
+    }
+    throw error
+  }
   return data
+}
+
+export async function atualizarLogoEmpresa(logoUrl: string | null) {
+  if (!supabase) throw new Error('Supabase nao configurado')
+  const empresa = await pegarMinhaEmpresa()
+  if (!empresa) throw new Error('Empresa nao encontrada')
+  const { error } = await supabase.from('empresas').update({ logo_url: logoUrl }).eq('id', empresa.id)
+  if (error) throw error
+}
+
+export async function uploadLogoEmpresa(arquivo: File): Promise<string> {
+  if (!supabase) throw new Error('Supabase nao configurado')
+  const empresa = await pegarMinhaEmpresa()
+  if (!empresa) throw new Error('Empresa nao encontrada')
+
+  // Path: {empresa_id}/logo-{timestamp}.{ext}
+  const extDetectada = arquivo.type === 'image/png' ? 'png' : 'jpg'
+  const nomeArquivo = `logo-${Date.now()}.${extDetectada}`
+  const path = `${empresa.id}/${nomeArquivo}`
+
+  const { error: upErr } = await supabase.storage
+    .from('logos-empresa')
+    .upload(path, arquivo, {
+      contentType: arquivo.type || 'image/jpeg',
+      upsert: false,
+    })
+  if (upErr) throw upErr
+
+  // URL publica (bucket eh publico)
+  const { data } = supabase.storage.from('logos-empresa').getPublicUrl(path)
+  return data.publicUrl
 }
 
 export async function criarEmpresa(nome: string, extras: { cnpj?: string; telefone?: string } = {}) {

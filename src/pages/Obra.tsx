@@ -54,7 +54,7 @@ export default function Obra() {
   const importarAberto = modalGlobal === 'importar'
   const tecnicosAberto = modalGlobal === 'tecnicos'
   const documentosAberto = modalGlobal === 'documentos'
-  const [empresaInfo, setEmpresaInfo] = useState<{ nome: string; cnpj?: string | null } | null>(null)
+  const [empresaInfo, setEmpresaInfo] = useState<{ nome: string; cnpj?: string | null; logoUrl?: string | null } | null>(null)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
   const { confirmar, dialog: confirmDialog } = useConfirm()
 
@@ -66,7 +66,10 @@ export default function Obra() {
   useEffect(() => {
     if (data.modo !== 'banco') return
     pegarMinhaEmpresa().then((e) => {
-      if (e) setEmpresaInfo({ nome: e.nome, cnpj: (e as { cnpj?: string }).cnpj })
+      if (e) {
+        const empresa = e as { nome: string; cnpj?: string | null; logo_url?: string | null }
+        setEmpresaInfo({ nome: empresa.nome, cnpj: empresa.cnpj, logoUrl: empresa.logo_url })
+      }
     }).catch((e) => console.warn('[Obra] pegarMinhaEmpresa falhou:', e))
   }, [data.modo])
 

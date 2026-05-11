@@ -65,6 +65,7 @@ function rotular(mapa: Record<string, string>, valor: string): string {
 export interface EmpresaInfo {
   nome: string
   cnpj?: string | null
+  logoUrl?: string | null
 }
 
 export async function gerarPdfMedicao(
@@ -74,7 +75,8 @@ export async function gerarPdfMedicao(
 ): Promise<Uint8Array> {
   const cardsOrdenados = ordenarPorSigla(cards)
   const ctx = await criarContexto('Ficha de Medição')
-  desenharCapa(ctx, 'Ficha de Medição', obra, empresa, cardsOrdenados.length, 'peças com M1/M2')
+  const logoImg = await carregarLogoEmpresa(ctx, empresa.logoUrl)
+  desenharCapa(ctx, 'Ficha de Medição', obra, empresa, cardsOrdenados.length, 'peças com M1/M2', logoImg)
   for (const card of cardsOrdenados) {
     desenharSecaoMedicao(ctx, card)
   }
@@ -91,7 +93,9 @@ export async function gerarPdfDossie(
 ): Promise<Uint8Array> {
   const cardsOrdenados = ordenarPorSigla(cards)
   const ctx = await criarContexto('Dossiê da obra')
-  desenharCapa(ctx, 'Dossiê da obra', obra, empresa, cardsOrdenados.length, 'peças com histórico')
+  const logoImg = await carregarLogoEmpresa(ctx, empresa.logoUrl)
+  desenharCapa(ctx, 'Dossiê da obra', obra, empresa, cardsOrdenados.length, 'peças com histórico', logoImg)
+  desenharSumarioDossie(ctx, cardsOrdenados)
   for (const card of cardsOrdenados) {
     const eventos = historicoPorCard.get(card.id) ?? []
     desenharSecaoDossie(ctx, card, eventos)
@@ -99,6 +103,27 @@ export async function gerarPdfDossie(
   desenharBrandingTopo(ctx)
   desenharFooters(ctx, empresa)
   return await ctx.pdf.save()
+}
+
+// Baixa o logo da empresa (URL publica do Supabase Storage) e embed no PDF.
+// Retorna null se nao houver logo ou se falhar (best-effort: PDF gera sem logo).
+async function carregarLogoEmpresa(ctx: Ctx, logoUrl: string | null | undefined) {
+  if (!logoUrl) return null
+  try {
+    const resp = await fetch(logoUrl)
+    if (!resp.ok) return null
+    const buffer = await resp.arrayBuffer()
+    const bytes = new Uint8Array(buffer)
+    // pdf-lib decide entre embedJpg/embedPng pelo magic bytes
+    // PNG: 89 50 4e 47 ... | JPG: ff d8 ff ...
+    if (bytes[0] === 0x89 && bytes[1] === 0x50) {
+      return await ctx.pdf.embedPng(bytes)
+    }
+    return await ctx.pdf.embedJpg(bytes)
+  } catch (e) {
+    console.warn('[pdf] Falha ao baixar logo da empresa:', e)
+    return null
+  }
 }
 
 // Ordena por sigla usando natural sort (J1_1 < J1_3 < J1_10 < J2_1).
@@ -240,7 +265,25 @@ function sanitize(s: string): string {
 
 // =============== Capa ===============
 
-function desenharCapa(ctx: Ctx, titulo: string, obra: ObraInfo, empresa: EmpresaInfo, qtde: number, sufixo: string) {
+function desenharCapa(ctx: Ctx, titulo: string, obra: ObraInfo, empresa: EmpresaInfo, qtde: number, sufixo: string, logoImg: any | null) {
+  // Logo da empresa no canto superior direito (se houver)
+  if (logoImg) {
+    const maxW = 80
+    const maxH = 60
+    const imgW = logoImg.width
+    const imgH = logoImg.height
+    // Mantem proporção, cabe em maxW x maxH
+    const escala = Math.min(maxW / imgW, maxH / imgH, 1)
+    const w = imgW * escala
+    const h = imgH * escala
+    ctx.page.drawImage(logoImg, {
+      x: PAGE_W - MARGIN - w,
+      y: ctx.y - h,
+      width: w,
+      height: h,
+    })
+  }
+
   desenharTexto(ctx, titulo, { size: 22, font: ctx.fontBold })
   ctx.y -= 28
   desenharTexto(ctx, 'G Obra · 5gobra.com.br', { size: 9, color: COR_SOFT })
@@ -303,7 +346,28 @@ function desenharCabecalhoPeca(ctx: Ctx, card: Card) {
     x: MARGIN + 60, y: ctx.y - 16,
     size: 11, font: ctx.fontRegular, color: rgb(1, 1, 1),
   })
+  // Localização da peça (extraída do XML do Alumisoft) à direita
+  const local = extrairLocalizacao(card.descricao)
+  if (local) {
+    const txt = local.toUpperCase()
+    const w = ctx.fontBold.widthOfTextAtSize(txt, 10)
+    ctx.page.drawText(sanitize(txt), {
+      x: PAGE_W - MARGIN - 10 - w, y: ctx.y - 16,
+      size: 10, font: ctx.fontBold, color: rgb(1, 1, 1),
+      opacity: 0.85,
+    })
+  }
   ctx.y -= altura + 10
+}
+
+// Extrai "Local: LAVANDERIA" da descricao do card. Localizacao vem do XML do
+// Alumisoft via `tp.localizacao` e é concatenada na descricao no momento da
+// importacao (alumisoft.ts:tipologiasParaItens).
+function extrairLocalizacao(descricao: string | null | undefined): string {
+  if (!descricao) return ''
+  const m = descricao.match(/Local:\s*([^|]+)/i)
+  if (!m) return ''
+  return m[1].trim()
 }
 
 function desenharBlocoM1(ctx: Ctx, m1: Checklist | undefined) {
@@ -455,6 +519,95 @@ function desenharBlocoM2(ctx: Ctx, m2: Checklist | undefined) {
 
   desenharTabelaChaveValor(ctx, linhas)
   ctx.y -= 6
+}
+
+// =============== Sumario do Dossie ===============
+
+// Tabela executiva no inicio do Dossie: peça | tipo | situação | aceite-em.
+// Permite leitura "executiva" antes de mergulhar nos detalhes de cada peca.
+function desenharSumarioDossie(ctx: Ctx, cards: Card[]) {
+  if (cards.length === 0) return
+
+  garantirEspaco(ctx, 40 + cards.length * 14)
+
+  // Titulo
+  desenharTexto(ctx, 'Sumário das peças', { size: 11, font: ctx.fontBold })
+  ctx.y -= 18
+
+  // Colunas (X positions)
+  const colSigla = MARGIN + 4
+  const colTipo = MARGIN + 80
+  const colSituacao = MARGIN + 170
+  const colAceite = PAGE_W - MARGIN - 80
+
+  // Header da tabela
+  ctx.page.drawRectangle({
+    x: MARGIN, y: ctx.y - 14,
+    width: PAGE_W - MARGIN * 2, height: 14,
+    color: rgb(0.95, 0.95, 0.95),
+  })
+  ctx.page.drawText('Peça', { x: colSigla, y: ctx.y - 10, size: 8, font: ctx.fontBold, color: COR_LABEL })
+  ctx.page.drawText('Tipo', { x: colTipo, y: ctx.y - 10, size: 8, font: ctx.fontBold, color: COR_LABEL })
+  ctx.page.drawText('Situação', { x: colSituacao, y: ctx.y - 10, size: 8, font: ctx.fontBold, color: COR_LABEL })
+  ctx.page.drawText('Aceite em', { x: colAceite, y: ctx.y - 10, size: 8, font: ctx.fontBold, color: COR_LABEL })
+  ctx.y -= 16
+
+  // Linhas
+  for (const card of cards) {
+    garantirEspaco(ctx, 14)
+    const tipoLabel: Record<string, string> = { peca: 'Item', acordo: 'Acordo', reclamacao: 'Apontamento' }
+    const tipo = tipoLabel[card.tipo] ?? card.tipo
+    const situacao = resumirSituacao(card)
+    const aceite = card.aceiteFinal ? formatarDataCurta(card.aceiteFinal) : '—'
+
+    // Trunca situação pra não invadir coluna aceite
+    const larguraSit = colAceite - colSituacao - 8
+    const situacaoFinal = truncarTexto(situacao, ctx.fontRegular, 9, larguraSit)
+
+    ctx.page.drawText(sanitize(card.sigla), { x: colSigla, y: ctx.y - 9, size: 9, font: ctx.fontBold, color: COR_TEXTO })
+    ctx.page.drawText(sanitize(tipo), { x: colTipo, y: ctx.y - 9, size: 9, font: ctx.fontRegular, color: COR_TEXTO })
+    ctx.page.drawText(sanitize(situacaoFinal), { x: colSituacao, y: ctx.y - 9, size: 9, font: ctx.fontRegular, color: COR_TEXTO })
+    ctx.page.drawText(sanitize(aceite), { x: colAceite, y: ctx.y - 9, size: 9, font: ctx.fontRegular, color: COR_SOFT })
+
+    // Linha separadora fina
+    ctx.page.drawLine({
+      start: { x: MARGIN, y: ctx.y - 13 },
+      end: { x: PAGE_W - MARGIN, y: ctx.y - 13 },
+      thickness: 0.3,
+      color: COR_LINHA,
+    })
+    ctx.y -= 14
+  }
+  ctx.y -= 14
+}
+
+// Resumo curto da situacao do card pra coluna do sumario
+function resumirSituacao(card: Card): string {
+  if (card.aceiteFinal) return 'Aceite confirmado'
+  if (card.encerrado) return card.subStatus ?? 'Encerrado'
+  if (card.subStatus) return card.subStatus
+  // Fallback por aba
+  const porAba: Record<string, string> = {
+    cliente: 'Aguardando cliente',
+    empresa: 'Aguardando empresa',
+    tecnica: 'Aguardando visita técnica',
+    emandamento: card.statusEmAndamento ?? 'Em produção',
+    conclusao: 'Aguardando aceite',
+  }
+  return porAba[card.aba] ?? card.aba
+}
+
+// Trunca texto pra caber em largura maxima (com elipse)
+function truncarTexto(texto: string, font: PDFFont, size: number, maxWidth: number): string {
+  if (!texto) return ''
+  const safe = sanitize(texto)
+  if (font.widthOfTextAtSize(safe, size) <= maxWidth) return safe
+  // Trunca char por char ate caber + reticencias
+  for (let i = safe.length - 1; i > 0; i--) {
+    const tentativa = safe.slice(0, i) + '…'
+    if (font.widthOfTextAtSize(tentativa, size) <= maxWidth) return tentativa
+  }
+  return '…'
 }
 
 // =============== Secao DOSSIE ===============
