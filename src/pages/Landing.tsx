@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { LogoFull } from '../lib/logo'
 import CarrosselSistema from '../components/CarrosselSistema'
+import PopupSaida from '../components/PopupSaida'
 
 const WA_COMPRAR =
   'https://wa.me/5511995400050?text=' +
@@ -252,6 +253,9 @@ export default function Landing() {
           </div>
         </div>
       </footer>
+
+      {/* Pop-up de saída: captura WhatsApp de quem tava saindo sem comprar */}
+      <PopupSaida />
     </div>
   )
 }

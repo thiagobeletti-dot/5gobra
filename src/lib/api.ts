@@ -85,6 +85,31 @@ export async function atualizarLogoEmpresa(logoUrl: string | null) {
   if (error) throw error
 }
 
+// =============== Leads quentes (pop-up de saida da landing) ===============
+
+export interface LeadQuenteInput {
+  whatsapp: string
+  motivo: 'preco' | 'equipe' | 'ja_tentei' | 'sem_tempo' | 'outro'
+  motivo_texto?: string
+  origem?: string
+}
+
+export async function registrarLeadQuente(dados: LeadQuenteInput): Promise<void> {
+  if (!supabase) throw new Error('Supabase nao configurado')
+  // user_agent ajuda no atendimento ("vi pelo celular", "vi pelo desktop")
+  const user_agent = typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 500) : null
+  const { error } = await supabase
+    .from('leads_quentes')
+    .insert({
+      whatsapp: dados.whatsapp,
+      motivo: dados.motivo,
+      motivo_texto: dados.motivo_texto || null,
+      origem: dados.origem || 'landing-gobra',
+      user_agent,
+    })
+  if (error) throw error
+}
+
 export async function uploadLogoEmpresa(arquivo: File): Promise<string> {
   if (!supabase) throw new Error('Supabase nao configurado')
   const empresa = await pegarMinhaEmpresa()
