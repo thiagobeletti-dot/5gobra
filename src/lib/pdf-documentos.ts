@@ -20,6 +20,46 @@ import type { Checklist, DadosMedicao1, DadosMedicao2 } from '../types/checklist
 import { ROTULOS_TIPOLOGIA } from '../types/checklist'
 import type { HistoricoRow } from './api'
 
+// =============== Rotulos pros enums de spec tecnica ===============
+// Esses traduzem os valores enum do checklist em texto humano pro PDF.
+const ROTULOS_CORRER_ABERTURA: Record<string, string> = {
+  esquerda: 'Esquerda',
+  direita: 'Direita',
+  ambos: 'Ambos os lados',
+}
+const ROTULOS_CORRER_FECHO: Record<string, string> = {
+  fechadura: 'Fechadura',
+  cremona: 'Cremona',
+  concha: 'Concha',
+}
+const ROTULOS_CORRER_TRILHO: Record<string, string> = {
+  convencional: 'Convencional',
+  embutido_u: 'Embutido em U',
+  embutido_concavo: 'Embutido côncavo',
+  na: 'Não se aplica',
+}
+const ROTULOS_GIRO_ABERTURA: Record<string, string> = {
+  interna: 'Para dentro (interna)',
+  externa: 'Para fora (externa)',
+}
+const ROTULOS_LADO: Record<string, string> = {
+  esquerda: 'Esquerda',
+  direita: 'Direita',
+}
+const ROTULOS_INSTALACAO: Record<string, string> = {
+  face_interna: 'Face interna',
+  face_externa: 'Face externa',
+  eixo: 'No eixo',
+}
+const ROTULOS_ARREMATE_EXT: Record<string, string> = {
+  cantoneira: 'Cantoneira',
+  meia_cana: 'Meia-cana',
+}
+
+function rotular(mapa: Record<string, string>, valor: string): string {
+  return mapa[valor] ?? valor
+}
+
 // =============== API publica ===============
 
 export interface EmpresaInfo {
@@ -262,18 +302,55 @@ function desenharBlocoM1(ctx: Ctx, m1: Checklist | undefined) {
     linhas.push(['Problema reportado', d.tipologia_problema])
   }
   if (d.tipologia) linhas.push(['Tipologia', ROTULOS_TIPOLOGIA[d.tipologia as Exclude<typeof d.tipologia, ''>] ?? d.tipologia])
+
+  // Specs de Correr
+  if (d.tipologia === 'correr') {
+    if (d.correr_abertura_lado) linhas.push(['Lado da abertura', rotular(ROTULOS_CORRER_ABERTURA, d.correr_abertura_lado)])
+    if (d.correr_fecho) linhas.push(['Fecho', rotular(ROTULOS_CORRER_FECHO, d.correr_fecho)])
+    if (d.correr_trilho) linhas.push(['Trilho', rotular(ROTULOS_CORRER_TRILHO, d.correr_trilho)])
+    if (d.correr_somente_puxador) linhas.push(['Somente puxador (sem chave)', 'Sim'])
+  }
+
+  // Specs de Giro
+  if (d.tipologia === 'giro') {
+    if (d.giro_abertura) linhas.push(['Sentido de abertura', rotular(ROTULOS_GIRO_ABERTURA, d.giro_abertura)])
+    if (d.giro_fechadura_lado) linhas.push(['Lado da fechadura', rotular(ROTULOS_LADO, d.giro_fechadura_lado)])
+    if (d.giro_puxador) linhas.push(['Puxador adicional', 'Sim'])
+  }
+
+  // Estrutura
   if (d.contra_marco) linhas.push(['Contra-marco', traduzirSimNao(d.contra_marco)])
   if (d.soleira) linhas.push(['Soleira', traduzirSimNao(d.soleira)])
+  if (d.contra_marco === 'nao' && d.instalacao) {
+    linhas.push(['Instalação', rotular(ROTULOS_INSTALACAO, d.instalacao)])
+  }
+
+  // Acabamento (sempre relevante pra producao)
+  linhas.push(['Arremate interno', d.arremate_interno ? 'Sim' : 'Não'])
+  if (d.arremate_externo) {
+    const tipo = d.arremate_externo_tipo ? ' (' + rotular(ROTULOS_ARREMATE_EXT, d.arremate_externo_tipo) + ')' : ''
+    linhas.push(['Arremate externo', 'Sim' + tipo])
+  } else {
+    linhas.push(['Arremate externo', 'Não'])
+  }
+  if (d.meia_cana_interna) linhas.push(['Meia-cana interna', 'Sim'])
+
+  // Diagnostico do vao
   if (d.vao_pronto) linhas.push(['Vão pronto', traduzirSimNao(d.vao_pronto)])
   if (d.vao_pronto === 'nao' && d.precisa_correcao) {
     linhas.push(['Pendências do vão', d.precisa_correcao])
   }
+
+  // Medidas
   if (d.medida_largura || d.medida_altura) {
     linhas.push(['Medidas (LxA)', (d.medida_largura || '?') + ' x ' + (d.medida_altura || '?')])
   }
+
+  // Motor (se aplicavel)
   if (d.tem_motor) {
     linhas.push(['Motor', 'Sim, lado ' + (d.motor_lado || '?') + ', ' + (d.motor_tensao || '?')])
   }
+
   if (d.observacao) linhas.push(['Observações', d.observacao])
 
   desenharTabelaChaveValor(ctx, linhas)
@@ -298,15 +375,53 @@ function desenharBlocoM2(ctx: Ctx, m2: Checklist | undefined) {
     ['Técnico', d.tecnico || '-'],
     ['Responsável na obra', d.responsavel_obra || '-'],
   ]
+
+  // Estado do vao
   if (d.contra_marco_instalado) linhas.push(['Contra-marco instalado?', traduzirSimNao(d.contra_marco_instalado)])
   if (d.piso_acabado) linhas.push(['Piso acabado?', traduzirSimNao(d.piso_acabado)])
   if (d.vao_acabado) linhas.push(['Vão acabado?', traduzirSimNao(d.vao_acabado)])
   if (d.nivel_ok) linhas.push(['Nível OK?', traduzirSimNao(d.nivel_ok) + (d.nivel_obs ? ' (' + d.nivel_obs + ')' : '')])
   if (d.prumo_ok) linhas.push(['Prumo OK?', traduzirSimNao(d.prumo_ok) + (d.prumo_obs ? ' (' + d.prumo_obs + ')' : '')])
+
+  // Tipologia + specs finais
   if (d.tipologia) linhas.push(['Tipologia (final)', ROTULOS_TIPOLOGIA[d.tipologia as Exclude<typeof d.tipologia, ''>] ?? d.tipologia])
+
+  // Specs de Correr
+  if (d.tipologia === 'correr') {
+    if (d.correr_abertura_lado) linhas.push(['Lado da abertura', rotular(ROTULOS_CORRER_ABERTURA, d.correr_abertura_lado)])
+    if (d.correr_fecho) linhas.push(['Fecho', rotular(ROTULOS_CORRER_FECHO, d.correr_fecho)])
+    if (d.correr_trilho) linhas.push(['Trilho', rotular(ROTULOS_CORRER_TRILHO, d.correr_trilho)])
+    if (d.correr_somente_puxador) linhas.push(['Somente puxador (sem chave)', 'Sim'])
+  }
+
+  // Specs de Giro
+  if (d.tipologia === 'giro') {
+    if (d.giro_abertura) linhas.push(['Sentido de abertura', rotular(ROTULOS_GIRO_ABERTURA, d.giro_abertura)])
+    if (d.giro_fechadura_lado) linhas.push(['Lado da fechadura', rotular(ROTULOS_LADO, d.giro_fechadura_lado)])
+    if (d.giro_puxador) linhas.push(['Puxador adicional', 'Sim'])
+  }
+
+  if (d.soleira) linhas.push(['Soleira', traduzirSimNao(d.soleira)])
+
+  // Acabamento
+  linhas.push(['Arremate interno', d.arremate_interno ? 'Sim' : 'Não'])
+  if (d.arremate_externo) {
+    const tipo = d.arremate_externo_tipo ? ' (' + rotular(ROTULOS_ARREMATE_EXT, d.arremate_externo_tipo) + ')' : ''
+    linhas.push(['Arremate externo', 'Sim' + tipo])
+  } else {
+    linhas.push(['Arremate externo', 'Não'])
+  }
+
+  // Motor (se aplicavel)
+  if (d.tem_motor) {
+    linhas.push(['Motor', 'Sim, lado ' + (d.motor_lado || '?') + ', ' + (d.motor_tensao || '?')])
+  }
+
+  // Medidas finais
   if (d.medida_largura || d.medida_altura) {
     linhas.push(['Medidas finais (LxA)', (d.medida_largura || '?') + ' x ' + (d.medida_altura || '?')])
   }
+
   linhas.push(['Liberado pra produção?', traduzirSimNao(d.liberado_producao)])
   if (d.liberado_producao === 'nao' && d.pendencias) {
     linhas.push(['Pendências', d.pendencias])
