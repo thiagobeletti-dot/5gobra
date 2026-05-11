@@ -32,12 +32,12 @@ export async function gerarPdfMedicao(
   empresa: EmpresaInfo,
   cards: Card[],
 ): Promise<Uint8Array> {
-  const ctx = await criarContexto('Ficha de Medicao')
-  desenharCapa(ctx, 'Ficha de Medicao', obra, empresa, cards.length, 'pecas com M1/M2')
+  const ctx = await criarContexto('Ficha de Medição')
+  desenharCapa(ctx, 'Ficha de Medição', obra, empresa, cards.length, 'peças com M1/M2')
   for (const card of cards) {
     desenharSecaoMedicao(ctx, card)
   }
-  desenharFooters(ctx, 'Ficha de Medicao')
+  desenharFooters(ctx, 'Ficha de Medição')
   return await ctx.pdf.save()
 }
 
@@ -47,13 +47,13 @@ export async function gerarPdfDossie(
   cards: Card[],
   historicoPorCard: Map<string, HistoricoRow[]>,
 ): Promise<Uint8Array> {
-  const ctx = await criarContexto('Dossie da obra')
-  desenharCapa(ctx, 'Dossie da obra', obra, empresa, cards.length, 'pecas com historico')
+  const ctx = await criarContexto('Dossiê da obra')
+  desenharCapa(ctx, 'Dossiê da obra', obra, empresa, cards.length, 'peças com histórico')
   for (const card of cards) {
     const eventos = historicoPorCard.get(card.id) ?? []
     desenharSecaoDossie(ctx, card, eventos)
   }
-  desenharFooters(ctx, 'Dossie da obra')
+  desenharFooters(ctx, 'Dossiê da obra')
   return await ctx.pdf.save()
 }
 
@@ -185,12 +185,12 @@ function desenharCapa(ctx: Ctx, titulo: string, obra: ObraInfo, empresa: Empresa
 
   const bloco: [string, string][] = [
     ['Obra', obra.nome ?? '(sem nome)'],
-    ['Endereco', obra.endereco ?? '-'],
+    ['Endereço', obra.endereco ?? '-'],
     ['Cliente', obra.cliente ?? '-'],
-    ['Inicio da obra', obra.inicio ?? '-'],
+    ['Início da obra', obra.inicio ?? '-'],
     ['Empresa emitente', empresa.nome + (empresa.cnpj ? ' (CNPJ ' + empresa.cnpj + ')' : '')],
-    ['Data de emissao', formatarDataLonga(new Date().toISOString())],
-    ['Conteudo', String(qtde) + ' ' + sufixo],
+    ['Data de emissão', formatarDataLonga(new Date().toISOString())],
+    ['Conteúdo', String(qtde) + ' ' + sufixo],
   ]
   for (const [k, v] of bloco) {
     ctx.page.drawText(k + ':', { x: MARGIN, y: ctx.y - 4, size: 8, font: ctx.fontBold, color: COR_LABEL })
@@ -242,11 +242,11 @@ function desenharCabecalhoPeca(ctx: Ctx, card: Card) {
 
 function desenharBlocoM1(ctx: Ctx, m1: Checklist | undefined) {
   garantirEspaco(ctx, 60)
-  desenharTexto(ctx, 'Medicao 1 — Visita inicial', { size: 11, font: ctx.fontBold })
+  desenharTexto(ctx, 'Medição 1 — Visita inicial', { size: 11, font: ctx.fontBold })
   ctx.y -= 16
 
   if (!m1) {
-    desenharTexto(ctx, 'Nao realizada.', { color: COR_SOFT })
+    desenharTexto(ctx, 'Não realizada.', { color: COR_SOFT })
     ctx.y -= LINE_H
     return
   }
@@ -254,9 +254,9 @@ function desenharBlocoM1(ctx: Ctx, m1: Checklist | undefined) {
   const d = m1.dados as DadosMedicao1
   const linhas: [string, string][] = [
     ['Data', formatarDataCurta(d.data)],
-    ['Tecnico', d.tecnico || '-'],
-    ['Responsavel na obra', d.responsavel_obra || '-'],
-    ['Tipologia executavel?', traduzirSimNao(d.tipologia_executavel)],
+    ['Técnico', d.tecnico || '-'],
+    ['Responsável na obra', d.responsavel_obra || '-'],
+    ['Tipologia executável?', traduzirSimNao(d.tipologia_executavel)],
   ]
   if (d.tipologia_executavel === 'nao' && d.tipologia_problema) {
     linhas.push(['Problema reportado', d.tipologia_problema])
@@ -264,9 +264,9 @@ function desenharBlocoM1(ctx: Ctx, m1: Checklist | undefined) {
   if (d.tipologia) linhas.push(['Tipologia', ROTULOS_TIPOLOGIA[d.tipologia as Exclude<typeof d.tipologia, ''>] ?? d.tipologia])
   if (d.contra_marco) linhas.push(['Contra-marco', traduzirSimNao(d.contra_marco)])
   if (d.soleira) linhas.push(['Soleira', traduzirSimNao(d.soleira)])
-  if (d.vao_pronto) linhas.push(['Vao pronto', traduzirSimNao(d.vao_pronto)])
+  if (d.vao_pronto) linhas.push(['Vão pronto', traduzirSimNao(d.vao_pronto)])
   if (d.vao_pronto === 'nao' && d.precisa_correcao) {
-    linhas.push(['Pendencias do vao', d.precisa_correcao])
+    linhas.push(['Pendências do vão', d.precisa_correcao])
   }
   if (d.medida_largura || d.medida_altura) {
     linhas.push(['Medidas (LxA)', (d.medida_largura || '?') + ' x ' + (d.medida_altura || '?')])
@@ -274,7 +274,7 @@ function desenharBlocoM1(ctx: Ctx, m1: Checklist | undefined) {
   if (d.tem_motor) {
     linhas.push(['Motor', 'Sim, lado ' + (d.motor_lado || '?') + ', ' + (d.motor_tensao || '?')])
   }
-  if (d.observacao) linhas.push(['Observacoes', d.observacao])
+  if (d.observacao) linhas.push(['Observações', d.observacao])
 
   desenharTabelaChaveValor(ctx, linhas)
   ctx.y -= 6
@@ -282,11 +282,11 @@ function desenharBlocoM1(ctx: Ctx, m1: Checklist | undefined) {
 
 function desenharBlocoM2(ctx: Ctx, m2: Checklist | undefined) {
   garantirEspaco(ctx, 60)
-  desenharTexto(ctx, 'Medicao 2 — Conferencia final', { size: 11, font: ctx.fontBold })
+  desenharTexto(ctx, 'Medição 2 — Conferência final', { size: 11, font: ctx.fontBold })
   ctx.y -= 16
 
   if (!m2) {
-    desenharTexto(ctx, 'Nao realizada.', { color: COR_SOFT })
+    desenharTexto(ctx, 'Não realizada.', { color: COR_SOFT })
     ctx.y -= LINE_H
     ctx.y -= 8
     return
@@ -295,21 +295,21 @@ function desenharBlocoM2(ctx: Ctx, m2: Checklist | undefined) {
   const d = m2.dados as DadosMedicao2
   const linhas: [string, string][] = [
     ['Data', formatarDataCurta(d.data)],
-    ['Tecnico', d.tecnico || '-'],
-    ['Responsavel na obra', d.responsavel_obra || '-'],
+    ['Técnico', d.tecnico || '-'],
+    ['Responsável na obra', d.responsavel_obra || '-'],
   ]
   if (d.contra_marco_instalado) linhas.push(['Contra-marco instalado?', traduzirSimNao(d.contra_marco_instalado)])
   if (d.piso_acabado) linhas.push(['Piso acabado?', traduzirSimNao(d.piso_acabado)])
-  if (d.vao_acabado) linhas.push(['Vao acabado?', traduzirSimNao(d.vao_acabado)])
-  if (d.nivel_ok) linhas.push(['Nivel OK?', traduzirSimNao(d.nivel_ok) + (d.nivel_obs ? ' (' + d.nivel_obs + ')' : '')])
+  if (d.vao_acabado) linhas.push(['Vão acabado?', traduzirSimNao(d.vao_acabado)])
+  if (d.nivel_ok) linhas.push(['Nível OK?', traduzirSimNao(d.nivel_ok) + (d.nivel_obs ? ' (' + d.nivel_obs + ')' : '')])
   if (d.prumo_ok) linhas.push(['Prumo OK?', traduzirSimNao(d.prumo_ok) + (d.prumo_obs ? ' (' + d.prumo_obs + ')' : '')])
   if (d.tipologia) linhas.push(['Tipologia (final)', ROTULOS_TIPOLOGIA[d.tipologia as Exclude<typeof d.tipologia, ''>] ?? d.tipologia])
   if (d.medida_largura || d.medida_altura) {
     linhas.push(['Medidas finais (LxA)', (d.medida_largura || '?') + ' x ' + (d.medida_altura || '?')])
   }
-  linhas.push(['Liberado pra producao?', traduzirSimNao(d.liberado_producao)])
+  linhas.push(['Liberado pra produção?', traduzirSimNao(d.liberado_producao)])
   if (d.liberado_producao === 'nao' && d.pendencias) {
-    linhas.push(['Pendencias', d.pendencias])
+    linhas.push(['Pendências', d.pendencias])
   }
 
   desenharTabelaChaveValor(ctx, linhas)
@@ -323,7 +323,7 @@ function desenharSecaoDossie(ctx: Ctx, card: Card, eventos: HistoricoRow[]) {
   desenharCabecalhoPeca(ctx, card)
 
   if (eventos.length === 0) {
-    desenharTexto(ctx, 'Sem eventos publicos registrados.', { color: COR_SOFT })
+    desenharTexto(ctx, 'Sem eventos públicos registrados.', { color: COR_SOFT })
     ctx.y -= LINE_H
     ctx.y -= 8
     return
@@ -339,7 +339,7 @@ function desenharSecaoDossie(ctx: Ctx, card: Card, eventos: HistoricoRow[]) {
 }
 
 function desenharEventoTimeline(ctx: Ctx, ev: HistoricoRow) {
-  const headerLine = formatarDataLonga(ev.created_at) + ' — ' + (ev.autor || '(autor nao informado)') + ' (' + traduzirAutorTipo(ev.autor_tipo) + ')'
+  const headerLine = formatarDataLonga(ev.created_at) + ' — ' + (ev.autor || '(autor não informado)') + ' (' + traduzirAutorTipo(ev.autor_tipo) + ')'
   const corpoLinhas = quebrarLinhas(ev.texto || '(sem texto)', ctx.fontRegular, FONT_BODY, PAGE_W - MARGIN * 2 - 16)
 
   garantirEspaco(ctx, 16 + corpoLinhas.length * LINE_H + 4)
@@ -431,7 +431,7 @@ function formatarDataCurta(iso: string): string {
 
 function traduzirSimNao(v: string): string {
   if (v === 'sim') return 'Sim'
-  if (v === 'nao') return 'Nao'
+  if (v === 'nao') return 'Não'
   return '-'
 }
 

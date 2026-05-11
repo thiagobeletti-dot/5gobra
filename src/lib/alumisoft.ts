@@ -230,5 +230,16 @@ function nomeResumido(descr: string): string {
   // Pega primeiras 2 partes, ignora linha/serie no final
   const semLinha = partes.filter((p) => !/^LINHA\b/i.test(p.trim()))
   const escolhidas = semLinha.slice(0, 2)
-  return escolhidas.join(' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
+  return escolhidas
+    .join(' ')
+    // Remove placeholders nao-substituidos do SmartCEM/Alumisoft (ex: %MODULOS%, %FOLHA%)
+    .replace(/%[^%\s]+%/g, '')
+    // Normaliza espacos multiplos (que viraram dos placeholders removidos)
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+    // Capitaliza só primeira letra após espaço ou início da string.
+    // Antes usava \b\w/g que tambem capitalizava após parenteses ("Folha(S)") —
+    // agora exige espaco ou inicio explicito.
+    .replace(/(^|\s)([a-zà-ÿ])/g, (_, sep, c) => sep + c.toUpperCase())
 }
