@@ -1,17 +1,16 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { LogoFull } from '../lib/logo'
 import CarrosselSistema from '../components/CarrosselSistema'
 import PopupSaida from '../components/PopupSaida'
-
-const WA_COMPRAR =
-  'https://wa.me/5511995400050?text=' +
-  encodeURIComponent('Olá! Quero comprar o G Obra (R$ 349/mês). Posso tirar algumas dúvidas antes?')
+import ModalComprar from '../components/ModalComprar'
 
 const WA_DUVIDA =
   'https://wa.me/5511995400050?text=' +
   encodeURIComponent('Olá! Tô olhando o G Obra e tenho algumas dúvidas.')
 
 export default function Landing() {
+  const [comprarAberto, setComprarAberto] = useState(false)
   return (
     <div className="min-h-screen flex flex-col">
       {/* HEADER */}
@@ -25,14 +24,13 @@ export default function Landing() {
           </nav>
           <div className="flex items-center gap-3">
             <Link to="/login" className="btn-ghost">Entrar</Link>
-            <a
-              href={WA_COMPRAR}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={() => setComprarAberto(true)}
               className="btn-primary"
             >
               Comprar
-            </a>
+            </button>
           </div>
         </div>
       </header>
@@ -51,14 +49,13 @@ export default function Landing() {
               Cada peça, cada acordo, cada apontamento registrado num lugar só. Quem deve fazer o que fica óbvio. Combinado não se perde no WhatsApp.
             </p>
             <div className="flex gap-3 flex-wrap">
-              <a
-                href={WA_COMPRAR}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
+                onClick={() => setComprarAberto(true)}
                 className="btn-primary text-base px-6 py-3"
               >
                 Comprar G Obra · R$ 349/mês
-              </a>
+              </button>
               <a
                 href={WA_DUVIDA}
                 target="_blank"
@@ -222,14 +219,13 @@ export default function Landing() {
             R$ 349/mês com <strong className="text-slate-900">14 dias de garantia</strong>. Se não gostar, devolvemos seu dinheiro.
           </p>
           <div className="flex gap-3 flex-wrap justify-center">
-            <a
-              href={WA_COMPRAR}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={() => setComprarAberto(true)}
               className="btn-primary text-base px-8 py-3.5"
             >
               Comprar G Obra
-            </a>
+            </button>
             <a
               href={WA_DUVIDA}
               target="_blank"
@@ -253,6 +249,12 @@ export default function Landing() {
           </div>
         </div>
       </footer>
+
+      {/* Modal de compra: abre quando clica em qualquer botão "Comprar" */}
+      <ModalComprar
+        aberto={comprarAberto}
+        onFechar={() => setComprarAberto(false)}
+      />
 
       {/* Pop-up de saída: captura WhatsApp de quem tava saindo sem comprar */}
       <PopupSaida />

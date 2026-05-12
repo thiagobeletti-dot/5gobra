@@ -77,6 +77,49 @@ export async function ativarAssinatura(input: {
   }
 }
 
+// =============== Compra pública (landing) ===============
+
+export interface CompraPublicaInput {
+  nome_completo: string
+  email: string
+  whatsapp: string
+  cpf_cnpj: string
+  cupom?: string
+  ref_parceiro?: string
+  origem?: string
+}
+
+export interface ResultadoCompraPublica {
+  ok: boolean
+  invoiceUrl?: string
+  asaasCustomerId?: string
+  asaasSubscriptionId?: string
+  valor1oMesCentavos?: number
+  cupomAplicado?: string | null
+  percentualDesconto?: number
+  error?: string
+}
+
+/**
+ * Chamada do botão "Comprar" na landing pública. Cria customer + assinatura
+ * no Asaas (com cupom aplicado se válido) e retorna a invoiceUrl pra redirecionar
+ * o visitante pra página de pagamento Asaas.
+ *
+ * Não exige usuário autenticado — qualquer visitante pode chamar.
+ */
+export async function comprarPublico(input: CompraPublicaInput): Promise<ResultadoCompraPublica> {
+  if (!supabase) return { ok: false, error: 'Supabase nao configurado' }
+  try {
+    const { data, error } = await supabase.functions.invoke('comprar-publico', {
+      body: input,
+    })
+    if (error) return { ok: false, error: error.message }
+    return data as ResultadoCompraPublica
+  } catch (e) {
+    return { ok: false, error: (e as { message?: string })?.message ?? 'Erro desconhecido' }
+  }
+}
+
 /**
  * Helper de label visível pra cada status.
  */
