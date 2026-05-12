@@ -148,3 +148,60 @@ Painel Asaas → Integrações → Webhooks → Adicionar webhook:
 1. Troca os 2 secrets (`ASAAS_API_KEY` pra `$aact_prod_` e `ASAAS_API_URL` pra `https://api.asaas.com/v3`)
 2. Cria webhook novo no painel **de produção** do Asaas (não no sandbox)
 3. Solicita ao gerente Asaas a habilitação de tokenização de cartão se um dia quiser checkout transparente (não precisa pra página hospedada)
+
+---
+
+## comprar-publico + ativar-pre-cadastro + pre-cadastro-por-token
+
+Fluxo de **compra pública pela landing** (visitante anônimo). 3 funções:
+
+- **`comprar-publico`** (anon): visitante clica "Comprar" na landing → função
+  cria customer + subscription no Asaas (com cupom aplicado se válido) → grava
+  `pre_cadastros` → retorna `invoiceUrl` pra redirect.
+- **`pre-cadastro-por-token`** (anon, leitura): chamada pela página `/cadastro`
+  pra validar o token e pré-preencher email/nome.
+- **`ativar-pre-cadastro`** (anon, escrita autorizada via token): cliente que
+  já pagou clica no link do email → função cria user + empresa + assinatura
+  **ATIVA** vinculada à subscription paga no Asaas.
+
+E o **`webhook-asaas`** foi estendido pra reconhecer pagamentos vindos do fluxo
+público (busca em `pre_cadastros` antes de `assinaturas`):
+1. Marca `pre_cadastro.status='pago'`
+2. Atualiza value da subscription no Asaas pra R$ 349 (remove desconto do 1º mês)
+3. Dispara email Resend com link `/cadastro?token=X` pro cliente terminar
+
+### Pré-requisitos extras pra deploy
+
+1. **Rodar SQL** `supabase/pre-cadastros.sql` (cria tabela) e
+   `supabase/pre-cadastros-extras.sql` (adiciona colunas de auditoria) no SQL Editor.
+2. **Rodar SQL** `supabase/cupons.sql` se ainda não rodou.
+
+### Secrets adicionais
+
+Os mesmos do bloco anterior (`ASAAS_API_KEY`, `ASAAS_API_URL`, `ASAAS_WEBHOOK_TOKEN`,
+`RESEND_API_KEY`, `EMAIL_FROM`). Acrescentar:
+
+```
+APP_URL = https://5gobra.com.br
+```
+
+(Usado pra montar o link `/cadastro?token=X` no email pós-pagamento.)
+
+### Deploy das funções
+
+Via Dashboard, deploy de cada uma:
+- `comprar-publico`
+- `pre-cadastro-por-token`
+- `ativar-pre-cadastro`
+
+E **redeployar** `webhook-asaas` (mudou pra reconhecer pre_cadastros).
+
+### Teste end-to-end (sandbox)
+
+1. Acessa landing → clica "Comprar"
+2. Preenche modal (nome, email, whatsapp, CPF/CNPJ, cupom OBRA10)
+3. Redireciona pra página Asaas — paga com cartão `4444 4444 4444 4444`
+4. ~5s depois, webhook processa: pre_cadastro vira 'pago' e email chega
+5. Clica link do email → abre `/cadastro?token=X` com email pré-preenchido
+6. Cria senha + aceita termos → empresa criada + login automático
+7. Cai em `/app/obras` já com plano ativo

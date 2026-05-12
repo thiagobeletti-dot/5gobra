@@ -120,6 +120,74 @@ export async function comprarPublico(input: CompraPublicaInput): Promise<Resulta
   }
 }
 
+// =============== Ativação pós-pagamento (cliente clica link do email) ===============
+
+export interface PreCadastroResumo {
+  id: string
+  nome_completo: string
+  email: string
+  whatsapp: string | null
+  cpf_cnpj_mascarado: string | null
+  status: 'aguardando_pagamento' | 'pago' | 'convertido' | 'expirado' | 'erro'
+  empresa_id: string | null
+}
+
+/**
+ * Busca dados públicos do pre_cadastro pelo token, via Edge Function
+ * (que valida o token antes de devolver — não há leitura direta anon).
+ */
+export async function buscarPreCadastroPorToken(token: string): Promise<PreCadastroResumo | null> {
+  if (!supabase) return null
+  try {
+    const { data, error } = await supabase.functions.invoke('pre-cadastro-por-token', {
+      body: { token },
+    })
+    if (error) {
+      console.warn('[asaas] pre-cadastro-por-token erro:', error)
+      return null
+    }
+    if (!data?.ok) return null
+    return data.preCadastro as PreCadastroResumo
+  } catch (e) {
+    console.warn('[asaas] pre-cadastro-por-token exception:', e)
+    return null
+  }
+}
+
+export interface AtivarInput {
+  token: string
+  senha: string
+  cnpj?: string
+  telefone?: string
+  nome_empresa?: string
+}
+
+export interface ResultadoAtivacao {
+  ok: boolean
+  empresa_id?: string
+  email?: string
+  ja_convertido?: boolean
+  error?: string
+}
+
+/**
+ * Após pagamento confirmado, cliente clica no link do email (com ?token=X).
+ * Cria user + empresa + assinatura ATIVA vinculadas à subscription do Asaas
+ * que já foi paga. Após ok, frontend faz signIn(email, senha) e grava aceites.
+ */
+export async function ativarPreCadastro(input: AtivarInput): Promise<ResultadoAtivacao> {
+  if (!supabase) return { ok: false, error: 'Supabase nao configurado' }
+  try {
+    const { data, error } = await supabase.functions.invoke('ativar-pre-cadastro', {
+      body: input,
+    })
+    if (error) return { ok: false, error: error.message }
+    return data as ResultadoAtivacao
+  } catch (e) {
+    return { ok: false, error: (e as { message?: string })?.message ?? 'Erro desconhecido' }
+  }
+}
+
 /**
  * Helper de label visível pra cada status.
  */
