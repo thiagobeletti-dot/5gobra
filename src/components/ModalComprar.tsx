@@ -116,7 +116,7 @@ export default function ModalComprar({ aberto, onFechar, cupomInicial }: Props) 
               </label>
               <input
                 className="input"
-                placeholder="Ex: Thiago Beletti"
+                placeholder="Como aparece no CPF ou CNPJ"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
                 disabled={enviando}
@@ -176,7 +176,7 @@ export default function ModalComprar({ aberto, onFechar, cupomInicial }: Props) 
               </label>
               <input
                 className="input uppercase"
-                placeholder="Ex: OBRA10"
+                placeholder="Tem um código? Digite aqui"
                 value={cupom}
                 onChange={(e) => setCupom(e.target.value.toUpperCase())}
                 disabled={enviando}

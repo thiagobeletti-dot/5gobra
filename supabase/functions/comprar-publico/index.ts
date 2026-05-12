@@ -22,7 +22,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 
 const PRECO_MENSAL_CENTAVOS = 34900 // R$ 349,00
-const ASAAS_BASE_URL = Deno.env.get('ASAAS_BASE_URL') ?? 'https://api-sandbox.asaas.com/v3'
+const ASAAS_BASE_URL = Deno.env.get('ASAAS_API_URL') ?? Deno.env.get('ASAAS_BASE_URL') ?? 'https://api-sandbox.asaas.com/v3'
 const ASAAS_API_KEY = Deno.env.get('ASAAS_API_KEY') ?? ''
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
@@ -176,10 +176,23 @@ Deno.serve(async (req: Request) => {
     }
 
     // ========== Incrementar contador de uso do cupom ==========
+    // Best-effort: se falhar, não bloqueia o fluxo principal (cobrança já criada).
     if (cupomCodigo) {
-      await supabase.rpc('exec_sql', {
-        sql: `update cupons set usos = usos + 1 where upper(codigo) = upper('${cupomCodigo}')`,
-      }).catch(() => null)
+      try {
+        const { data: cupomRow } = await supabase
+          .from('cupons')
+          .select('id, usos')
+          .ilike('codigo', cupomCodigo)
+          .maybeSingle()
+        if (cupomRow) {
+          await supabase
+            .from('cupons')
+            .update({ usos: (cupomRow.usos ?? 0) + 1 })
+            .eq('id', cupomRow.id)
+        }
+      } catch (e) {
+        console.warn('[comprar-publico] Falha ao incrementar uso do cupom:', e)
+      }
     }
 
     return new Response(
