@@ -14,7 +14,7 @@ import { useExitIntent, marcarPopupDispensado } from '../hooks/useExitIntent'
 import { registrarLeadQuente } from '../lib/api'
 import { useEscClose } from '../hooks/useEscClose'
 
-type Motivo = 'preco' | 'equipe' | 'ja_tentei' | 'sem_tempo' | 'outro'
+type Motivo = 'quero_entender' | 'preco' | 'equipe' | 'ja_tentei' | 'pensar_calma' | 'outro'
 
 interface Props {
   /** Se passado, sobrescreve a detecção automática (útil pra testes/desenvolvimento) */
@@ -120,10 +120,10 @@ export default function PopupSaida({ forcarAbrir }: Props) {
           <form onSubmit={enviar}>
             <div className="px-6 pt-6 pb-3">
               <h2 id="popup-saida-titulo" className="text-xl font-bold mb-1.5">
-                Antes de sair, conta uma coisa
+                Espera aí — vai sair sem fechar?
               </h2>
               <p className="text-sm text-slate-600 leading-relaxed">
-                O que ainda tá te fazendo pensar? Deixa seu WhatsApp e te respondo pessoalmente. Já te mando o cupom estendido por mais 24h.
+                Conta o que tá te segurando. Eu mesmo te respondo no WhatsApp. Como agradecimento, te mando o cupom estendido por mais 24h.
               </p>
             </div>
 
@@ -156,10 +156,11 @@ export default function PopupSaida({ forcarAbrir }: Props) {
                   disabled={enviando}
                 >
                   <option value="">Escolha uma opção...</option>
-                  <option value="preco">É caro / Preço</option>
-                  <option value="equipe">Minha equipe não vai usar</option>
-                  <option value="ja_tentei">Já tentei outros e não funcionou</option>
-                  <option value="sem_tempo">Não tenho tempo agora</option>
+                  <option value="quero_entender">Quero entender melhor antes de decidir</option>
+                  <option value="preco">Achei caro pro que oferece</option>
+                  <option value="equipe">Receio da equipe não usar</option>
+                  <option value="ja_tentei">Já tentei outros sistemas e não deram certo</option>
+                  <option value="pensar_calma">Preciso pensar com calma</option>
                   <option value="outro">Outro motivo</option>
                 </select>
               </div>

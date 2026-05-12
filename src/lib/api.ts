@@ -89,7 +89,7 @@ export async function atualizarLogoEmpresa(logoUrl: string | null) {
 
 export interface LeadQuenteInput {
   whatsapp: string
-  motivo: 'preco' | 'equipe' | 'ja_tentei' | 'sem_tempo' | 'outro'
+  motivo: 'quero_entender' | 'preco' | 'equipe' | 'ja_tentei' | 'pensar_calma' | 'outro'
   motivo_texto?: string
   origem?: string
 }
