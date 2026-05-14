@@ -188,6 +188,19 @@ export default function ModalComprar({ aberto, onFechar, cupomInicial }: Props) 
                 {erro}
               </div>
             )}
+
+            <p className="text-[11px] text-slate-500 leading-relaxed pt-1">
+              Ao continuar, você aceita que seus dados sejam tratados conforme a{' '}
+              <a
+                href="/privacidade"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-slate-700"
+              >
+                Política de Privacidade
+              </a>
+              {' '}pra processar sua compra. Os Termos de Uso completos são aceitos no passo seguinte, depois do pagamento.
+            </p>
           </div>
 
           <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex items-center justify-end gap-2 flex-wrap">

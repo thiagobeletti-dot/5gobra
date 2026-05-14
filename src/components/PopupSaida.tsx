@@ -32,6 +32,10 @@ export default function PopupSaida({ forcarAbrir }: Props) {
   const [whatsapp, setWhatsapp] = useState('')
   const [motivo, setMotivo] = useState<Motivo | ''>('')
   const [motivoTexto, setMotivoTexto] = useState('')
+  const [consentimento, setConsentimento] = useState(false)
+
+  // Versao da Politica de Privacidade vigente. Atualizar quando bumpar.
+  const POLITICA_VERSAO = '1.2'
 
   useEscClose(aberto, () => fechar())
 
@@ -61,6 +65,10 @@ export default function PopupSaida({ forcarAbrir }: Props) {
       setErro('Conta rápido o que te impede de fechar.')
       return
     }
+    if (!consentimento) {
+      setErro('Você precisa concordar com a Política de Privacidade pra continuar.')
+      return
+    }
 
     setEnviando(true)
     try {
@@ -69,6 +77,7 @@ export default function PopupSaida({ forcarAbrir }: Props) {
         motivo,
         motivo_texto: motivo === 'outro' ? motivoTexto.trim() : undefined,
         origem: 'landing-gobra',
+        consentimento_versao: POLITICA_VERSAO,
       })
       setEnviado(true)
       marcarPopupDispensado()
@@ -185,6 +194,29 @@ export default function PopupSaida({ forcarAbrir }: Props) {
                   {erro}
                 </div>
               )}
+
+              <label className="flex items-start gap-2.5 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={consentimento}
+                  onChange={(e) => setConsentimento(e.target.checked)}
+                  disabled={enviando}
+                  className="mt-0.5 w-4 h-4 rounded border-slate-300 cursor-pointer flex-shrink-0"
+                />
+                <span className="text-xs text-slate-600 leading-relaxed">
+                  Concordo em receber contato sobre o G Obra. Meus dados serão tratados conforme a{' '}
+                  <a
+                    href="/privacidade"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:text-laranja-dark"
+                  >
+                    Política de Privacidade
+                  </a>
+                  . Posso revogar a qualquer momento pelo e-mail{' '}
+                  <strong>dpo@gerenciamento5g.com.br</strong>.
+                </span>
+              </label>
             </div>
 
             <div className="border-t border-slate-200 px-6 py-4 bg-slate-50 flex items-center gap-2 flex-wrap justify-end">
@@ -198,8 +230,8 @@ export default function PopupSaida({ forcarAbrir }: Props) {
               </button>
               <button
                 type="submit"
-                disabled={enviando}
-                className="btn-primary text-sm"
+                disabled={enviando || !consentimento}
+                className="btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {enviando ? 'Enviando…' : 'Enviar e receber cupom estendido'}
               </button>

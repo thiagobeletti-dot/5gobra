@@ -92,6 +92,8 @@ export interface LeadQuenteInput {
   motivo: 'quero_entender' | 'preco' | 'equipe' | 'ja_tentei' | 'pensar_calma' | 'outro'
   motivo_texto?: string
   origem?: string
+  /** Versao da Politica de Privacidade aceita pelo lead. Atualizar quando bumpar. */
+  consentimento_versao: string
 }
 
 export async function registrarLeadQuente(dados: LeadQuenteInput): Promise<void> {
@@ -106,6 +108,8 @@ export async function registrarLeadQuente(dados: LeadQuenteInput): Promise<void>
       motivo_texto: dados.motivo_texto || null,
       origem: dados.origem || 'landing-gobra',
       user_agent,
+      consentimento_versao: dados.consentimento_versao,
+      consentimento_em: new Date().toISOString(),
     })
   if (error) throw error
 }

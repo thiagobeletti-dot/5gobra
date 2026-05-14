@@ -21,7 +21,7 @@
 // antes de escala >50 clientes.
 
 export const TERMOS_VERSAO = '1.1'
-export const PRIVACIDADE_VERSAO = '1.1'
+export const PRIVACIDADE_VERSAO = '1.2'
 
 export const DOC_TERMOS_USO = `TERMOS DE USO DO G OBRA — versao ${TERMOS_VERSAO}
 
@@ -207,7 +207,7 @@ Documento versao ${TERMOS_VERSAO} — 06/05/2026`
 
 export const DOC_POLITICA_PRIVACIDADE = `POLITICA DE PRIVACIDADE DO G OBRA — versao ${PRIVACIDADE_VERSAO}
 
-Vigencia: 06/05/2026
+Vigencia: 14/05/2026
 Operadora: 5G GERENCIAMENTO LTDA, inscrita no CNPJ sob o no 51.544.570/0001-83, com sede a Av. Antonio Frederico Ozanan, 9200, Casa 122, Jardim Shangai, Jundiai/SP, CEP 13214-206, doravante "5G".
 Plataforma: G Obra (5gobra.com.br).
 
@@ -361,7 +361,7 @@ i) Revogacao do consentimento, quando esta for a base legal aplicavel.
 13. ENCARREGADO DE DADOS (DPO)
 
 Encarregado: Thiago Beletti
-E-mail: dpo@5gobra.com.br
+E-mail: dpo@gerenciamento5g.com.br
 Canal alternativo: WhatsApp oficial de suporte indicado em 5gobra.com.br
 
 14. ALTERACOES DESTA POLITICA
@@ -373,7 +373,7 @@ Canal alternativo: WhatsApp oficial de suporte indicado em 5gobra.com.br
 15. CANAL DE COMUNICACAO
 
 Para exercer direitos, esclarecer duvidas ou denunciar incidentes:
-E-mail: dpo@5gobra.com.br | suporte@5gobra.com.br
+E-mail: dpo@gerenciamento5g.com.br | suporte@5gobra.com.br
 WhatsApp: canal oficial indicado em 5gobra.com.br
 
 16. LEI APLICAVEL
@@ -381,4 +381,4 @@ WhatsApp: canal oficial indicado em 5gobra.com.br
 Esta Politica rege-se pelas leis brasileiras, em especial a LGPD (Lei 13.709/2018), o Marco Civil da Internet (Lei 12.965/2014) e o Decreto 7.962/2013, sendo competente o foro da Comarca de Jundiai/SP, ressalvado o direito do consumidor pessoa fisica de optar pelo foro do seu domicilio.
 
 5G GERENCIAMENTO
-Documento versao ${PRIVACIDADE_VERSAO} — 06/05/2026`
+Documento versao ${PRIVACIDADE_VERSAO} — 14/05/2026`
