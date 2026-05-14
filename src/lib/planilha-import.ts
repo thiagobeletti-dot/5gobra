@@ -93,11 +93,18 @@ function normalizarHeader(h: string): string {
     .replace(/[̀-ͯ]/g, '') // remove acentos
 }
 
+// Chaves canônicas válidas — usadas como fallback se o header já vier normalizado
+const CHAVES_CANONICAS: (keyof LinhaCru)[] = [
+  'sigla', 'tipo', 'nome', 'descricao',
+  'largura_mm', 'altura_mm', 'qtde',
+  'linha', 'cor', 'vidro', 'localizacao', 'observacao',
+]
+
 function mapearHeaderParaChave(headerCru: string): keyof LinhaCru | null {
   const semAcento = normalizarHeader(headerCru)
   if (HEADER_ALIASES[semAcento]) return HEADER_ALIASES[semAcento]
-  // Tentativa final: a chave canônica já é a normalizada
-  if (semAcento in {} as LinhaCru) return semAcento as keyof LinhaCru
+  // Fallback: o header já vem com a chave canônica
+  if ((CHAVES_CANONICAS as string[]).includes(semAcento)) return semAcento as keyof LinhaCru
   return null
 }
 
@@ -234,7 +241,9 @@ function converterLinha(
   linhaRaw: Record<string, unknown>,
   mapaHeaders: Record<string, keyof LinhaCru>,
 ): LinhaCru {
-  const out: LinhaCru = {}
+  // Usa Record genérico durante a montagem pra evitar atrito de tipagem
+  // entre campos numéricos (largura_mm, altura_mm, qtde) e textuais.
+  const out: Record<string, string | number> = {}
   for (const [headerCru, valor] of Object.entries(linhaRaw)) {
     const chave = mapaHeaders[headerCru]
     if (!chave) continue
@@ -243,10 +252,10 @@ function converterLinha(
       if (!isNaN(num) && num > 0) out[chave] = num
     } else {
       const str = String(valor || '').trim()
-      if (str) (out[chave] as string) = str
+      if (str) out[chave] = str
     }
   }
-  return out
+  return out as LinhaCru
 }
 
 // =============== Gerador de Template ===============
