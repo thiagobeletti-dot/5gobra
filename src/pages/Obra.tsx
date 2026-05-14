@@ -270,7 +270,7 @@ export default function Obra() {
         <div className="flex-1">
           {cardsDaAba.length === 0 ? (
             <div className="py-16 text-center text-slate-400">
-              {dados.cards.length === 0 ? 'Nenhum item cadastrado ainda. Clique em "+ Registrar" pra criar o primeiro, ou "+ Importar lista" pra carregar via Alumisoft.' : 'Nada nesta aba no momento.'}
+              {dados.cards.length === 0 ? 'Nenhum item cadastrado ainda. Clique em "+ Registrar" pra criar o primeiro, ou "+ Importar lista" pra carregar via Alumisoft (XML) ou planilha .xlsx.' : 'Nada nesta aba no momento.'}
             </div>
           ) : (
             <div className="grid gap-3.5 p-7" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>

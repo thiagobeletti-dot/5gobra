@@ -26,7 +26,7 @@ const faq: PerguntaResposta[] = [
   {
     pergunta: 'Posso importar do Alumisoft? E de outros sistemas como o CEM?',
     resposta:
-      'Alumisoft sim — basta exportar o XML e subir pelo importador. CEM e outros sistemas: estamos no roadmap, com previsao de planilha padrao .xlsx que voce baixa, preenche e sobe.',
+      'Sim, duas formas. (1) Alumisoft direto — exporta o XML e sobe pelo importador. (2) Planilha generica — para CEM, sistema proprio ou qualquer fabrica que nao usa Alumisoft, basta baixar nosso template .xlsx, preencher em Excel/Google Sheets e subir de volta. Aceita .xlsx, .xls e .csv. Tudo na tela "Importar itens em massa" dentro da obra.',
   },
   {
     pergunta: 'Quantas obras posso ter ao mesmo tempo?',
