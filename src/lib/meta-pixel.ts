@@ -1,24 +1,30 @@
 // Meta Pixel (Facebook/Instagram Ads)
 //
-// Carrega o pixel apenas em produção e quando o ID estiver configurado.
+// Carrega o pixel apenas em producao e quando o ID estiver configurado.
 // Em dev, vira no-op com console.log pra ajudar a depurar.
 //
 // Pra configurar:
-//   1. Em Meta Business Manager → Eventos → Pixels, cria um pixel novo
+//   1. Em Meta Business Manager -> Eventos -> Pixels, cria um pixel novo
 //      ou pega o ID do existente (16 digitos, ex: 1234567890123456)
-//   2. No Vercel: Settings → Environment Variables → adicionar
+//   2. No Vercel: Settings -> Environment Variables -> adicionar
 //      VITE_META_PIXEL_ID = <pixel_id>
 //   3. Redeploy
 //
 // Sem o ID configurado, todas as chamadas viram console.log inocuos.
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 const PIXEL_ID = import.meta.env.VITE_META_PIXEL_ID as string | undefined
 const ENABLED = typeof window !== 'undefined' && !!PIXEL_ID
 
 declare global {
   interface Window {
-    fbq?: (...args: unknown[]) => void
-    _fbq?: unknown
+    // Uso `any` proposital — o snippet oficial do Meta usa funcao com
+    // propriedades dinamicas (callMethod, queue, loaded, version, push),
+    // o que conflita com tipagem estrita. Aceitavel pra um helper de
+    // analytics encapsulado.
+    fbq?: any
+    _fbq?: any
   }
 }
 
@@ -40,13 +46,12 @@ export function initMetaPixel(): void {
   }
 
   // Script oficial do Meta Pixel — inline pra carregar imediato
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ;(function (f: any, b: Document, e: string, v: string) {
     if (f.fbq) return
-    const n = (f.fbq = function (...args: unknown[]) {
-      // eslint-disable-next-line prefer-spread
+    const n: any = function (...args: unknown[]) {
       n.callMethod ? n.callMethod.apply(n, args) : n.queue.push(args)
-    })
+    }
+    f.fbq = n
     if (!f._fbq) f._fbq = n
     n.push = n
     n.loaded = true
@@ -59,8 +64,8 @@ export function initMetaPixel(): void {
     s.parentNode!.insertBefore(t, s)
   })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js')
 
-  window.fbq?.('init', PIXEL_ID)
-  window.fbq?.('track', 'PageView')
+  window.fbq('init', PIXEL_ID)
+  window.fbq('track', 'PageView')
 
   console.info('[meta-pixel] inicializado com ID', PIXEL_ID)
 }
@@ -84,11 +89,13 @@ export function trackEvent(
     console.info('[meta-pixel] track (dry-run)', event, params ?? {})
     return
   }
-  window.fbq?.('track', event, params)
+  if (window.fbq) {
+    window.fbq('track', event, params)
+  }
 }
 
 /**
- * Dispara evento PageView. Chamar em mudanças de rota se a app for SPA.
+ * Dispara evento PageView. Chamar em mudancas de rota se a app for SPA.
  */
 export function trackPageView(): void {
   trackEvent('PageView')
