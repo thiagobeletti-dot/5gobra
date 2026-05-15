@@ -30,6 +30,7 @@ import {
   DOC_TERMOS_USO,
   DOC_POLITICA_PRIVACIDADE,
 } from '../lib/contratos'
+import { trackPurchase, trackCompleteRegistration } from '../lib/meta-pixel'
 
 type Etapa = 1 | 2 | 3
 
@@ -75,6 +76,10 @@ export default function Cadastro() {
           setTokenErro('Ainda não recebemos seu pagamento. Aguarde alguns minutos e recarregue a página.')
         } else if (dados.status === 'expirado') {
           setTokenErro('Esse link expirou. Refaz a compra na página inicial pra gerar um novo.')
+        } else {
+          // Status valido (pago, aguardando ativacao) — dispara Purchase no Pixel.
+          // Idempotente: se a pagina recarregar, dados.status virara 'convertido' e nao dispara de novo.
+          trackPurchase(349, 'BRL')
         }
         setCarregandoToken(false)
       })
@@ -123,6 +128,8 @@ export default function Cadastro() {
       enviarPdfsDeAceite(empresa.id).catch((err) => {
         console.warn('[cadastro] envio de PDFs falhou silenciosamente:', err)
       })
+      // Dispara CompleteRegistration no Meta Pixel (fluxo A — sem token)
+      trackCompleteRegistration()
       setEtapa(3)
     } catch (err: unknown) {
       setErro((err as { message?: string })?.message ?? 'Erro ao finalizar cadastro')
@@ -185,6 +192,8 @@ export default function Cadastro() {
           console.warn('[cadastro] gravacao de aceites falhou:', aceiteErr)
         }
       }
+      // Dispara CompleteRegistration no Meta Pixel (fluxo B — pos-pagamento)
+      trackCompleteRegistration()
       setEtapa(3)
     } catch (err: unknown) {
       setErro((err as { message?: string })?.message ?? 'Erro ao finalizar cadastro')

@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react'
 import { useExitIntent, marcarPopupDispensado } from '../hooks/useExitIntent'
 import { registrarLeadQuente } from '../lib/api'
 import { useEscClose } from '../hooks/useEscClose'
+import { trackLead } from '../lib/meta-pixel'
 
 type Motivo = 'quero_entender' | 'preco' | 'equipe' | 'ja_tentei' | 'pensar_calma' | 'outro'
 
@@ -79,6 +80,8 @@ export default function PopupSaida({ forcarAbrir }: Props) {
         origem: 'landing-gobra',
         consentimento_versao: POLITICA_VERSAO,
       })
+      // Dispara Lead no Meta Pixel pra audiencia de remarketing
+      trackLead()
       setEnviado(true)
       marcarPopupDispensado()
     } catch (err: any) {

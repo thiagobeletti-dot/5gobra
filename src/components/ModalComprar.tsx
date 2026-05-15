@@ -15,6 +15,7 @@
 import { useEffect, useState, FormEvent } from 'react'
 import { comprarPublico } from '../lib/asaas'
 import { useEscClose } from '../hooks/useEscClose'
+import { trackInitiateCheckout } from '../lib/meta-pixel'
 
 interface Props {
   aberto: boolean
@@ -76,6 +77,10 @@ export default function ModalComprar({ aberto, onFechar, cupomInicial }: Props) 
         setEnviando(false)
         return
       }
+
+      // Dispara InitiateCheckout no Meta Pixel pra remarketing/conversao.
+      // Valor 349 (full); se tiver cupom OBRA10 o Asaas aplica desconto na fatura.
+      trackInitiateCheckout(349, 'BRL')
 
       // Redireciona pro Asaas pra pagar (mesma aba pra preservar fluxo)
       window.location.href = r.invoiceUrl
