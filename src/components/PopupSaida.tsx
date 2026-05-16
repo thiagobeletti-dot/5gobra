@@ -23,11 +23,15 @@ interface Props {
 }
 
 export default function PopupSaida({ forcarAbrir }: Props) {
-  const disparouNatural = useExitIntent({ timeoutMobileMs: 45000 })
+  // 90s mobile + 20s cooldown desktop (defaults do hook ja sao seguros)
+  const disparouNatural = useExitIntent()
   const [aberto, setAberto] = useState(false)
   const [enviado, setEnviado] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  // Protecao contra reabertura na mesma visita apos user fechar.
+  // Sem isso, re-renders posteriores reabriam o popup mesmo apos fechar.
+  const [jaFechou, setJaFechou] = useState(false)
 
   // Form
   const [whatsapp, setWhatsapp] = useState('')
@@ -40,13 +44,15 @@ export default function PopupSaida({ forcarAbrir }: Props) {
 
   useEscClose(aberto, () => fechar())
 
-  // Sincroniza dispara → aberto
+  // Sincroniza dispara → aberto. Respeita jaFechou pra nao reabrir.
   useEffect(() => {
+    if (jaFechou) return
     if ((disparouNatural || forcarAbrir) && !enviado) setAberto(true)
-  }, [disparouNatural, forcarAbrir, enviado])
+  }, [disparouNatural, forcarAbrir, enviado, jaFechou])
 
   function fechar() {
     setAberto(false)
+    setJaFechou(true)
     marcarPopupDispensado()
   }
 
