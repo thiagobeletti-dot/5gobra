@@ -95,7 +95,7 @@ export default function Configuracoes() {
     e.preventDefault()
     setMsgEmpresa(null)
     if (!nomeEmpresa.trim()) {
-      setMsgEmpresa({ tipo: 'erro', texto: 'O nome da empresa e obrigatorio.' })
+      setMsgEmpresa({ tipo: 'erro', texto: 'O nome da empresa é obrigatório.' })
       return
     }
     setSalvandoEmpresa(true)
@@ -160,7 +160,7 @@ export default function Configuracoes() {
       return
     }
     if (senhaNova !== senhaConfirma) {
-      setMsgSenha({ tipo: 'erro', texto: 'As senhas nao conferem.' })
+      setMsgSenha({ tipo: 'erro', texto: 'As senhas não conferem.' })
       return
     }
     setSalvandoSenha(true)
@@ -184,7 +184,7 @@ export default function Configuracoes() {
       return
     }
     if (!user?.email) {
-      setMsgPlano({ tipo: 'erro', texto: 'E-mail do administrador nao disponivel.' })
+      setMsgPlano({ tipo: 'erro', texto: 'E-mail do administrador não disponível.' })
       return
     }
     setAtivandoPlano(true)
@@ -206,9 +206,9 @@ export default function Configuracoes() {
       setAssinatura(ass)
       if (r.invoiceUrl) {
         window.open(r.invoiceUrl, '_blank', 'noopener,noreferrer')
-        setMsgPlano({ tipo: 'ok', texto: 'Pagina de pagamento aberta em nova aba. Concluido o pagamento, o plano fica ativo automaticamente.' })
+        setMsgPlano({ tipo: 'ok', texto: 'Página de pagamento aberta em nova aba. Concluído o pagamento, o plano fica ativo automaticamente.' })
       } else {
-        setMsgPlano({ tipo: 'aviso', texto: 'Assinatura criada, mas nao consegui obter o link de pagamento. Atualize a pagina.' })
+        setMsgPlano({ tipo: 'aviso', texto: 'Assinatura criada, mas não consegui obter o link de pagamento. Atualize a página.' })
       }
     } catch (err) {
       setMsgPlano({ tipo: 'erro', texto: (err as { message?: string })?.message ?? 'Erro inesperado' })
@@ -240,11 +240,11 @@ export default function Configuracoes() {
   function tituloAceite(tipo: string): string {
     const mapa: Record<string, string> = {
       termos_uso: 'Termos de Uso',
-      politica_privacidade: 'Politica de Privacidade',
+      politica_privacidade: 'Política de Privacidade',
       aceite_final_obra: 'Aceite final de obra',
-      mudanca_tipologia: 'Mudanca de tipologia',
+      mudanca_tipologia: 'Mudança de tipologia',
       acordo_card: 'Acordo de item',
-      liberacao_obra: 'Liberacao da obra',
+      liberacao_obra: 'Liberação da obra',
       outro: 'Outro',
     }
     return mapa[tipo] ?? tipo

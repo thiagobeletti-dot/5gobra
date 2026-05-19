@@ -57,8 +57,8 @@ export default function ObraCliente() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-slate-600 px-6 text-center">
         <LogoFull />
-        <p className="mt-6">Link invalido ou obra encerrada.</p>
-        <p className="text-sm text-slate-400">Se voce acredita que isso e um erro, fale com a empresa.</p>
+        <p className="mt-6">Link inválido ou obra encerrada.</p>
+        <p className="text-sm text-slate-400">Se você acredita que isso é um erro, fale com a empresa.</p>
       </div>
     )
   }
@@ -82,7 +82,7 @@ export default function ObraCliente() {
           <div className="text-xs md:text-sm text-slate-500">{dados.obra.endereco}</div>
           {meusPendentes > 0 && (
             <div className="mt-3 bg-laranja-soft border border-laranja-border rounded-lg px-3 py-2 text-xs md:text-sm text-laranja-dark font-semibold">
-              Voce tem {meusPendentes} {meusPendentes === 1 ? 'item aguardando' : 'itens aguardando'} sua acao.
+              Você tem {meusPendentes} {meusPendentes === 1 ? 'item aguardando' : 'itens aguardando'} sua ação.
             </div>
           )}
         </div>
@@ -107,10 +107,10 @@ export default function ObraCliente() {
 
       <div className="bg-white px-4 md:px-7 py-3 text-xs text-slate-500 border-b border-slate-200">
         <div className="max-w-4xl mx-auto">
-          {abaAtiva === 'cliente' && 'Itens aguardando voce - confirme, responda ou pergunte.'}
-          {abaAtiva === 'empresa' && 'Itens com a empresa - aguardando resposta deles.'}
+          {abaAtiva === 'cliente' && 'Itens aguardando você — confirme, responda ou pergunte.'}
+          {abaAtiva === 'empresa' && 'Itens com a empresa — aguardando resposta deles.'}
           {abaAtiva === 'tecnica' && 'Itens aguardando visita técnica da empresa para medição.'}
-          {abaAtiva === 'emandamento' && 'Itens em fabricacao ou instalacao.'}
+          {abaAtiva === 'emandamento' && 'Itens em fabricação ou instalação.'}
           {abaAtiva === 'conclusao' && 'Itens instalados aguardando seu aceite final.'}
         </div>
       </div>
@@ -130,8 +130,8 @@ export default function ObraCliente() {
       </main>
 
       <footer className="bg-white border-t border-slate-200 px-4 md:px-7 py-4 text-[11px] text-slate-400 text-center">
-        Tudo que voce registra aqui fica documentado, com data e hora, como prova oficial.
-        <br />Acesso seguro pelo seu link unico.
+        Tudo que você registra aqui fica documentado, com data e hora, como prova oficial.
+        <br />Acesso seguro pelo seu link único.
       </footer>
 
       {cardAberto && (
@@ -220,11 +220,11 @@ function CardClienteView({ card, onClick }: { card: Card; onClick: () => void })
   const labelStatus =
     subClienteVisivel
     ? subClienteVisivel
-    : s === 'aguarda' ? (card.aba === 'cliente' ? 'Aguardando sua acao' : card.aba === 'empresa' ? 'Aguardando empresa' : card.aba === 'tecnica' ? 'Aguardando visita técnica' : 'Aguardando')
-    : s === 'andamento' ? 'Em andamento na fabrica'
+    : s === 'aguarda' ? (card.aba === 'cliente' ? 'Aguardando sua ação' : card.aba === 'empresa' ? 'Aguardando empresa' : card.aba === 'tecnica' ? 'Aguardando visita técnica' : 'Aguardando')
+    : s === 'andamento' ? 'Em andamento na fábrica'
     : s === 'instalado' ? 'Instalado'
-    : s === 'concluido' ? (card.aceiteFinal ? 'Aceite concluido' : 'Aguardando seu aceite')
-    : 'Atencao'
+    : s === 'concluido' ? (card.aceiteFinal ? 'Aceite concluído' : 'Aguardando seu aceite')
+    : 'Atenção'
   const statusTxt = card.aba === 'emandamento' && card.statusEmAndamento ? card.statusEmAndamento : labelStatus
 
   let prazoNode: React.ReactNode = null
@@ -258,7 +258,7 @@ function CardClienteView({ card, onClick }: { card: Card; onClick: () => void })
       <span className={'absolute left-0 top-0 bottom-0 w-1 ' + corLado} />
       {aguardandoCliente && (
         <span className="absolute top-2.5 right-2.5 bg-laranja text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-          Pra voce
+          Pra você
         </span>
       )}
       <div className="flex items-center justify-between gap-2.5 mb-2">
@@ -316,7 +316,7 @@ function ModalCardCliente({
         <div className="flex-1 overflow-y-auto px-5 md:px-6 py-4 md:py-5 space-y-5">
           <div className="grid grid-cols-2 gap-2">
             <div className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-md">
-              <div className="text-[10px] text-slate-400 uppercase tracking-wide font-semibold mb-0.5">Situacao</div>
+              <div className="text-[10px] text-slate-400 uppercase tracking-wide font-semibold mb-0.5">Situação</div>
               <div className="text-sm text-slate-900 font-medium">{abaLabel ?? '-'}</div>
             </div>
             {card.aba === 'emandamento' && (
@@ -343,7 +343,7 @@ function ModalCardCliente({
               ) : (
                 <div className="bg-emerald-50 border border-emerald-200 px-4 py-4 rounded-lg">
                   <div className="font-bold text-sm text-emerald-700 mb-1">Confirmar aceite final</div>
-                  <p className="text-xs text-slate-600 mb-3">A peca foi instalada. Ao confirmar, voce aceita oficialmente a entrega e a garantia comeca a contar a partir desta data e hora.</p>
+                  <p className="text-xs text-slate-600 mb-3">A peça foi instalada. Ao confirmar, você aceita oficialmente a entrega e a garantia começa a contar a partir desta data e hora.</p>
                   <button
                     className="btn-primary w-full md:w-auto"
                     disabled={salvando}
@@ -424,7 +424,7 @@ function ModalCardCliente({
                 value={texto}
                 onChange={(e) => setTexto(e.target.value)}
                 placeholder={card.aba === 'cliente'
-                  ? 'Pergunte, peca uma mudanca, ou descreva algo especifico...'
+                  ? 'Pergunte, peça uma mudança, ou descreva algo específico...'
                   : 'Confirme, pergunte, ou descreva alguma coisa que aconteceu na obra...'}
               />
               <div className="flex gap-2 flex-wrap mt-2.5">
@@ -455,7 +455,7 @@ function ModalCardCliente({
           )}
 
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">Historico</div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">Histórico</div>
             <div className="space-y-2.5">
               {(card.historico ?? []).filter((h) => !h.interno).slice().reverse().map((h, i) => (
                 <div

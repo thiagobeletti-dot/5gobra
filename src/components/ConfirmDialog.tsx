@@ -138,7 +138,7 @@ export default function ConfirmDialog({
           {digitacaoExigida && (
             <div className="mb-4">
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-                Pra confirmar, digite a palavra <strong className="text-slate-900">{digitacaoExigida}</strong> (em maiusculo)
+                Pra confirmar, digite a palavra <strong className="text-slate-900">{digitacaoExigida}</strong> (em maiúsculo)
               </label>
               <input
                 className="input font-mono"

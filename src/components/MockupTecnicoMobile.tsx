@@ -41,7 +41,7 @@ export default function MockupTecnicoMobile() {
               </li>
               <li className="flex items-start gap-1.5">
                 <span className="text-blue-600 font-bold flex-shrink-0">✓</span>
-                <span>Cada tecnico tem seu link proprio</span>
+                <span>Cada técnico tem seu link próprio</span>
               </li>
             </ul>
           </div>

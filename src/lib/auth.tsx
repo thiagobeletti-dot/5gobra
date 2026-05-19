@@ -49,14 +49,14 @@ export function useAuth() {
 }
 
 export async function entrar(email: string, senha: string) {
-  if (!supabase) throw new Error('Supabase nao configurado')
+  if (!supabase) throw new Error('Supabase não configurado')
   const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha })
   if (error) throw error
   return data
 }
 
 export async function cadastrar(email: string, senha: string) {
-  if (!supabase) throw new Error('Supabase nao configurado')
+  if (!supabase) throw new Error('Supabase não configurado')
   const { data, error } = await supabase.auth.signUp({ email, password: senha })
   if (error) throw error
   return data

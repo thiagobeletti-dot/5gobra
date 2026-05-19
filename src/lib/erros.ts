@@ -7,6 +7,8 @@
 // em codigos crus (PGRST116, 23505, etc), centralizamos a traducao aqui.
 //
 // Integrar em todos os catches que renderizam mensagem pro usuario.
+//
+// Revisao 18/05/2026: acentos em todas as mensagens visiveis ao usuario.
 
 export interface ErroFormatado {
   /** Mensagem amigavel pra exibir no UI. */
@@ -25,21 +27,21 @@ export function formatarErro(err: unknown): ErroFormatado {
 
   // ---- Rede / fetch ----
   if (raw.includes('network') || raw.includes('failed to fetch') || raw.includes('typeerror: load failed')) {
-    return { mensagem: 'Sem conexao com o servidor. Verifique sua internet e tente de novo.', tipo: 'rede', original }
+    return { mensagem: 'Sem conexão com o servidor. Verifique sua internet e tente de novo.', tipo: 'rede', original }
   }
   if (raw.includes('timeout') || raw.includes('timed out')) {
-    return { mensagem: 'A operacao demorou demais. Tente novamente em alguns segundos.', tipo: 'rede', original }
+    return { mensagem: 'A operação demorou demais. Tente novamente em alguns segundos.', tipo: 'rede', original }
   }
 
   // ---- HTTP status ----
   if (status === 401 || raw.includes('jwt expired') || raw.includes('invalid jwt')) {
-    return { mensagem: 'Sua sessao expirou. Saia e entre de novo, por favor.', tipo: 'autenticacao', original }
+    return { mensagem: 'Sua sessão expirou. Saia e entre de novo, por favor.', tipo: 'autenticacao', original }
   }
   if (status === 403 || raw.includes('permission denied') || raw.includes('row level security')) {
-    return { mensagem: 'Voce nao tem permissao pra fazer isso.', tipo: 'permissao', original }
+    return { mensagem: 'Você não tem permissão pra fazer isso.', tipo: 'permissao', original }
   }
   if (status === 404) {
-    return { mensagem: 'Recurso nao encontrado. Pode ter sido apagado ou movido.', tipo: 'banco', original }
+    return { mensagem: 'Recurso não encontrado. Pode ter sido apagado ou movido.', tipo: 'banco', original }
   }
   if (status === 429) {
     return { mensagem: 'Muitas tentativas em pouco tempo. Aguarde alguns segundos.', tipo: 'rede', original }
@@ -50,22 +52,22 @@ export function formatarErro(err: unknown): ErroFormatado {
 
   // ---- Postgres / Supabase ----
   if (code === '23505' || raw.includes('duplicate key') || raw.includes('unique constraint')) {
-    if (raw.includes('email')) return { mensagem: 'Esse e-mail ja esta cadastrado.', tipo: 'duplicata', original }
-    if (raw.includes('cnpj')) return { mensagem: 'Esse CNPJ ja esta cadastrado.', tipo: 'duplicata', original }
-    if (raw.includes('sigla')) return { mensagem: 'Ja existe um item com essa sigla nessa obra.', tipo: 'duplicata', original }
-    return { mensagem: 'Esse registro ja existe.', tipo: 'duplicata', original }
+    if (raw.includes('email')) return { mensagem: 'Esse e-mail já está cadastrado.', tipo: 'duplicata', original }
+    if (raw.includes('cnpj')) return { mensagem: 'Esse CNPJ já está cadastrado.', tipo: 'duplicata', original }
+    if (raw.includes('sigla')) return { mensagem: 'Já existe um item com essa sigla nessa obra.', tipo: 'duplicata', original }
+    return { mensagem: 'Esse registro já existe.', tipo: 'duplicata', original }
   }
   if (code === '23503' || raw.includes('foreign key')) {
-    return { mensagem: 'Esse item depende de outro registro que nao foi encontrado.', tipo: 'banco', original }
+    return { mensagem: 'Esse item depende de outro registro que não foi encontrado.', tipo: 'banco', original }
   }
   if (code === '23502' || raw.includes('not null violation') || raw.includes('null value')) {
-    return { mensagem: 'Faltou preencher um campo obrigatorio.', tipo: 'validacao', original }
+    return { mensagem: 'Faltou preencher um campo obrigatório.', tipo: 'validacao', original }
   }
   if (code === '22P02' || raw.includes('invalid input syntax')) {
-    return { mensagem: 'Formato de dado invalido.', tipo: 'validacao', original }
+    return { mensagem: 'Formato de dado inválido.', tipo: 'validacao', original }
   }
   if (code === 'PGRST116') {
-    return { mensagem: 'Registro nao encontrado.', tipo: 'banco', original }
+    return { mensagem: 'Registro não encontrado.', tipo: 'banco', original }
   }
 
   // ---- Supabase Auth ----
@@ -73,10 +75,10 @@ export function formatarErro(err: unknown): ErroFormatado {
     return { mensagem: 'E-mail ou senha incorretos.', tipo: 'autenticacao', original }
   }
   if (raw.includes('user already registered') || raw.includes('email already')) {
-    return { mensagem: 'Esse e-mail ja esta cadastrado. Tente entrar em vez de criar conta.', tipo: 'duplicata', original }
+    return { mensagem: 'Esse e-mail já está cadastrado. Tente entrar em vez de criar conta.', tipo: 'duplicata', original }
   }
   if (raw.includes('email not confirmed')) {
-    return { mensagem: 'Voce precisa confirmar seu e-mail antes de entrar. Veja sua caixa de entrada.', tipo: 'autenticacao', original }
+    return { mensagem: 'Você precisa confirmar seu e-mail antes de entrar. Veja sua caixa de entrada.', tipo: 'autenticacao', original }
   }
   if (raw.includes('password should be at least')) {
     return { mensagem: 'A senha precisa ter pelo menos 6 caracteres.', tipo: 'validacao', original }

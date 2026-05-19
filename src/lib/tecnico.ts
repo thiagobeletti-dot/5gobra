@@ -37,7 +37,7 @@ export async function listarTecnicosDaObra(obraId: string): Promise<TecnicoObra[
 }
 
 export async function criarTecnico(args: { obraId: string; nome: string; papel?: string }): Promise<TecnicoObra> {
-  if (!supabase) throw new Error('Supabase nao configurado')
+  if (!supabase) throw new Error('Supabase não configurado')
   const { data, error } = await supabase
     .from('tecnicos_obra')
     .insert({ obra_id: args.obraId, nome: args.nome, papel: args.papel ?? null })
@@ -48,7 +48,7 @@ export async function criarTecnico(args: { obraId: string; nome: string; papel?:
 }
 
 export async function revogarTecnico(id: string): Promise<void> {
-  if (!supabase) throw new Error('Supabase nao configurado')
+  if (!supabase) throw new Error('Supabase não configurado')
   const { error } = await supabase
     .from('tecnicos_obra')
     .update({ ativo: false, revogado_em: new Date().toISOString() })
@@ -57,7 +57,7 @@ export async function revogarTecnico(id: string): Promise<void> {
 }
 
 export async function reativarTecnico(id: string): Promise<void> {
-  if (!supabase) throw new Error('Supabase nao configurado')
+  if (!supabase) throw new Error('Supabase não configurado')
   const { error } = await supabase
     .from('tecnicos_obra')
     .update({ ativo: true, revogado_em: null })

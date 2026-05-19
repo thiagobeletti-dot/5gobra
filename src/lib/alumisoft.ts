@@ -76,10 +76,10 @@ export function parseXmlString(texto: string): AlumisoftObra {
   const parser = new DOMParser()
   const doc = parser.parseFromString(texto, 'application/xml')
   const erro = doc.querySelector('parsererror')
-  if (erro) throw new Error('XML invalido: ' + erro.textContent)
+  if (erro) throw new Error('XML inválido: ' + erro.textContent)
 
   const raiz = doc.querySelector('OBRA')
-  if (!raiz) throw new Error('XML nao parece ser do Alumisoft (faltando <OBRA>)')
+  if (!raiz) throw new Error('XML não parece ser do CEM/Alumisoft (faltando <OBRA>)')
 
   const dadosObra = raiz.querySelector('DADOS_OBRA')
   const dadosCliente = raiz.querySelector('DADOS_CLIENTE')
@@ -117,7 +117,7 @@ export function parseXmlString(texto: string): AlumisoftObra {
   })
 
   if (obra.tipologias.length === 0) {
-    throw new Error('XML nao tem nenhuma tipologia listada')
+    throw new Error('XML não tem nenhuma tipologia listada')
   }
 
   return obra

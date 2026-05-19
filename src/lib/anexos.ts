@@ -75,7 +75,7 @@ export async function uploadFoto(opts: {
   obraId: string
   cardId: string
 }, client: DbClient | null = supabase): Promise<Anexo> {
-  if (!client) throw new Error('Supabase nao configurado')
+  if (!client) throw new Error('Supabase não configurado')
 
   // Comprime antes de subir (max 1920px largura, JPEG 85%)
   const arquivoComprimido = await comprimirImagem(opts.arquivo)
@@ -129,7 +129,7 @@ export async function uploadFoto(opts: {
  * Apaga um anexo (storage + row).
  */
 export async function removerAnexo(anexo: Anexo, client: DbClient | null = supabase): Promise<void> {
-  if (!client) throw new Error('Supabase nao configurado')
+  if (!client) throw new Error('Supabase não configurado')
   // Best-effort: tenta apagar do storage, mas se falhar (ex: arquivo ja
   // foi movido/apagado manualmente) seguimos pra apagar a row mesmo assim.
   await client.storage.from(BUCKET).remove([anexo.storage_path]).catch((e) => console.warn('[anexos] remove storage falhou:', e))

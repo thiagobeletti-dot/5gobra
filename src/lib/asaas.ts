@@ -65,7 +65,7 @@ export async function ativarAssinatura(input: {
   email: string
   telefone?: string
 }): Promise<ResultadoAtivar> {
-  if (!supabase) return { ok: false, error: 'Supabase nao configurado' }
+  if (!supabase) return { ok: false, error: 'Supabase não configurado' }
   try {
     const { data, error } = await supabase.functions.invoke('criar-assinatura-asaas', {
       body: input,
@@ -108,7 +108,7 @@ export interface ResultadoCompraPublica {
  * Não exige usuário autenticado — qualquer visitante pode chamar.
  */
 export async function comprarPublico(input: CompraPublicaInput): Promise<ResultadoCompraPublica> {
-  if (!supabase) return { ok: false, error: 'Supabase nao configurado' }
+  if (!supabase) return { ok: false, error: 'Supabase não configurado' }
   try {
     const { data, error } = await supabase.functions.invoke('comprar-publico', {
       body: input,
@@ -176,7 +176,7 @@ export interface ResultadoAtivacao {
  * que já foi paga. Após ok, frontend faz signIn(email, senha) e grava aceites.
  */
 export async function ativarPreCadastro(input: AtivarInput): Promise<ResultadoAtivacao> {
-  if (!supabase) return { ok: false, error: 'Supabase nao configurado' }
+  if (!supabase) return { ok: false, error: 'Supabase não configurado' }
   try {
     const { data, error } = await supabase.functions.invoke('ativar-pre-cadastro', {
       body: input,

@@ -35,7 +35,7 @@ const passos: Step[] = [
     target: '[data-tour="adicionar-item"]',
     title: 'Adicionar itens à obra',
     content:
-      'Aqui você adiciona os itens da obra (portas, janelas, vidros). Pode importar direto do Alumisoft ou criar um a um. Cada item vira um card com histórico próprio.',
+      'Aqui você adiciona os itens da obra (portas, janelas, vidros). Pode importar direto do CEM (Alumisoft) ou criar um a um. Cada item vira um card com histórico próprio.',
     placement: 'bottom',
     disableBeacon: true,
   },

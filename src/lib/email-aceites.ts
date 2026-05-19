@@ -28,7 +28,7 @@ export interface ResultadoEnvioAceite {
 }
 
 export async function enviarPdfsDeAceite(empresaId: string, force = false): Promise<ResultadoEnvioAceite> {
-  if (!supabase) return { ok: false, error: 'Supabase nao configurado' }
+  if (!supabase) return { ok: false, error: 'Supabase não configurado' }
 
   try {
     const { data, error } = await supabase.functions.invoke('enviar-pdfs-aceite', {

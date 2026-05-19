@@ -110,7 +110,7 @@ export default function Cadastro() {
     setErro(null)
     setInfo(null)
     if (!aceitouTermos) {
-      return setErro('Voce precisa aceitar os Termos e a Politica de Privacidade pra continuar.')
+      return setErro('Você precisa aceitar os Termos e a Política de Privacidade pra continuar.')
     }
     setCarregando(true)
     try {
@@ -154,7 +154,7 @@ export default function Cadastro() {
     setErro(null)
     setInfo(null)
     if (!aceitouTermos) {
-      return setErro('Voce precisa aceitar os Termos e a Politica de Privacidade pra continuar.')
+      return setErro('Você precisa aceitar os Termos e a Política de Privacidade pra continuar.')
     }
     if (!token || !preCad) {
       return setErro('Token de cadastro inválido. Recarregue a página.')
@@ -279,7 +279,7 @@ export default function Cadastro() {
                 <>
                   <h1 className="text-xl font-bold mb-1">Criar conta da empresa</h1>
                   <p className="text-sm text-slate-500 mb-6">
-                    Comecemos pelos dados basicos. Em seguida voce le e aceita os contratos.
+                    Comecemos pelos dados básicos. Em seguida você lê e aceita os contratos.
                   </p>
                 </>
               )}
@@ -342,7 +342,7 @@ export default function Cadastro() {
 
               {!fluxoB && (
                 <div className="mt-5 pt-5 border-t border-slate-200 text-center text-sm">
-                  <Link to="/login" className="text-slate-500 hover:text-slate-900">Ja tenho conta — entrar</Link>
+                  <Link to="/login" className="text-slate-500 hover:text-slate-900">Já tenho conta — entrar</Link>
                 </div>
               )}
             </>
@@ -353,15 +353,15 @@ export default function Cadastro() {
             <>
               <h1 className="text-xl font-bold mb-1">Termos e Privacidade</h1>
               <p className="text-sm text-slate-500 mb-5">
-                Le abaixo os dois documentos. Pra continuar, marca o checkbox de aceite e clica em "Aceitar e criar conta". Voce sempre pode reler em <Link to="/termos" className="text-laranja-dark hover:underline" target="_blank">5gobra.com.br/termos</Link> e <Link to="/privacidade" className="text-laranja-dark hover:underline" target="_blank">/privacidade</Link>.
+                Lê abaixo os dois documentos. Pra continuar, marca o checkbox de aceite e clica em "Aceitar e criar conta". Você sempre pode reler em <Link to="/termos" className="text-laranja-dark hover:underline" target="_blank">5gobra.com.br/termos</Link> e <Link to="/privacidade" className="text-laranja-dark hover:underline" target="_blank">/privacidade</Link>.
               </p>
               <DocumentoBox titulo="Termos de Uso" texto={DOC_TERMOS_USO} versao={TERMOS_VERSAO} />
-              <DocumentoBox titulo="Politica de Privacidade" texto={DOC_POLITICA_PRIVACIDADE} versao={PRIVACIDADE_VERSAO} />
+              <DocumentoBox titulo="Política de Privacidade" texto={DOC_POLITICA_PRIVACIDADE} versao={PRIVACIDADE_VERSAO} />
               <div className="mt-5 mb-2">
                 <label className="flex items-start gap-3 cursor-pointer select-none">
                   <input type="checkbox" checked={aceitouTermos} onChange={(e) => setAceitouTermos(e.target.checked)} className="mt-0.5 w-4 h-4 accent-orange-600" />
                   <span className="text-sm text-slate-700">
-                    Li e aceito os <strong>Termos de Uso</strong> e a <strong>Politica de Privacidade</strong> do G Obra acima.
+                    Li e aceito os <strong>Termos de Uso</strong> e a <strong>Política de Privacidade</strong> do G Obra acima.
                   </span>
                 </label>
               </div>
@@ -390,7 +390,7 @@ export default function Cadastro() {
                 Bem-vindo ao G Obra. Vamos criar tua primeira obra.
               </p>
               <p className="text-xs text-slate-500 mb-6">
-                Em alguns minutos voce vai receber em <strong>{email}</strong> uma copia em PDF dos contratos aceitos, com cabecalho de auditoria (data, hora, IP, hash). Se nao chegar, da pra reenviar em <em>Configuracoes → Contratos aceitos</em>.
+                Em alguns minutos você vai receber em <strong>{email}</strong> uma cópia em PDF dos contratos aceitos, com cabeçalho de auditoria (data, hora, IP, hash). Se não chegar, dá pra reenviar em <em>Configurações → Contratos aceitos</em>.
               </p>
               <button onClick={() => navigate('/app/obras')} className="btn-primary w-full">Entrar no sistema</button>
             </div>

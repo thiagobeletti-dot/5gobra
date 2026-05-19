@@ -235,7 +235,7 @@ export function useObraData(
           : await pegarObraPorId(idOrToken, client)
         if (!ativo) return
         if (!obra) {
-          setErro('Obra nao encontrada')
+          setErro('Obra não encontrada')
           return
         }
         setObraReal(obra)
@@ -767,7 +767,7 @@ export function useObraData(
       setDados((d) => d ? ({ ...d, cards: [...d.cards, novo] }) : d)
       return input.destino
     }
-    if (!obraReal) throw new Error('Obra nao carregada')
+    if (!obraReal) throw new Error('Obra não carregada')
     const cardRow = await criarCard({
       obra_id: obraReal.id,
       tipo: input.tipo,
@@ -810,7 +810,7 @@ export function useObraData(
       })
       return itens.length
     }
-    if (!obraReal) throw new Error('Obra nao carregada')
+    if (!obraReal) throw new Error('Obra não carregada')
     const linhas = itens.map((it) => ({
       obra_id: obraReal.id,
       tipo: it.tipo,

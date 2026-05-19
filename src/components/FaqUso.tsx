@@ -5,6 +5,9 @@
 // nao "vale a pena assinar?".
 //
 // Conjunto de 11 perguntas decididas em sessao de produto (05/05/2026).
+// Revisao 18/05/2026: corrigidos acentos (textos visiveis pro usuario)
+// e clarificado que Alumisoft e empresa parceira (grupo Esquadgroup) e
+// CEM e o sistema dela — antes a pergunta tratava CEM como concorrente.
 // Usa <details>/<summary> nativo pra acessibilidade e funcionar sem JS.
 
 interface PerguntaResposta {
@@ -16,71 +19,72 @@ const faq: PerguntaResposta[] = [
   {
     pergunta: 'O cliente final precisa criar conta?',
     resposta:
-      'Nao. O cliente recebe um link magico no celular (gerado pra cada obra) e abre direto no navegador. Sem login, sem app pra baixar, sem decorar senha.',
+      'Não. O cliente recebe um link mágico no celular (gerado pra cada obra) e abre direto no navegador. Sem login, sem app pra baixar, sem decorar senha.',
   },
   {
-    pergunta: 'E se a equipe nao usar celular?',
+    pergunta: 'E se a equipe não usar celular?',
     resposta:
-      'A equipe precisa de celular pra usar o link magico do tecnico. Se um tecnico em particular nao usar, voce pode fazer o apontamento "como tecnico" pelo desktop a partir do painel da empresa. Mas o ideal e a equipe apontar diretamente — a fluencia mobile foi pensada pra isso.',
+      'A equipe precisa de celular pra usar o link mágico do técnico. Se um técnico em particular não usar, você pode fazer o apontamento "como técnico" pelo desktop a partir do painel da empresa. Mas o ideal é a equipe apontar diretamente — a fluência mobile foi pensada pra isso.',
   },
   {
-    pergunta: 'Posso importar do Alumisoft? E de outros sistemas como o CEM?',
+    pergunta: 'Posso importar do CEM? E de outros sistemas?',
     resposta:
-      'Sim, duas formas. (1) Alumisoft direto — exporta o XML e sobe pelo importador. (2) Planilha generica — para CEM, sistema proprio ou qualquer fabrica que nao usa Alumisoft, basta baixar nosso template .xlsx, preencher em Excel/Google Sheets e subir de volta. Aceita .xlsx, .xls e .csv. Tudo na tela "Importar itens em massa" dentro da obra.',
+      'Sim, duas formas. (1) CEM direto — exporta o XML pelo sistema da Alumisoft e sobe pelo nosso importador. (2) Planilha genérica — pra qualquer fábrica que não usa CEM (sistema próprio, planilha existente, outro software), basta baixar nosso template .xlsx, preencher em Excel/Google Sheets e subir de volta. Aceita .xlsx, .xls e .csv. Tudo na tela "Importar itens em massa" dentro da obra.',
   },
   {
     pergunta: 'Quantas obras posso ter ao mesmo tempo?',
-    resposta: 'Sem limite. Pode criar quantas obras quiser, simultaneas ou nao.',
+    resposta: 'Sem limite. Pode criar quantas obras quiser, simultâneas ou não.',
   },
   {
-    pergunta: 'Tem limite de usuarios na minha empresa?',
-    resposta: 'Cada assinatura inclui 1 usuario administrador (voce). A equipe tecnica e o cliente final acessam o sistema sem precisar de conta — pelo link magico no celular. Se sua empresa precisar de mais usuarios administradores no futuro, fala comigo no WhatsApp pra a gente combinar.',
-  },
-  {
-    pergunta: 'Quem ve o historico interno? E o cliente, ve?',
+    pergunta: 'Tem limite de usuários na minha empresa?',
     resposta:
-      'O historico tem duas camadas. O historico INTERNO e visivel so pra empresa (registros tecnicos crus, observacoes da equipe). O historico do CLIENTE e a versao filtrada — so o que faz sentido pro cliente final ver. Na pratica, voce escreve uma vez no internamente e marca o que vai pra fora.',
+      'Cada assinatura inclui 1 usuário administrador (você). A equipe técnica e o cliente final acessam o sistema sem precisar de conta — pelo link mágico no celular. Se sua empresa precisar de mais usuários administradores no futuro, fala comigo no WhatsApp pra a gente combinar.',
   },
   {
-    pergunta: 'Como funciona o aceite com peso juridico?',
+    pergunta: 'Quem vê o histórico interno? E o cliente, vê?',
+    resposta:
+      'O histórico tem duas camadas. O histórico INTERNO é visível só pra empresa (registros técnicos crus, observações da equipe). O histórico do CLIENTE é a versão filtrada — só o que faz sentido pro cliente final ver. Na prática, você escreve uma vez internamente e marca o que vai pra fora.',
+  },
+  {
+    pergunta: 'Como funciona o aceite com peso jurídico?',
     resposta: (
       <span>
         Quando o cliente clica "Aceito" (em qualquer aceite — final da obra,
-        mudanca de tipologia, acordo), o sistema registra IP, dispositivo
+        mudança de tipologia, acordo), o sistema registra IP, dispositivo
         (user-agent) e timestamp. Esses dados, junto com o hash do documento
-        aceito, formam um registro que tem peso probatorio segundo o Marco
-        Civil da Internet e a Lei do Comercio Eletronico. Aceites criticos
-        (tipo aceite final da obra) ganham um e-mail automatico com snapshot
-        do dossie — e esse e-mail vira prova adicional independente, ja que
-        fica na caixa do proprio cliente com timestamp do provedor.
+        aceito, formam um registro que tem peso probatório segundo o Marco
+        Civil da Internet e a Lei do Comércio Eletrônico. Aceites críticos
+        (tipo aceite final da obra) ganham um e-mail automático com snapshot
+        do dossiê — e esse e-mail vira prova adicional independente, já que
+        fica na caixa do próprio cliente com timestamp do provedor.
       </span>
     ),
   },
   {
-    pergunta: 'Como funciona o link magico do tecnico?',
+    pergunta: 'Como funciona o link mágico do técnico?',
     resposta:
-      'Cada tecnico cadastrado recebe um link unico (token UUID na URL). Ele abre no celular, ve so as tarefas dele (medicoes pendentes, fotos a tirar, checklists), aponta direto na tela. Sem login, sem instalacao, sem perigo de ele ver dados de outras empresas.',
+      'Cada técnico cadastrado recebe um link único (token UUID na URL). Ele abre no celular, vê só as tarefas dele (medições pendentes, fotos a tirar, checklists), aponta direto na tela. Sem login, sem instalação, sem perigo de ele ver dados de outras empresas.',
   },
   {
-    pergunta: 'Os dados ficam onde? Sao seguros?',
+    pergunta: 'Os dados ficam onde? São seguros?',
     resposta:
-      'Os dados ficam armazenados no Supabase (infraestrutura AWS), com criptografia em transito (TLS) e em repouso (AES-256). Cada empresa tem seus dados isolados — empresas diferentes nunca enxergam dados umas das outras. Senhas sao armazenadas com bcrypt (criptografia irreversivel). Backups automaticos diarios. Operamos em conformidade com a LGPD; consulte nossa Politica de Privacidade.',
+      'Os dados ficam armazenados no Supabase (infraestrutura AWS), com criptografia em trânsito (TLS) e em repouso (AES-256). Cada empresa tem seus dados isolados — empresas diferentes nunca enxergam dados umas das outras. Senhas são armazenadas com bcrypt (criptografia irreversível). Backups automáticos diários. Operamos em conformidade com a LGPD; consulte nossa Política de Privacidade.',
   },
   {
-    pergunta: 'Quando lancam o G Estoque, G Vendas, G Producao e G Instalacao?',
+    pergunta: 'Quando lançam o G Estoque, G Vendas, G Produção e G Instalação?',
     resposta: (
       <span>
         Lista de espera aberta no <a href="https://gerenciamento5g.com.br" className="text-laranja-dark underline" target="_blank" rel="noopener">gerenciamento5g.com.br</a>.
-        Vamos lancar um modulo por vez, aprofundado, em vez de varios rasos
+        Vamos lançar um módulo por vez, aprofundado, em vez de vários rasos
         — aprendizado da tentativa anterior. Quem entra no Programa Pioneiros
-        ganha condicoes especiais nos modulos novos quando lancarem.
+        ganha condições especiais nos módulos novos quando lançarem.
       </span>
     ),
   },
   {
-    pergunta: 'Como falo com voces se travar?',
+    pergunta: 'Como falo com vocês se travar?',
     resposta:
-      'Use o botao "Falar com a gente" aqui embaixo da pagina de Ajuda. Abre WhatsApp direto comigo (Thiago). Antes de mandar, da uma olhada nos videos rapidos e nessa lista de perguntas — provavelmente sua duvida ja esta respondida e voce resolve em 30 segundos sem precisar esperar resposta.',
+      'Use o botão "Falar com a gente" aqui embaixo da página de Ajuda. Abre WhatsApp direto comigo (Thiago). Antes de mandar, dá uma olhada nos vídeos rápidos e nessa lista de perguntas — provavelmente sua dúvida já está respondida e você resolve em 30 segundos sem precisar esperar resposta.',
   },
 ]
 

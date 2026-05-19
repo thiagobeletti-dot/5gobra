@@ -11,22 +11,22 @@ const SLIDES = [
   {
     Component: MockupDashboard,
     eyebrow: 'Painel da obra',
-    titulo: 'Cada peca vira um card que atravessa a obra.',
+    titulo: 'Cada peça vira um card que atravessa a obra.',
   },
   {
     Component: MockupCardHistorico,
-    eyebrow: 'Historico oficial',
+    eyebrow: 'Histórico oficial',
     titulo: 'Cada movimento gravado: data, hora, autor, prova.',
   },
   {
     Component: MockupTecnicoMobile,
     eyebrow: 'Equipe em obra',
-    titulo: 'Tecnico preenche checklist no celular, sem login.',
+    titulo: 'Técnico preenche checklist no celular, sem login.',
   },
   {
     Component: MockupAceiteFinal,
     eyebrow: 'Aceite final',
-    titulo: 'Trilha de auditoria com peso juridico.',
+    titulo: 'Trilha de auditoria com peso jurídico.',
   },
 ]
 

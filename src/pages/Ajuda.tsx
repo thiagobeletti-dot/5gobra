@@ -1,10 +1,15 @@
 // Pagina de Ajuda do G Obra — rota /app/ajuda
 //
-// Layout em 4 blocos (revisado 05/05/2026 — tour 1 e 2 ativos):
+// Layout em 4 blocos (revisado 18/05/2026 — Natan entregou os tutoriais):
 //   1. Tour interativo  — botoes que reativam Tour 1 (lista) e Tour 2 (obra)
-//   2. Videos rapidos   — grade 3x3 com placeholders ate Thiago gravar
+//   2. Videos rapidos   — grade 3x3 com os 7 tutoriais gravados pelo Natan
 //   3. Perguntas frequentes (FAQ de Uso)
 //   4. Falar com a gente — WhatsApp do Thiago com prefixo [SUPORTE]
+//
+// Revisao 18/05/2026:
+//   - Corrigidos acentos em todos os textos visiveis pro usuario
+//   - Slot 5 renomeado de "Historico como dossie" pra "Geracao de documentos PDF"
+//   - Slot 7 renomeado de "Tour pelas 5 abas" pra "Visao geral do G Obra"
 //
 // O atalho do WhatsApp dentro de /ajuda (e nao no header) e proposital:
 // forca o cliente a passar pelos videos/FAQ antes, reduz volume de
@@ -21,44 +26,51 @@ interface VideoTutorial {
   id: string
   titulo: string
   descricao: string
-  youtubeId?: string // a preencher quando Thiago gravar
+  youtubeId?: string // a preencher quando subir no YouTube
 }
 
 const videos: VideoTutorial[] = [
   {
     id: 'criar-primeira-obra',
     titulo: 'Criar a primeira obra',
-    descricao: 'Manual e via importacao Alumisoft.',
+    descricao: 'Manual ou via importação do CEM (Alumisoft).',
+    youtubeId: '2_XuGudRn20',
   },
   {
     id: 'convidar-tecnico',
-    titulo: 'Convidar tecnico',
-    descricao: 'Link magico no celular, sem cadastro.',
+    titulo: 'Convidar técnico',
+    descricao: 'Link mágico no celular, sem cadastro.',
+    youtubeId: 'D2SJRDdUvnY',
   },
   {
     id: 'tecnico-aponta-m1',
-    titulo: 'Tecnico aponta a M1',
-    descricao: 'Visao do celular do tecnico.',
+    titulo: 'Técnico aponta a Medição',
+    descricao: 'Visão do celular do técnico em obra.',
+    youtubeId: 'gFVuC62jdY0',
   },
   {
     id: 'cliente-acessa-link',
-    titulo: 'Cliente acessa o link magico',
-    descricao: 'Visao do celular do cliente final.',
+    titulo: 'Cliente acessa o link mágico',
+    descricao: 'Visão do celular do cliente final.',
+    youtubeId: '5g_YCoOmKGw',
   },
   {
     id: 'historico-dossie',
-    titulo: 'Historico como dossie',
-    descricao: 'Lendo a timeline com peso juridico.',
+    titulo: 'Geração de documentos PDF',
+    descricao: 'Como gerar PDFs da medição e do dossiê pro cliente.',
+    youtubeId: 'VPezps5F10w',
   },
   {
     id: 'aceite-final',
     titulo: 'Aceite final + audit trail',
     descricao: 'Encerramento da obra com prova legal.',
+    youtubeId: 'AGt1Vi2Z-W4',
   },
   {
     id: 'tour-5-abas',
-    titulo: 'Tour pelas 5 abas',
-    descricao: 'Cliente, Empresa, Tecnica, Em Andamento, Conclusao.',
+    titulo: 'Visão geral do G Obra',
+    descricao: 'Tour completo do sistema em poucos minutos.',
+    youtubeId: '5gp2ukS2AeE',
   },
 ]
 
@@ -138,7 +150,7 @@ export default function Ajuda() {
       <main className="max-w-5xl mx-auto px-6 py-10">
         <h1 className="text-2xl font-bold mb-1">Central de ajuda</h1>
         <p className="text-sm text-slate-500 mb-10">
-          Tudo que voce precisa pra usar o G Obra: tour, videos, perguntas
+          Tudo que você precisa pra usar o G Obra: tour, vídeos, perguntas
           frequentes e contato direto comigo.
         </p>
 
@@ -160,10 +172,10 @@ export default function Ajuda() {
 
         {/* 2) Videos rapidos */}
         <section className="mb-10">
-          <h2 className="text-lg font-bold mb-3">2. Videos rapidos</h2>
+          <h2 className="text-lg font-bold mb-3">2. Vídeos rápidos</h2>
           <p className="text-sm text-slate-500 mb-4">
-            Sete tutoriais curtos (cerca de 60 a 90 segundos cada) cobrindo o
-            que voce precisa saber pra rodar uma obra completa.
+            Sete tutoriais curtos (até 3 minutos cada) cobrindo o que você
+            precisa saber pra rodar uma obra completa.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {videos.map((v) => (
@@ -211,11 +223,11 @@ export default function Ajuda() {
           <h2 className="text-lg font-bold mb-3">4. Falar com a gente</h2>
           <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200 rounded-xl p-6">
             <div className="font-semibold text-emerald-900 mb-1">
-              Travou em algo que nao esta acima?
+              Travou em algo que não está acima?
             </div>
             <p className="text-sm text-emerald-800 mb-4">
               Manda no WhatsApp direto. Sou eu (Thiago) que respondo —
-              normalmente em ate algumas horas no horario comercial.
+              normalmente em até algumas horas no horário comercial.
             </p>
             <button onClick={abrirWhatsApp} className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-5 py-2.5 rounded-lg transition">
               Abrir WhatsApp

@@ -589,7 +589,7 @@ function CardView({ card, perfil, onClick }: { card: Card; perfil: Perfil; onCli
       <span className={'absolute left-0 top-0 bottom-0 w-1 ' + corLado} />
       {novoParaVoce && !card.encerrado && (
         <span className="absolute top-2.5 right-2.5 bg-laranja text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-          Pra voce
+          Pra você
         </span>
       )}
       <div className="flex items-center justify-between gap-2.5 mb-2">
@@ -1000,7 +1000,7 @@ function ModalNovo({
               <select className="input" value={destino} onChange={(e) => setDestino(e.target.value as AbaId)}>
                 <option value="cliente">Cliente (espera algo do cliente)</option>
                 <option value="empresa">Empresa (espera algo da empresa)</option>
-                {tipo === 'peca' && <option value="emandamento">Em andamento (ja com prazo)</option>}
+                {tipo === 'peca' && <option value="emandamento">Em andamento (já com prazo)</option>}
               </select>
             </div>
           </div>
@@ -1011,8 +1011,8 @@ function ModalNovo({
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Descricao</label>
-            <textarea className="input min-h-[90px]" value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Detalhes da peca, termos do acordo ou descricao do problema" />
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Descrição</label>
+            <textarea className="input min-h-[90px]" value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Detalhes da peça, termos do acordo ou descrição do problema" />
           </div>
 
           {destino === 'emandamento' && (

@@ -78,9 +78,9 @@ export async function pegarMinhaEmpresa() {
 }
 
 export async function atualizarLogoEmpresa(logoUrl: string | null) {
-  if (!supabase) throw new Error('Supabase nao configurado')
+  if (!supabase) throw new Error('Supabase não configurado')
   const empresa = await pegarMinhaEmpresa()
-  if (!empresa) throw new Error('Empresa nao encontrada')
+  if (!empresa) throw new Error('Empresa não encontrada')
   const { error } = await supabase.from('empresas').update({ logo_url: logoUrl }).eq('id', empresa.id)
   if (error) throw error
 }
@@ -97,7 +97,7 @@ export interface LeadQuenteInput {
 }
 
 export async function registrarLeadQuente(dados: LeadQuenteInput): Promise<void> {
-  if (!supabase) throw new Error('Supabase nao configurado')
+  if (!supabase) throw new Error('Supabase não configurado')
   // user_agent ajuda no atendimento ("vi pelo celular", "vi pelo desktop")
   const user_agent = typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 500) : null
   const { error } = await supabase
@@ -115,9 +115,9 @@ export async function registrarLeadQuente(dados: LeadQuenteInput): Promise<void>
 }
 
 export async function uploadLogoEmpresa(arquivo: File): Promise<string> {
-  if (!supabase) throw new Error('Supabase nao configurado')
+  if (!supabase) throw new Error('Supabase não configurado')
   const empresa = await pegarMinhaEmpresa()
-  if (!empresa) throw new Error('Empresa nao encontrada')
+  if (!empresa) throw new Error('Empresa não encontrada')
 
   // Path: {empresa_id}/logo-{timestamp}.{ext}
   const extDetectada = arquivo.type === 'image/png' ? 'png' : 'jpg'
@@ -138,7 +138,7 @@ export async function uploadLogoEmpresa(arquivo: File): Promise<string> {
 }
 
 export async function criarEmpresa(nome: string, extras: { cnpj?: string; telefone?: string } = {}) {
-  if (!supabase) throw new Error('Supabase nao configurado')
+  if (!supabase) throw new Error('Supabase não configurado')
   const { data: user } = await supabase.auth.getUser()
   if (!user.user) throw new Error('Não autenticado')
   const payload: Record<string, unknown> = { nome, owner_user_id: user.user.id }
@@ -154,9 +154,9 @@ export async function criarEmpresa(nome: string, extras: { cnpj?: string; telefo
 }
 
 export async function atualizarMinhaEmpresa(mudancas: { nome?: string; cnpj?: string; telefone?: string }) {
-  if (!supabase) throw new Error('Supabase nao configurado')
+  if (!supabase) throw new Error('Supabase não configurado')
   const empresa = await pegarMinhaEmpresa()
-  if (!empresa) throw new Error('Empresa nao encontrada')
+  if (!empresa) throw new Error('Empresa não encontrada')
   const payload: Record<string, unknown> = {}
   if (mudancas.nome !== undefined) payload.nome = mudancas.nome
   if (mudancas.cnpj !== undefined) payload.cnpj = mudancas.cnpj
@@ -167,7 +167,7 @@ export async function atualizarMinhaEmpresa(mudancas: { nome?: string; cnpj?: st
 }
 
 export async function trocarSenha(novaSenha: string) {
-  if (!supabase) throw new Error('Supabase nao configurado')
+  if (!supabase) throw new Error('Supabase não configurado')
   const { error } = await supabase.auth.updateUser({ password: novaSenha })
   if (error) throw error
 }
@@ -237,7 +237,7 @@ export async function criarObra(dados: {
   cliente_telefone?: string
   cliente_email?: string
 }) {
-  if (!supabase) throw new Error('Supabase nao configurado')
+  if (!supabase) throw new Error('Supabase não configurado')
   const { data, error } = await supabase
     .from('obras')
     .insert({ ...dados, inicio: new Date().toISOString().slice(0, 10) })
@@ -270,7 +270,7 @@ export async function criarCard(dados: {
   status_em_andamento?: string | null
   prazo_contrato?: string | null
 }, client: DbClient | null = supabase) {
-  if (!client) throw new Error('Supabase nao configurado')
+  if (!client) throw new Error('Supabase não configurado')
   const { data, error } = await client.from('cards').insert(dados).select().single()
   if (error) throw error
   return data as CardRow
@@ -286,7 +286,7 @@ export async function criarVariosCards(dados: Array<{
   status_em_andamento?: string | null
   prazo_contrato?: string | null
 }>, client: DbClient | null = supabase) {
-  if (!client) throw new Error('Supabase nao configurado')
+  if (!client) throw new Error('Supabase não configurado')
   if (dados.length === 0) return []
   const { data, error } = await client.from('cards').insert(dados).select()
   if (error) throw error
@@ -294,7 +294,7 @@ export async function criarVariosCards(dados: Array<{
 }
 
 export async function atualizarCard(id: string, mudancas: Partial<CardRow>, client: DbClient | null = supabase) {
-  if (!client) throw new Error('Supabase nao configurado')
+  if (!client) throw new Error('Supabase não configurado')
   const { data, error } = await client.from('cards').update(mudancas).eq('id', id).select().single()
   if (error) throw error
   return data as CardRow
@@ -343,7 +343,7 @@ export async function adicionarHistorico(dados: {
   texto: string
   interno?: boolean
 }, client: DbClient | null = supabase) {
-  if (!client) throw new Error('Supabase nao configurado')
+  if (!client) throw new Error('Supabase não configurado')
   const payload = { ...dados, interno: dados.interno ?? false }
   const { data, error } = await client.from('historico_card').insert(payload).select().single()
   if (error) throw error
@@ -478,7 +478,7 @@ export interface AceiteInput {
 }
 
 export async function gravarAceite(input: AceiteInput) {
-  if (!supabase) throw new Error('Supabase nao configurado')
+  if (!supabase) throw new Error('Supabase não configurado')
   const ip = await pegarIpClienteLocal() // best-effort, opcional
   const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : null
 

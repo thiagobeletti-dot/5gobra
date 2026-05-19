@@ -61,7 +61,7 @@ export async function salvarMedicao1(args: {
   autor: string
   autorTipo: ChecklistAutorTipo
 }, client: DbClient | null = supabase): Promise<Checklist> {
-  if (!client) throw new Error('Supabase nao configurado')
+  if (!client) throw new Error('Supabase não configurado')
   // upsert: 1 registro de cada tipo por card
   const payload = {
     card_id: args.cardId,
@@ -86,7 +86,7 @@ export async function salvarMedicao2(args: {
   autor: string
   autorTipo: ChecklistAutorTipo
 }, client: DbClient | null = supabase): Promise<Checklist> {
-  if (!client) throw new Error('Supabase nao configurado')
+  if (!client) throw new Error('Supabase não configurado')
   const payload = {
     card_id: args.cardId,
     tipo: 'medicao2' as ChecklistTipo,
@@ -105,7 +105,7 @@ export async function salvarMedicao2(args: {
 }
 
 export async function removerChecklist(cardId: string, tipo: ChecklistTipo): Promise<void> {
-  if (!supabase) throw new Error('Supabase nao configurado')
+  if (!supabase) throw new Error('Supabase não configurado')
   const { error } = await supabase
     .from('checklists')
     .delete()
