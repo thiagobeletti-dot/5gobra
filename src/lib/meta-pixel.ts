@@ -116,6 +116,10 @@ export function trackInitiateCheckout(value = 349, currency = 'BRL'): void {
 /**
  * Dispara evento Purchase. Chamar quando confirmar a compra (cliente cai
  * em /cadastro?token=X — significa que pagou).
+ *
+ * IMPORTANTE: passe o valor REAL pago (use `valorPorCupom` pra calcular
+ * a partir do cupom aplicado). Mandar sempre 349 fixo derruba a otimizacao
+ * de campanhas no Meta — ele acha que tem bug de valor estatico.
  */
 export function trackPurchase(value = 349, currency = 'BRL'): void {
   trackEvent('Purchase', {
@@ -123,6 +127,30 @@ export function trackPurchase(value = 349, currency = 'BRL'): void {
     currency,
     content_name: 'G Obra - Mensalidade',
   })
+}
+
+/**
+ * Calcula o valor real pago em BRL baseado no cupom aplicado.
+ * Solucao temporaria ate o webhook do Asaas gravar `valor_pago_centavos`
+ * direto no pre_cadastro (TODO de proxima semana).
+ *
+ * Mensalidade base: R$ 349
+ *   - OBRA10 / OBRA10EXT: 10% off no 1o mes -> R$ 314,10
+ *   - OBRA20 / OBRA20EXT: 20% off no 1o mes -> R$ 279,20
+ *   - Sem cupom: R$ 349
+ */
+export function valorPorCupom(cupom?: string | null): number {
+  const c = (cupom ?? '').trim().toUpperCase()
+  switch (c) {
+    case 'OBRA10':
+    case 'OBRA10EXT':
+      return 314.10
+    case 'OBRA20':
+    case 'OBRA20EXT':
+      return 279.20
+    default:
+      return 349
+  }
 }
 
 /**

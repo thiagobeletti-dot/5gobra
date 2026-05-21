@@ -130,6 +130,9 @@ export interface PreCadastroResumo {
   cpf_cnpj_mascarado: string | null
   status: 'aguardando_pagamento' | 'pago' | 'convertido' | 'expirado' | 'erro'
   empresa_id: string | null
+  /** Cupom aplicado na compra (ex: 'OBRA10', 'OBRA20'). Usado pra calcular
+   *  valor real pago no evento Purchase do Pixel Meta. */
+  cupom: string | null
 }
 
 /**

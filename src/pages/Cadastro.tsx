@@ -30,7 +30,7 @@ import {
   DOC_TERMOS_USO,
   DOC_POLITICA_PRIVACIDADE,
 } from '../lib/contratos'
-import { trackPurchase, trackCompleteRegistration } from '../lib/meta-pixel'
+import { trackPurchase, trackCompleteRegistration, valorPorCupom } from '../lib/meta-pixel'
 
 type Etapa = 1 | 2 | 3
 
@@ -79,7 +79,9 @@ export default function Cadastro() {
         } else {
           // Status valido (pago, aguardando ativacao) — dispara Purchase no Pixel.
           // Idempotente: se a pagina recarregar, dados.status virara 'convertido' e nao dispara de novo.
-          trackPurchase(349, 'BRL')
+          // Valor calculado dinamicamente a partir do cupom usado na compra,
+          // pra Meta nao reclamar de "valor fixo" e otimizar campanhas corretamente.
+          trackPurchase(valorPorCupom(dados.cupom), 'BRL')
         }
         setCarregandoToken(false)
       })

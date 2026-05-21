@@ -38,7 +38,7 @@ Deno.serve(async (req: Request) => {
 
     const { data, error } = await admin
       .from('pre_cadastros')
-      .select('id, nome_completo, email, whatsapp, cpf_cnpj, status, empresa_id')
+      .select('id, nome_completo, email, whatsapp, cpf_cnpj, status, empresa_id, cupom')
       .eq('token_cadastro', token)
       .maybeSingle()
 
@@ -65,6 +65,7 @@ Deno.serve(async (req: Request) => {
           cpf_cnpj_mascarado: cpfCnpjMascarado,
           status: data.status,
           empresa_id: data.empresa_id,
+          cupom: data.cupom ?? null,
         },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
