@@ -7,6 +7,7 @@ import { diasAte, formataData, formataDataHora, statusSemantico } from '../lib/h
 import { useObraData } from '../hooks/useObraData'
 import { supabasePublico } from '../lib/supabase'
 import GaleriaFotos from '../components/GaleriaFotos'
+import CronogramaSecaoCliente from '../components/CronogramaSecaoCliente'
 import { useConfirm } from '../hooks/useConfirm'
 
 export default function ObraCliente() {
@@ -83,6 +84,17 @@ export default function ObraCliente() {
           {meusPendentes > 0 && (
             <div className="mt-3 bg-laranja-soft border border-laranja-border rounded-lg px-3 py-2 text-xs md:text-sm text-laranja-dark font-semibold">
               Você tem {meusPendentes} {meusPendentes === 1 ? 'item aguardando' : 'itens aguardando'} sua ação.
+            </div>
+          )}
+
+          {/* Seção Cronograma — só aparece se obra tem cronograma cadastrado */}
+          {data.modo === 'banco' && data.obraReal?.id && (
+            <div className="mt-3">
+              <CronogramaSecaoCliente
+                obraId={data.obraReal.id}
+                client={supabasePublico}
+                onToast={toast}
+              />
             </div>
           )}
         </div>

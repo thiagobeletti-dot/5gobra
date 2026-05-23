@@ -6,26 +6,31 @@
 //          ou /obra/:token (cliente) — aba "Cronograma"
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { pegarObraPorId } from '../lib/api'
 import {
   pegarCronogramaPorObra,
   criarCronograma,
   marcarFaseConcluida,
+  apagarCronograma,
   calcularDemandaAtual,
   emojiDemanda,
   rotuloDemanda,
   rotuloGatilho,
   type NovaFaseInput,
 } from '../lib/cronograma'
+import { useConfirm } from '../hooks/useConfirm'
 import { TEMPLATES_CRONOGRAMA, type Cronograma as CronogramaT } from '../types/cronograma'
 
 export default function Cronograma() {
   const { id: obraId } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const { confirmar, dialog: confirmDialog } = useConfirm()
   const [cronograma, setCronograma] = useState<CronogramaT | null>(null)
   const [obraNome, setObraNome] = useState<string>('')
   const [carregando, setCarregando] = useState(true)
   const [criando, setCriando] = useState(false)
+  const [apagando, setApagando] = useState(false)
 
   // Carrega obra + cronograma
   useEffect(() => {
@@ -73,6 +78,32 @@ export default function Cronograma() {
     }
   }
 
+  async function handleApagarCronograma() {
+    if (!cronograma) return
+    const confirma = await confirmar({
+      titulo: 'Apagar este cronograma e recomeçar?',
+      descricao:
+        'O cronograma atual será removido. Você poderá montar um novo do zero. Essa ação só é permitida porque o cliente ainda não aceitou.',
+      labelConfirmar: 'Apagar e recomeçar',
+    })
+    if (confirma === null) return
+
+    setApagando(true)
+    const res = await apagarCronograma(cronograma.id)
+    setApagando(false)
+
+    if (!res.ok) {
+      alert(res.motivo ?? 'Não foi possível apagar o cronograma.')
+      return
+    }
+    setCronograma(null) // volta pro estado "sem cronograma" (escolher template)
+  }
+
+  function voltarParaObra() {
+    if (!obraId) return
+    navigate(`/app/obra/${obraId}`)
+  }
+
   if (carregando) {
     return (
       <div className="p-8">
@@ -85,6 +116,14 @@ export default function Cronograma() {
   if (!cronograma) {
     return (
       <div className="p-8 max-w-3xl mx-auto">
+        {obraId && (
+          <Link
+            to={`/app/obra/${obraId}`}
+            className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 mb-4 transition"
+          >
+            ← Voltar pra obra
+          </Link>
+        )}
         <h1 className="text-2xl font-bold mb-2">Cronograma da Obra</h1>
         <p className="text-slate-600 mb-1">{obraNome}</p>
         <p className="text-slate-500 text-sm mb-8">
@@ -138,6 +177,14 @@ export default function Cronograma() {
 
   return (
     <div className="p-8 max-w-3xl mx-auto">
+      {obraId && (
+        <button
+          onClick={voltarParaObra}
+          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 mb-4 transition"
+        >
+          ← Voltar pra obra
+        </button>
+      )}
       <h1 className="text-2xl font-bold mb-1">Cronograma da Obra</h1>
       <p className="text-slate-600 mb-6">{obraNome}</p>
 
@@ -206,6 +253,21 @@ export default function Cronograma() {
         💡 V1 não permite editar prazos após criar o cronograma. Se algo desencaixar, converse
         com o cliente fora do sistema.
       </p>
+
+      {/* Rodapé — apagar (só se ainda não aceito) */}
+      {!cronograma.aceitoEm && (
+        <div className="mt-8 pt-4 border-t border-slate-200 flex justify-end">
+          <button
+            onClick={handleApagarCronograma}
+            disabled={apagando}
+            className="text-xs text-slate-400 hover:text-red-600 underline-offset-2 hover:underline transition disabled:opacity-50"
+          >
+            🗑 Apagar cronograma e recomeçar
+          </button>
+        </div>
+      )}
+
+      {confirmDialog}
     </div>
   )
 }

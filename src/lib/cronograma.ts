@@ -209,6 +209,41 @@ export async function criarCronograma(input: {
   return rowToCronograma(cronogramaData as CronogramaRow, fases)
 }
 
+/**
+ * Apaga cronograma (soft delete: marca ativo=false).
+ * Só permitido se NÃO foi aceito ainda — depois do aceite vira compromisso bilateral.
+ * Retorna true se apagou, false se não pôde (já aceito) ou se deu erro.
+ */
+export async function apagarCronograma(cronogramaId: string): Promise<{ ok: boolean; motivo?: string }> {
+  if (!supabase) return { ok: false, motivo: 'Supabase não configurado' }
+
+  // Verifica se já foi aceito
+  const { data: atual, error: errGet } = await supabase
+    .from('cronogramas')
+    .select('aceito_em')
+    .eq('id', cronogramaId)
+    .maybeSingle()
+
+  if (errGet || !atual) {
+    return { ok: false, motivo: 'Cronograma não encontrado' }
+  }
+  if ((atual as { aceito_em: string | null }).aceito_em) {
+    return { ok: false, motivo: 'Cronograma já foi aceito pelo cliente. Não pode ser apagado.' }
+  }
+
+  const { error } = await supabase
+    .from('cronogramas')
+    .update({ ativo: false })
+    .eq('id', cronogramaId)
+
+  if (error) {
+    console.error('[cronograma] apagarCronograma erro:', error)
+    return { ok: false, motivo: error.message }
+  }
+
+  return { ok: true }
+}
+
 export async function marcarFaseConcluida(
   faseId: string,
   cronogramaId: string,
