@@ -332,6 +332,15 @@ export async function aceitarCronograma(input: {
   return true
 }
 
+/**
+ * NÃO MAIS CHAMADA PELA UI (V1.1).
+ * Cliente libera o vão CARD A CARD via handler `marcarVaoPronto` (em useObraData).
+ * O cronograma infere a fase "Liberação do vão" automaticamente quando todos
+ * os cards saem de cliente/empresa.
+ *
+ * Função mantida pra reuso em V1.2 quando implementarmos auto-persistência
+ * (gravar `vao_liberado_em` no banco no momento que a inferência detectar).
+ */
 export async function marcarVaoLiberado(input: {
   cronogramaId: string
   ip?: string
@@ -391,7 +400,10 @@ export async function marcarVaoLiberado(input: {
  * Inferências V1.1:
  * - "Medição (M1)"      → concluída se TODOS os cards de peça têm checklist medicao1
  * - "Entrega Contramarco" → MANUAL por enquanto (sem sinal claro nos cards; V1.2 evolui)
- * - "Liberação do vão"  → concluída se cronograma.vaoLiberadoEm != null
+ * - "Liberação do vão"  → concluída se TODOS os cards de peça avançaram pra
+ *                         'tecnica' | 'emandamento' | 'conclusao' (saíram de cliente/empresa).
+ *                         O sinal real é: cliente clicou "vão pronto" / "contramarco instalado"
+ *                         em cada card → handler marcarVaoPronto move o card pra Técnica.
  * - "Medição (M2)"      → concluída se TODOS os cards de peça têm checklist medicao2
  * - "Conclusão"         → concluída se TODOS os cards de peça estão em aba 'conclusao' com aceiteFinal
  *
@@ -413,6 +425,12 @@ export function inferirStatusFases(cronograma: Cronograma, cards: Card[]): Crono
   const todosComChecklistM2 = temCards && cardsDePeca.every((c) =>
     (c.checklists ?? []).some((ck) => ck.tipo === 'medicao2'),
   )
+  // "Liberação do vão": todos os cards saíram de cliente/empresa (já estão em
+  // técnica, em andamento ou conclusão). Cliente clicou "vão pronto" / "contramarco
+  // instalado" em cada um → o handler marcarVaoPronto move pra Técnica.
+  const todosLiberaramVao = temCards && cardsDePeca.every(
+    (c) => c.aba === 'tecnica' || c.aba === 'emandamento' || c.aba === 'conclusao',
+  )
   const todosConcluidos = temCards && cardsDePeca.every((c) => c.aba === 'conclusao' && !!c.aceiteFinal)
 
   const fasesAtualizadas: CronogramaFase[] = cronograma.fases.map((fase) => {
@@ -430,9 +448,14 @@ export function inferirStatusFases(cronograma: Cronograma, cards: Card[]): Crono
         }
         break
       case NOMES_FASES.LIBERACAO_VAO:
+        // Prioriza o timestamp explícito do banco se existir (V1.2 vai persistir
+        // isso automaticamente); senão usa a inferência por estado dos cards.
         if (cronograma.vaoLiberadoEm) {
           novoStatus = 'concluida'
           novaConcluidaEm = novaConcluidaEm ?? cronograma.vaoLiberadoEm.slice(0, 10)
+        } else if (todosLiberaramVao) {
+          novoStatus = 'concluida'
+          novaConcluidaEm = novaConcluidaEm ?? new Date().toISOString().slice(0, 10)
         }
         break
       case NOMES_FASES.MEDICAO_M2:
@@ -453,7 +476,31 @@ export function inferirStatusFases(cronograma: Cronograma, cards: Card[]): Crono
     return { ...fase, status: novoStatus, concluidaEm: novaConcluidaEm }
   })
 
-  // Propaga "em_andamento" pra primeira fase não-concluída que tem gatilho satisfeito
+  // PROPAGAÇÃO PRA TRÁS: se uma fase posterior está concluída, todas as anteriores
+  // também devem estar (sequência lógica). Ex: se o cliente "liberou o vão", isso
+  // implica que o contramarco já foi entregue e instalado — então a fase "Entrega
+  // Contramarco" também conta como concluída, mesmo que não tenhamos sinal direto.
+  let ultimaConcluidaIdx = -1
+  for (let i = fasesAtualizadas.length - 1; i >= 0; i--) {
+    if (fasesAtualizadas[i].status === 'concluida') {
+      ultimaConcluidaIdx = i
+      break
+    }
+  }
+  if (ultimaConcluidaIdx > 0) {
+    const dataFallback = fasesAtualizadas[ultimaConcluidaIdx].concluidaEm
+    for (let i = 0; i < ultimaConcluidaIdx; i++) {
+      if (fasesAtualizadas[i].status !== 'concluida') {
+        fasesAtualizadas[i] = {
+          ...fasesAtualizadas[i],
+          status: 'concluida',
+          concluidaEm: fasesAtualizadas[i].concluidaEm ?? dataFallback,
+        }
+      }
+    }
+  }
+
+  // Propaga "em_andamento" pra primeira fase não-concluída
   let proximaAtiva = -1
   for (let i = 0; i < fasesAtualizadas.length; i++) {
     if (fasesAtualizadas[i].status !== 'concluida') {

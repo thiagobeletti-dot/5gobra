@@ -9,7 +9,6 @@ import type { DbClient } from '../lib/supabase'
 import {
   pegarCronogramaPorObra,
   aceitarCronograma,
-  marcarVaoLiberado,
   calcularDemandaAtual,
   emojiDemanda,
   rotuloDemanda,
@@ -75,32 +74,10 @@ export default function CronogramaSecaoCliente({ obraId, client, cards, onToast 
     }
   }
 
-  async function handleMarcarVaoLiberado() {
-    if (!cronograma) return
-    setSalvando(true)
-    const ok = await marcarVaoLiberado({
-      cronogramaId: cronograma.id,
-      userAgent: navigator.userAgent,
-      client,
-    })
-    setSalvando(false)
-    if (ok) {
-      await recarregar()
-      onToast?.('Vão marcado como liberado — empresa pode prosseguir')
-    } else {
-      onToast?.('Não foi possível registrar. Tente recarregar a página.')
-    }
-  }
-
   if (carregando || !cronogramaInferido) return null
 
   const { demanda, faseAtual } = calcularDemandaAtual(cronogramaInferido)
   const aceito = !!cronogramaInferido.aceitoEm
-  const temGatilhoVao = cronogramaInferido.fases.some((f) => f.gatilhoTipo === 'liberacao_vao')
-  const faseVaoAguardando = cronogramaInferido.fases.find(
-    (f) => f.gatilhoTipo === 'liberacao_vao' && f.status === 'aguardando_gatilho',
-  )
-  const podeMarcarVao = aceito && !cronogramaInferido.vaoLiberadoEm && temGatilhoVao && !!faseVaoAguardando
 
   const corBox = !aceito
     ? 'bg-laranja-soft border-laranja-border'
@@ -137,7 +114,7 @@ export default function CronogramaSecaoCliente({ obraId, client, cards, onToast 
         </div>
       )}
 
-      {/* Ações principais — botões do mesmo peso visual */}
+      {/* Ações principais — apenas Aceitar (único ato direto no cronograma) + Ver fases */}
       <div className="flex gap-2 flex-wrap">
         {!aceito && (
           <button
@@ -149,16 +126,6 @@ export default function CronogramaSecaoCliente({ obraId, client, cards, onToast 
           </button>
         )}
 
-        {podeMarcarVao && (
-          <button
-            className="btn-primary"
-            disabled={salvando}
-            onClick={handleMarcarVaoLiberado}
-          >
-            {salvando ? 'Registrando…' : 'Marcar vão liberado'}
-          </button>
-        )}
-
         <button
           onClick={() => setExpandido((v) => !v)}
           className="btn-ghost"
@@ -167,11 +134,11 @@ export default function CronogramaSecaoCliente({ obraId, client, cards, onToast 
         </button>
       </div>
 
-      {/* Texto auxiliar do "marcar vão liberado" */}
-      {podeMarcarVao && (
-        <p className="text-[11px] text-slate-600 mt-2 italic">
-          Quando o vão estiver pronto (paredes acabadas, contramarco instalado), clique acima
-          pra avisar a empresa.
+      {/* Texto explicando que o avanço acontece nos cards */}
+      {aceito && (
+        <p className="text-[11px] text-slate-600 mt-3 italic">
+          O cronograma avança automaticamente conforme você confirma cada item nos cards
+          abaixo.
         </p>
       )}
 
