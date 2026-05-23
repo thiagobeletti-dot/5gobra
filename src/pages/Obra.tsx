@@ -672,17 +672,18 @@ function ModalCard({
             )}
           </div>
 
-          {/* DESTAQUE: última mensagem do cliente quando a demanda voltou pra empresa.
-              Evita que a info do que o cliente respondeu fique enterrada no histórico.
-              NÃO duplica o destaque do "Reaberto pelo cliente" (que já tem seu próprio bloco). */}
+          {/* DESTAQUE: última mensagem do cliente no topo da modal.
+              Mostra sempre que o ÚLTIMO movimento real do card foi do cliente —
+              independente da aba atual. Assim sobrevive aos rounds de ida e volta.
+              NÃO duplica o destaque do "Reaberto pelo cliente" (que já tem seu próprio bloco vermelho). */}
           {!card.encerrado &&
-            card.aba === 'empresa' &&
             card.subStatus !== 'Reaberto pelo cliente — aguardando correção' &&
             (() => {
-              const ultimaCliente = (card.historico ?? [])
-                .filter((h) => !h.interno && h.tipo === 'cliente')
+              const ultimaReal = (card.historico ?? [])
+                .filter((h) => !h.interno && h.tipo !== 'sistema')
                 .slice(-1)[0]
-              if (!ultimaCliente) return null
+              if (!ultimaReal) return null
+              if (ultimaReal.tipo !== 'cliente') return null // última fala foi da empresa/técnico — sem destaque
               return (
                 <div className="bg-peca-soft border-2 border-peca-border rounded-lg px-4 py-3.5">
                   <div className="flex items-center gap-2 mb-1.5 flex-wrap">
@@ -690,9 +691,9 @@ function ModalCard({
                     <span className="font-bold text-[11px] uppercase tracking-wider text-peca-dark">
                       O cliente registrou
                     </span>
-                    <span className="text-[11px] text-slate-500 ml-auto">{ultimaCliente.data}</span>
+                    <span className="text-[11px] text-slate-500 ml-auto">{ultimaReal.data}</span>
                   </div>
-                  <div className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{ultimaCliente.texto}</div>
+                  <div className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{ultimaReal.texto}</div>
                 </div>
               )
             })()}

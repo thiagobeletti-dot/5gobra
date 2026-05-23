@@ -314,26 +314,26 @@ function ModalCardCliente({
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 md:px-6 py-4 md:py-5 space-y-5">
-          {/* DESTAQUE: última mensagem da empresa quando a demanda está com o cliente.
-              Evita que a info fique enterrada no histórico (que o cliente leigo nem rola). */}
+          {/* DESTAQUE: última mensagem do outro lado (empresa/técnico) no topo da modal.
+              Mostra sempre que o ÚLTIMO movimento real do card foi da empresa/técnico —
+              independente da aba atual. Assim sobrevive aos rounds de ida e volta. */}
           {(() => {
             if (card.encerrado) return null
-            const demandaNoCliente = card.aba === 'cliente' || (card.aba === 'conclusao' && !card.aceiteFinal)
-            if (!demandaNoCliente) return null
-            const ultimaEmpresa = (card.historico ?? [])
-              .filter((h) => !h.interno && (h.tipo === 'empresa' || h.tipo === 'tecnico'))
+            const ultimaReal = (card.historico ?? [])
+              .filter((h) => !h.interno && h.tipo !== 'sistema')
               .slice(-1)[0]
-            if (!ultimaEmpresa) return null
+            if (!ultimaReal) return null
+            if (ultimaReal.tipo === 'cliente') return null // última fala foi do próprio cliente — sem destaque
             return (
               <div className="bg-laranja-soft border-2 border-laranja-border rounded-lg px-4 py-3.5">
                 <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                   <span className="text-base" aria-hidden>🔔</span>
                   <span className="font-bold text-[11px] uppercase tracking-wider text-laranja-dark">
-                    {ultimaEmpresa.tipo === 'tecnico' ? 'O técnico registrou' : 'A empresa registrou'}
+                    {ultimaReal.tipo === 'tecnico' ? 'O técnico registrou' : 'A empresa registrou'}
                   </span>
-                  <span className="text-[11px] text-slate-500 ml-auto">{ultimaEmpresa.data}</span>
+                  <span className="text-[11px] text-slate-500 ml-auto">{ultimaReal.data}</span>
                 </div>
-                <div className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{ultimaEmpresa.texto}</div>
+                <div className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{ultimaReal.texto}</div>
               </div>
             )
           })()}
