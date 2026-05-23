@@ -5,6 +5,7 @@ import Login from './pages/Login'
 import Cadastro from './pages/Cadastro'
 import Obras from './pages/Obras'
 import Obra from './pages/Obra'
+import Cronograma from './pages/Cronograma'
 import ObraCliente from './pages/ObraCliente'
 import ObraTecnico from './pages/ObraTecnico'
 import Ajuda from './pages/Ajuda'
@@ -60,6 +61,16 @@ function App() {
               <RotaProtegida>
                 <ErrorBoundary contexto="Houve um erro carregando essa obra. Tenta recarregar — se persistir me manda print dessa mensagem.">
                   <Obra />
+                </ErrorBoundary>
+              </RotaProtegida>
+            }
+          />
+          <Route
+            path="/app/obra/:id/cronograma"
+            element={
+              <RotaProtegida>
+                <ErrorBoundary contexto="Houve um erro carregando o cronograma. Tenta recarregar — se persistir me manda print.">
+                  <Cronograma />
                 </ErrorBoundary>
               </RotaProtegida>
             }

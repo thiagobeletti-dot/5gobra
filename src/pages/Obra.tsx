@@ -166,7 +166,18 @@ export default function Obra() {
         >
           Documentos
         </NavItem>
-        <NavItem emBreve title="Linha do tempo da obra: prazos, milestones, status. Em breve.">Cronograma</NavItem>
+        {data.modo === 'banco' && habilitado && obraId ? (
+          <Link
+            to={`/app/obra/${obraId}/cronograma`}
+            className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition text-left text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            title="Cronograma de fases da obra: prazos, demanda atual (obra/fábrica), aceite digital do cliente."
+          >
+            <span className="w-4 inline-flex items-center justify-center">📅</span>
+            <span className="flex-1">Cronograma</span>
+          </Link>
+        ) : (
+          <NavItem emBreve title="Cronograma só disponível em obras reais (banco).">Cronograma</NavItem>
+        )}
         <div className="h-px bg-slate-200 my-2 mx-1" />
         <SidebarSec titulo="Sistema" />
         {data.modo === 'banco' && habilitado ? (
