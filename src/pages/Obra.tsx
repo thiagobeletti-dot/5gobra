@@ -672,6 +672,31 @@ function ModalCard({
             )}
           </div>
 
+          {/* DESTAQUE: última mensagem do cliente quando a demanda voltou pra empresa.
+              Evita que a info do que o cliente respondeu fique enterrada no histórico.
+              NÃO duplica o destaque do "Reaberto pelo cliente" (que já tem seu próprio bloco). */}
+          {!card.encerrado &&
+            card.aba === 'empresa' &&
+            card.subStatus !== 'Reaberto pelo cliente — aguardando correção' &&
+            (() => {
+              const ultimaCliente = (card.historico ?? [])
+                .filter((h) => !h.interno && h.tipo === 'cliente')
+                .slice(-1)[0]
+              if (!ultimaCliente) return null
+              return (
+                <div className="bg-peca-soft border-2 border-peca-border rounded-lg px-4 py-3.5">
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <span className="text-base" aria-hidden>🔔</span>
+                    <span className="font-bold text-[11px] uppercase tracking-wider text-peca-dark">
+                      O cliente registrou
+                    </span>
+                    <span className="text-[11px] text-slate-500 ml-auto">{ultimaCliente.data}</span>
+                  </div>
+                  <div className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{ultimaCliente.texto}</div>
+                </div>
+              )
+            })()}
+
           {/* Card reaberto pelo cliente — destaque o motivo + botão Corrigido */}
           {!card.encerrado && card.subStatus === 'Reaberto pelo cliente — aguardando correção' && (() => {
             // Pega a última mensagem do cliente (motivo da reabertura)
