@@ -31,6 +31,9 @@ export default function Cronograma() {
   const [carregando, setCarregando] = useState(true)
   const [criando, setCriando] = useState(false)
   const [apagando, setApagando] = useState(false)
+  // Passo intermediário — usuário escolheu template e está ajustando prazos antes de criar
+  const [templateEscolhido, setTemplateEscolhido] = useState<keyof typeof TEMPLATES_CRONOGRAMA | null>(null)
+  const [fasesPreview, setFasesPreview] = useState<NovaFaseInput[]>([])
 
   // Carrega obra + cronograma
   useEffect(() => {
@@ -44,11 +47,8 @@ export default function Cronograma() {
       .finally(() => setCarregando(false))
   }, [obraId])
 
-  // Cria cronograma usando template
-  async function handleCriarTemplate(templateKey: keyof typeof TEMPLATES_CRONOGRAMA) {
-    if (!obraId) return
-    setCriando(true)
-
+  // Passo 1: usuário escolhe template — carrega fases no preview pra ele ajustar prazos
+  function abrirPreviewTemplate(templateKey: keyof typeof TEMPLATES_CRONOGRAMA) {
     const tpl = TEMPLATES_CRONOGRAMA[templateKey]
     const fases: NovaFaseInput[] = tpl.fases.map((f, idx) => ({
       ordem: idx + 1,
@@ -57,15 +57,42 @@ export default function Cronograma() {
       prazoDias: f.prazoDias,
       responsavel: f.responsavel,
     }))
+    setTemplateEscolhido(templateKey)
+    setFasesPreview(fases)
+  }
+
+  function voltarParaEscolha() {
+    setTemplateEscolhido(null)
+    setFasesPreview([])
+  }
+
+  function atualizarPrazoFase(idx: number, novoPrazo: number) {
+    setFasesPreview((atual) =>
+      atual.map((f, i) => (i === idx ? { ...f, prazoDias: Math.max(0, novoPrazo) } : f)),
+    )
+  }
+
+  // Passo 2: confirma e cria de fato com os prazos ajustados
+  async function confirmarCriacao() {
+    if (!obraId || fasesPreview.length === 0) return
+    setCriando(true)
 
     const novo = await criarCronograma({
       obraId,
       modoContagem: 'por_lote',
-      fases,
+      fases: fasesPreview,
     })
 
-    if (novo) setCronograma(novo)
     setCriando(false)
+    if (novo) {
+      setCronograma(novo)
+      setTemplateEscolhido(null)
+      setFasesPreview([])
+    } else {
+      alert(
+        'Não foi possível criar o cronograma. Pode haver um cronograma antigo travado no banco — me avise pra rodar a limpeza.',
+      )
+    }
   }
 
   async function handleConcluirFase(faseId: string) {
@@ -114,6 +141,105 @@ export default function Cronograma() {
 
   // ============ Estado 1: SEM cronograma ainda ============
   if (!cronograma) {
+    // === Sub-estado 1b: PREVIEW editável de um template escolhido ===
+    if (templateEscolhido) {
+      const tpl = TEMPLATES_CRONOGRAMA[templateEscolhido]
+      return (
+        <div className="p-8 max-w-3xl mx-auto">
+          <button
+            onClick={voltarParaEscolha}
+            className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 mb-4 transition"
+          >
+            ← Voltar pra escolher modelo
+          </button>
+          <h1 className="text-2xl font-bold mb-1">Cronograma da Obra</h1>
+          <p className="text-slate-600 mb-6">{obraNome}</p>
+
+          <div className="rounded-lg border border-slate-200 bg-white p-6">
+            <h2 className="text-lg font-semibold mb-1">
+              {templateEscolhido === 'HORIZONTAL_SIMPLES' ? '📋 Simples' : '🏗️ Com contramarco'}
+            </h2>
+            <p className="text-sm text-slate-500 mb-5">
+              Ajuste os prazos (em dias) e clique "Criar cronograma". Depois de criar, os prazos
+              ficam travados — pra mudar, apague e recomeçe enquanto o cliente não aceitar.
+            </p>
+
+            <ol className="space-y-3">
+              {fasesPreview.map((fase, idx) => (
+                <li key={idx} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold">
+                        {fase.ordem}. {fase.nome}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-1">
+                        Gatilho: <strong>{
+                          fase.gatilhoTipo === 'assinatura_contrato' ? 'Assinatura do contrato' :
+                          fase.gatilhoTipo === 'fim_fase_anterior' ? 'Fim da fase anterior' :
+                          fase.gatilhoTipo === 'liberacao_vao' ? 'Vão liberado pelo cliente' :
+                          'Data fixa'
+                        }</strong> · {fase.responsavel === 'empresa' ? '🟢 Fábrica' : '🟡 Obra (cliente)'}
+                      </div>
+                    </div>
+                    <div className="shrink-0">
+                      <label className="text-[10px] uppercase tracking-wider font-bold text-slate-500 block mb-1">
+                        Prazo (dias)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={fase.prazoDias}
+                        onChange={(e) => atualizarPrazoFase(idx, parseInt(e.target.value) || 0)}
+                        disabled={fase.responsavel === 'cliente' && fase.gatilhoTipo === 'fim_fase_anterior'}
+                        className="w-20 text-center border border-slate-300 rounded px-2 py-1.5 text-sm font-medium focus:border-orange-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-400"
+                      />
+                    </div>
+                  </div>
+                  {fase.responsavel === 'cliente' && fase.gatilhoTipo === 'fim_fase_anterior' && (
+                    <p className="text-[11px] text-slate-400 mt-2 italic">
+                      Sem prazo fixo — depende do cliente liberar quando o vão estiver pronto.
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ol>
+
+            {/* Resumo do prazo total estimado */}
+            <div className="mt-4 pt-4 border-t border-slate-200 text-xs text-slate-500">
+              ⏱ Prazo total estimado:{' '}
+              <strong className="text-slate-800">
+                {fasesPreview.reduce((acc, f) => acc + f.prazoDias, 0)} dias
+              </strong>{' '}
+              (somando as fases — pode variar com a resposta do cliente)
+            </div>
+
+            <div className="mt-6 flex gap-3 justify-end flex-wrap">
+              <button
+                onClick={voltarParaEscolha}
+                disabled={criando}
+                className="btn-ghost"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarCriacao}
+                disabled={criando}
+                className="btn-primary"
+              >
+                {criando ? 'Criando…' : `Criar cronograma com ${fasesPreview.length} fases`}
+              </button>
+            </div>
+          </div>
+
+          {/* Info sobre o template escolhido (apoio visual) */}
+          <p className="text-xs text-slate-400 mt-4">
+            💡 {tpl.nome}
+          </p>
+        </div>
+      )
+    }
+
+    // === Sub-estado 1a: ESCOLHER um template ===
     return (
       <div className="p-8 max-w-3xl mx-auto">
         {obraId && (
@@ -136,18 +262,16 @@ export default function Cronograma() {
 
           <div className="space-y-3">
             <button
-              onClick={() => handleCriarTemplate('HORIZONTAL_SIMPLES')}
-              disabled={criando}
-              className="w-full text-left rounded-lg border border-slate-300 p-4 hover:border-orange-500 hover:bg-orange-50 transition disabled:opacity-50"
+              onClick={() => abrirPreviewTemplate('HORIZONTAL_SIMPLES')}
+              className="w-full text-left rounded-lg border border-slate-300 p-4 hover:border-orange-500 hover:bg-orange-50 transition"
             >
               <div className="font-semibold">📋 Simples</div>
               <div className="text-sm text-slate-500">Medição → Fabricação → Instalação. Sem contramarco.</div>
             </button>
 
             <button
-              onClick={() => handleCriarTemplate('HORIZONTAL_COM_CONTRAMARCO')}
-              disabled={criando}
-              className="w-full text-left rounded-lg border border-slate-300 p-4 hover:border-orange-500 hover:bg-orange-50 transition disabled:opacity-50"
+              onClick={() => abrirPreviewTemplate('HORIZONTAL_COM_CONTRAMARCO')}
+              className="w-full text-left rounded-lg border border-slate-300 p-4 hover:border-orange-500 hover:bg-orange-50 transition"
             >
               <div className="font-semibold">🏗️ Com contramarco</div>
               <div className="text-sm text-slate-500">
@@ -157,7 +281,7 @@ export default function Cronograma() {
           </div>
 
           <p className="text-xs text-slate-400 mt-6">
-            💡 Você pode apagar e recomeçar enquanto o cliente não aceitar.
+            💡 No próximo passo você ajusta os prazos antes de criar.
           </p>
         </div>
       </div>
@@ -250,8 +374,8 @@ export default function Cronograma() {
       </ol>
 
       <p className="text-xs text-slate-400 mt-8">
-        💡 V1 não permite editar prazos após criar o cronograma. Se algo desencaixar, converse
-        com o cliente fora do sistema.
+        💡 Os prazos ficam travados após criar. Pra ajustar, use "Apagar e recomeçar" abaixo
+        — enquanto o cliente não aceitar.
       </p>
 
       {/* Rodapé — apagar (só se ainda não aceito) */}
