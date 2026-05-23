@@ -138,18 +138,18 @@ export default function Cronograma() {
             <button
               onClick={() => handleCriarTemplate('HORIZONTAL_SIMPLES')}
               disabled={criando}
-              className="w-full text-left rounded-lg border border-slate-300 p-4 hover:border-orange-500 hover:bg-orange-50 transition"
+              className="w-full text-left rounded-lg border border-slate-300 p-4 hover:border-orange-500 hover:bg-orange-50 transition disabled:opacity-50"
             >
-              <div className="font-semibold">📋 Horizontal simples</div>
+              <div className="font-semibold">📋 Simples</div>
               <div className="text-sm text-slate-500">Medição → Fabricação → Instalação. Sem contramarco.</div>
             </button>
 
             <button
               onClick={() => handleCriarTemplate('HORIZONTAL_COM_CONTRAMARCO')}
               disabled={criando}
-              className="w-full text-left rounded-lg border border-slate-300 p-4 hover:border-orange-500 hover:bg-orange-50 transition"
+              className="w-full text-left rounded-lg border border-slate-300 p-4 hover:border-orange-500 hover:bg-orange-50 transition disabled:opacity-50"
             >
-              <div className="font-semibold">🏗️ Horizontal com contramarco</div>
+              <div className="font-semibold">🏗️ Com contramarco</div>
               <div className="text-sm text-slate-500">
                 M1 → Contramarco → Liberação do vão → Fabricação → Instalação. Prazo só conta da liberação.
               </div>
@@ -157,7 +157,7 @@ export default function Cronograma() {
           </div>
 
           <p className="text-xs text-slate-400 mt-6">
-            💡 Você pode editar as fases depois antes do cliente aceitar.
+            💡 Você pode apagar e recomeçar enquanto o cliente não aceitar.
           </p>
         </div>
       </div>
@@ -256,14 +256,17 @@ export default function Cronograma() {
 
       {/* Rodapé — apagar (só se ainda não aceito) */}
       {!cronograma.aceitoEm && (
-        <div className="mt-8 pt-4 border-t border-slate-200 flex justify-end">
+        <div className="mt-8 pt-4 border-t border-slate-200">
           <button
             onClick={handleApagarCronograma}
             disabled={apagando}
-            className="text-xs text-slate-400 hover:text-red-600 underline-offset-2 hover:underline transition disabled:opacity-50"
+            className="inline-flex items-center gap-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg px-4 py-2 hover:bg-red-50 hover:border-red-300 transition disabled:opacity-50"
           >
-            🗑 Apagar cronograma e recomeçar
+            🗑 {apagando ? 'Apagando…' : 'Apagar cronograma e recomeçar'}
           </button>
+          <p className="text-xs text-slate-400 mt-2">
+            Disponível só enquanto o cliente não aceitar.
+          </p>
         </div>
       )}
 

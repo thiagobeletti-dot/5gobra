@@ -210,9 +210,13 @@ export async function criarCronograma(input: {
 }
 
 /**
- * Apaga cronograma (soft delete: marca ativo=false).
+ * Apaga cronograma (HARD DELETE — fases e eventos caem em cascata via FK).
  * Só permitido se NÃO foi aceito ainda — depois do aceite vira compromisso bilateral.
- * Retorna true se apagou, false se não pôde (já aceito) ou se deu erro.
+ *
+ * Hard delete (e não soft via ativo=false) porque o schema tem `unique (obra_id)`
+ * sem filtro, e soft delete deixava row ali bloqueando a criação de um cronograma
+ * novo na mesma obra. Como pré-aceite não é compromisso firmado, deletar fisicamente
+ * é seguro.
  */
 export async function apagarCronograma(cronogramaId: string): Promise<{ ok: boolean; motivo?: string }> {
   if (!supabase) return { ok: false, motivo: 'Supabase não configurado' }
@@ -233,7 +237,7 @@ export async function apagarCronograma(cronogramaId: string): Promise<{ ok: bool
 
   const { error } = await supabase
     .from('cronogramas')
-    .update({ ativo: false })
+    .delete()
     .eq('id', cronogramaId)
 
   if (error) {
