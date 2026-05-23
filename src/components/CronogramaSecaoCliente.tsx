@@ -1,9 +1,10 @@
 // CronogramaSecaoCliente — exibe o cronograma da obra no link mágico do cliente
 // e oferece os botões de Aceitar (se não aceito) e Marcar vão liberado (quando aplicável).
 //
-// V1 sem renegociação: cliente só pode aceitar OU marcar vão liberado.
+// V1.1: status das fases é INFERIDO automaticamente do estado dos cards.
+// Cliente não vê botão "Marcar fase concluída" — só "Aceitar" e "Marcar vão liberado".
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { DbClient } from '../lib/supabase'
 import {
   pegarCronogramaPorObra,
@@ -13,16 +14,19 @@ import {
   emojiDemanda,
   rotuloDemanda,
   rotuloGatilho,
+  inferirStatusFases,
 } from '../lib/cronograma'
 import type { Cronograma as CronogramaT } from '../types/cronograma'
+import type { Card } from '../types/obra'
 
 interface Props {
   obraId: string
   client: DbClient | null
+  cards: Card[]
   onToast?: (msg: string) => void
 }
 
-export default function CronogramaSecaoCliente({ obraId, client, onToast }: Props) {
+export default function CronogramaSecaoCliente({ obraId, client, cards, onToast }: Props) {
   const [cronograma, setCronograma] = useState<CronogramaT | null>(null)
   const [carregando, setCarregando] = useState(true)
   const [salvando, setSalvando] = useState(false)
@@ -47,6 +51,12 @@ export default function CronogramaSecaoCliente({ obraId, client, onToast }: Prop
       cancelado = true
     }
   }, [obraId, client])
+
+  // Aplica inferência automática
+  const cronogramaInferido = useMemo(() => {
+    if (!cronograma) return null
+    return inferirStatusFases(cronograma, cards)
+  }, [cronograma, cards])
 
   async function handleAceitar() {
     if (!cronograma) return
@@ -82,18 +92,16 @@ export default function CronogramaSecaoCliente({ obraId, client, onToast }: Prop
     }
   }
 
-  // Sem cronograma — não renderiza nada (silencioso)
-  if (carregando || !cronograma) return null
+  if (carregando || !cronogramaInferido) return null
 
-  const { demanda, faseAtual } = calcularDemandaAtual(cronograma)
-  const aceito = !!cronograma.aceitoEm
-  const temGatilhoVao = cronograma.fases.some((f) => f.gatilhoTipo === 'liberacao_vao')
-  const faseVaoAguardando = cronograma.fases.find(
+  const { demanda, faseAtual } = calcularDemandaAtual(cronogramaInferido)
+  const aceito = !!cronogramaInferido.aceitoEm
+  const temGatilhoVao = cronogramaInferido.fases.some((f) => f.gatilhoTipo === 'liberacao_vao')
+  const faseVaoAguardando = cronogramaInferido.fases.find(
     (f) => f.gatilhoTipo === 'liberacao_vao' && f.status === 'aguardando_gatilho',
   )
-  const podeMarcarVao = aceito && !cronograma.vaoLiberadoEm && temGatilhoVao && !!faseVaoAguardando
+  const podeMarcarVao = aceito && !cronogramaInferido.vaoLiberadoEm && temGatilhoVao && !!faseVaoAguardando
 
-  // Cor do box conforme estado
   const corBox = !aceito
     ? 'bg-laranja-soft border-laranja-border'
     : demanda === 'cliente'
@@ -111,7 +119,6 @@ export default function CronogramaSecaoCliente({ obraId, client, onToast }: Prop
         <h2 className="font-bold text-sm md:text-base">Cronograma da obra</h2>
       </div>
 
-      {/* Box de DEMANDA */}
       {aceito ? (
         <>
           <div className="text-sm font-semibold mb-1">
@@ -130,45 +137,47 @@ export default function CronogramaSecaoCliente({ obraId, client, onToast }: Prop
         </div>
       )}
 
-      {/* Botão Aceitar */}
-      {!aceito && (
-        <button
-          className="btn-primary w-full md:w-auto"
-          disabled={salvando}
-          onClick={handleAceitar}
-        >
-          {salvando ? 'Aceitando...' : 'Aceitar cronograma'}
-        </button>
-      )}
-
-      {/* Botão Marcar vão liberado */}
-      {podeMarcarVao && (
-        <div className="mt-3 pt-3 border-t border-yellow-200">
-          <div className="text-xs text-slate-700 mb-2">
-            Quando o vão estiver pronto (paredes acabadas, contramarco instalado), avise
-            pra empresa começar a fabricação:
-          </div>
+      {/* Ações principais — botões do mesmo peso visual */}
+      <div className="flex gap-2 flex-wrap">
+        {!aceito && (
           <button
-            className="btn-primary w-full md:w-auto"
+            className="btn-primary"
+            disabled={salvando}
+            onClick={handleAceitar}
+          >
+            {salvando ? 'Aceitando…' : 'Aceitar cronograma'}
+          </button>
+        )}
+
+        {podeMarcarVao && (
+          <button
+            className="btn-primary"
             disabled={salvando}
             onClick={handleMarcarVaoLiberado}
           >
-            {salvando ? 'Registrando...' : 'Marcar vão liberado'}
+            {salvando ? 'Registrando…' : 'Marcar vão liberado'}
           </button>
-        </div>
+        )}
+
+        <button
+          onClick={() => setExpandido((v) => !v)}
+          className="btn-ghost"
+        >
+          {expandido ? 'Ocultar fases' : `Ver fases (${cronogramaInferido.fases.length})`}
+        </button>
+      </div>
+
+      {/* Texto auxiliar do "marcar vão liberado" */}
+      {podeMarcarVao && (
+        <p className="text-[11px] text-slate-600 mt-2 italic">
+          Quando o vão estiver pronto (paredes acabadas, contramarco instalado), clique acima
+          pra avisar a empresa.
+        </p>
       )}
 
-      {/* Toggle expandir lista de fases */}
-      <button
-        onClick={() => setExpandido((v) => !v)}
-        className="text-xs text-slate-500 hover:text-slate-900 underline-offset-2 hover:underline mt-3 transition"
-      >
-        {expandido ? 'Ocultar fases' : `Ver todas as fases (${cronograma.fases.length})`}
-      </button>
-
       {expandido && (
-        <ol className="mt-3 space-y-2">
-          {cronograma.fases.map((fase) => (
+        <ol className="mt-4 space-y-2">
+          {cronogramaInferido.fases.map((fase) => (
             <li
               key={fase.id}
               className={`rounded-md border px-3 py-2 text-xs ${

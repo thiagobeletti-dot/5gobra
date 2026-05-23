@@ -15,6 +15,8 @@ import type {
   DemandaAtual,
   FaseUI,
 } from '../types/cronograma'
+import { NOMES_FASES } from '../types/cronograma'
+import type { Card } from '../types/obra'
 
 // ============================================================
 // Conversão DB ↔ TS (snake_case ↔ camelCase)
@@ -373,6 +375,97 @@ export async function marcarVaoLiberado(input: {
   })
 
   return true
+}
+
+// ============================================================
+// INFERÊNCIA AUTOMÁTICA — cronograma lê estado dos cards
+// ============================================================
+
+/**
+ * Pega o cronograma cru do banco e CALCULA o status real de cada fase
+ * baseado no estado atual dos cards da obra.
+ *
+ * Princípio: o cronograma é um REFLEXO do trabalho feito nos cards.
+ * Empresa não marca fase como concluída manualmente — o sistema infere.
+ *
+ * Inferências V1.1:
+ * - "Medição (M1)"      → concluída se TODOS os cards de peça têm checklist medicao1
+ * - "Entrega Contramarco" → MANUAL por enquanto (sem sinal claro nos cards; V1.2 evolui)
+ * - "Liberação do vão"  → concluída se cronograma.vaoLiberadoEm != null
+ * - "Medição (M2)"      → concluída se TODOS os cards de peça têm checklist medicao2
+ * - "Conclusão"         → concluída se TODOS os cards de peça estão em aba 'conclusao' com aceiteFinal
+ *
+ * Fases não inferíveis pelo nome ficam com status original do banco.
+ *
+ * Nota: essa inferência roda apenas NA UI. O banco continua armazenando o último
+ * status conhecido. Pra V1.2 considerar persistir a inferência pra disparar
+ * eventos/notificações quando uma fase é concluída automaticamente.
+ */
+export function inferirStatusFases(cronograma: Cronograma, cards: Card[]): Cronograma {
+  if (!cronograma.aceitoEm) return cronograma // antes do aceite, fases ficam no estado original
+
+  const cardsDePeca = cards.filter((c) => c.tipo === 'peca' && !c.encerrado)
+  const temCards = cardsDePeca.length > 0
+
+  const todosComChecklistM1 = temCards && cardsDePeca.every((c) =>
+    (c.checklists ?? []).some((ck) => ck.tipo === 'medicao1'),
+  )
+  const todosComChecklistM2 = temCards && cardsDePeca.every((c) =>
+    (c.checklists ?? []).some((ck) => ck.tipo === 'medicao2'),
+  )
+  const todosConcluidos = temCards && cardsDePeca.every((c) => c.aba === 'conclusao' && !!c.aceiteFinal)
+
+  const fasesAtualizadas: CronogramaFase[] = cronograma.fases.map((fase) => {
+    // Não rebaixa fase já concluída no banco
+    if (fase.status === 'concluida') return fase
+
+    let novoStatus: CronogramaFase['status'] = fase.status
+    let novaConcluidaEm: string | null = fase.concluidaEm
+
+    switch (fase.nome) {
+      case NOMES_FASES.MEDICAO_M1:
+        if (todosComChecklistM1) {
+          novoStatus = 'concluida'
+          novaConcluidaEm = novaConcluidaEm ?? new Date().toISOString().slice(0, 10)
+        }
+        break
+      case NOMES_FASES.LIBERACAO_VAO:
+        if (cronograma.vaoLiberadoEm) {
+          novoStatus = 'concluida'
+          novaConcluidaEm = novaConcluidaEm ?? cronograma.vaoLiberadoEm.slice(0, 10)
+        }
+        break
+      case NOMES_FASES.MEDICAO_M2:
+        if (todosComChecklistM2) {
+          novoStatus = 'concluida'
+          novaConcluidaEm = novaConcluidaEm ?? new Date().toISOString().slice(0, 10)
+        }
+        break
+      case NOMES_FASES.CONCLUSAO:
+        if (todosConcluidos) {
+          novoStatus = 'concluida'
+          novaConcluidaEm = novaConcluidaEm ?? new Date().toISOString().slice(0, 10)
+        }
+        break
+      // ENTREGA_CONTRAMARCO continua manual (TODO V1.2)
+    }
+
+    return { ...fase, status: novoStatus, concluidaEm: novaConcluidaEm }
+  })
+
+  // Propaga "em_andamento" pra primeira fase não-concluída que tem gatilho satisfeito
+  let proximaAtiva = -1
+  for (let i = 0; i < fasesAtualizadas.length; i++) {
+    if (fasesAtualizadas[i].status !== 'concluida') {
+      proximaAtiva = i
+      break
+    }
+  }
+  if (proximaAtiva !== -1 && fasesAtualizadas[proximaAtiva].status === 'aguardando_gatilho') {
+    fasesAtualizadas[proximaAtiva] = { ...fasesAtualizadas[proximaAtiva], status: 'em_andamento' }
+  }
+
+  return { ...cronograma, fases: fasesAtualizadas }
 }
 
 // ============================================================

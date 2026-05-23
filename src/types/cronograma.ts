@@ -154,24 +154,35 @@ export interface FaseUI extends CronogramaFase {
   demandaAtual: boolean
 }
 
-/** Templates simples pra empresa começar (V1 — só horizontal padrão). */
+/**
+ * Template único do Cronograma V1.
+ *
+ * Estrutura padrão com 5 fases. Empresa pode desabilitar Medição (M1) e Entrega
+ * Contramarco no preview (obras simples sem contramarco não precisam delas).
+ *
+ * Os nomes EXATOS são usados em `inferirStatusFases` pra cruzar com checklists
+ * dos cards — não renomear sem atualizar a inferência.
+ *
+ * Prazos default = 0 (usuário preenche cada um conforme o contrato dele).
+ */
 export const TEMPLATES_CRONOGRAMA = {
-  HORIZONTAL_SIMPLES: {
-    nome: 'Horizontal simples (sem contramarco)',
-    fases: [
-      { nome: 'Medição', gatilhoTipo: 'assinatura_contrato' as GatilhoTipo, prazoDias: 7, responsavel: 'empresa' as ResponsavelFase },
-      { nome: 'Fabricação', gatilhoTipo: 'fim_fase_anterior' as GatilhoTipo, prazoDias: 30, responsavel: 'empresa' as ResponsavelFase },
-      { nome: 'Instalação', gatilhoTipo: 'fim_fase_anterior' as GatilhoTipo, prazoDias: 7, responsavel: 'empresa' as ResponsavelFase },
-    ],
-  },
   HORIZONTAL_COM_CONTRAMARCO: {
-    nome: 'Horizontal com contramarco',
+    nome: 'Cronograma padrão (5 fases)',
     fases: [
-      { nome: 'Medição (M1)', gatilhoTipo: 'assinatura_contrato' as GatilhoTipo, prazoDias: 7, responsavel: 'empresa' as ResponsavelFase },
-      { nome: 'Entrega Contramarco', gatilhoTipo: 'fim_fase_anterior' as GatilhoTipo, prazoDias: 15, responsavel: 'empresa' as ResponsavelFase },
-      { nome: 'Liberação do vão', gatilhoTipo: 'fim_fase_anterior' as GatilhoTipo, prazoDias: 0, responsavel: 'cliente' as ResponsavelFase },
-      { nome: 'Fabricação', gatilhoTipo: 'liberacao_vao' as GatilhoTipo, prazoDias: 40, responsavel: 'empresa' as ResponsavelFase },
-      { nome: 'Instalação', gatilhoTipo: 'fim_fase_anterior' as GatilhoTipo, prazoDias: 20, responsavel: 'empresa' as ResponsavelFase },
+      { nome: 'Medição (M1)', gatilhoTipo: 'assinatura_contrato' as GatilhoTipo, prazoDias: 0, responsavel: 'empresa' as ResponsavelFase, opcional: true },
+      { nome: 'Entrega Contramarco', gatilhoTipo: 'fim_fase_anterior' as GatilhoTipo, prazoDias: 0, responsavel: 'empresa' as ResponsavelFase, opcional: true },
+      { nome: 'Liberação do vão', gatilhoTipo: 'fim_fase_anterior' as GatilhoTipo, prazoDias: 0, responsavel: 'cliente' as ResponsavelFase, opcional: false },
+      { nome: 'Medição (M2)', gatilhoTipo: 'liberacao_vao' as GatilhoTipo, prazoDias: 0, responsavel: 'empresa' as ResponsavelFase, opcional: false },
+      { nome: 'Conclusão', gatilhoTipo: 'fim_fase_anterior' as GatilhoTipo, prazoDias: 0, responsavel: 'empresa' as ResponsavelFase, opcional: false },
     ],
   },
+} as const
+
+/** Nomes canônicos das fases — usados pra inferência automática de status. */
+export const NOMES_FASES = {
+  MEDICAO_M1: 'Medição (M1)',
+  ENTREGA_CONTRAMARCO: 'Entrega Contramarco',
+  LIBERACAO_VAO: 'Liberação do vão',
+  MEDICAO_M2: 'Medição (M2)',
+  CONCLUSAO: 'Conclusão',
 } as const

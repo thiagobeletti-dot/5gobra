@@ -93,6 +93,7 @@ export default function ObraCliente() {
               <CronogramaSecaoCliente
                 obraId={data.obraReal.id}
                 client={supabasePublico}
+                cards={dados.cards}
                 onToast={toast}
               />
             </div>
