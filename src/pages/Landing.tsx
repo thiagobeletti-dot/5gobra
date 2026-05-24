@@ -42,18 +42,44 @@ export default function Landing() {
         {/* HERO */}
         <section className="max-w-6xl mx-auto px-6 py-16 md:py-24 grid md:grid-cols-2 gap-10 items-center">
           <div>
-            {/* Headline: pega DOR específica do esquadrista (briga sobre o combinado).
-                Alternativas pra testar (Beletti, descomenta a que quiser usar):
-                - "Sua obra de esquadria sem combinado perdido no WhatsApp."
-                - "Cada peça da sua obra com prova oficial."
-                - "A obra que termina sem cliente questionando o que ficou combinado." */}
+            {/* Headline: DOR central do esquadrista — leva culpa por atraso que não é dele.
+                Cravada com Thiago em 24/05/2026: identifica o ponto de identidade do mercado. */}
             <h1 className="text-4xl md:text-5xl font-extrabold leading-[1.1] tracking-tight mb-5">
-              Acabou o <span className="text-laranja">"eu jurava que era preto, não branco"</span>.
+              As esquadrias não estão atrasadas, foi a <span className="text-laranja">obra</span> que não liberou no prazo.
             </h1>
-            <p className="text-lg text-slate-600 mb-7 max-w-lg leading-relaxed">
-              Cada peça da sua obra com histórico oficial. Cliente acompanha pelo celular.
-              Aceite com peso jurídico. Combinado não se perde mais no WhatsApp.
+            <p className="text-base md:text-lg text-slate-600 mb-5 max-w-lg leading-relaxed">
+              Pare de levar a culpa pelo atraso que não foi seu. O G Obra documenta cada
+              combinado, cada aprovação, cada apontamento — em um lugar só.
             </p>
+
+            {/* ACABE COM: amplificação das dores reais que toda fábrica vive */}
+            <div className="mb-7 max-w-lg">
+              <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 mb-2.5">
+                Acabe com:
+              </p>
+              <ul className="space-y-1.5 text-sm text-slate-700">
+                <li className="flex items-start gap-2.5">
+                  <span className="text-red-500 flex-shrink-0 mt-0.5 font-bold" aria-hidden>✗</span>
+                  <span>Levar a culpa pelo atraso que <strong>não foi seu</strong></span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <span className="text-red-500 flex-shrink-0 mt-0.5 font-bold" aria-hidden>✗</span>
+                  <span>"Eu jurava que era preto, não branco"</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <span className="text-red-500 flex-shrink-0 mt-0.5 font-bold" aria-hidden>✗</span>
+                  <span>Cliente cobrando "quando vai instalar?" todo dia</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <span className="text-red-500 flex-shrink-0 mt-0.5 font-bold" aria-hidden>✗</span>
+                  <span>Apontamento perdido em 80 mensagens do WhatsApp</span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <span className="text-red-500 flex-shrink-0 mt-0.5 font-bold" aria-hidden>✗</span>
+                  <span>Aceite verbal que vira novela 6 meses depois</span>
+                </li>
+              </ul>
+            </div>
 
             {/* CTAs em hierarquia de FRIÇÃO crescente:
                 1. Agendar demo (Calendly, máximo engajamento qualificado)
