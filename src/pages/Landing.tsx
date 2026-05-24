@@ -21,19 +21,32 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
           <LogoFull />
           <nav className="hidden md:flex items-center gap-7">
-            <a href="#dores" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition">Dores</a>
+            <a href="#problemas" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition">Problemas</a>
             <a href="#como-funciona" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition">Como funciona</a>
             <a href="#faq" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition">FAQ</a>
           </nav>
-          <div className="flex items-center gap-3">
-            <Link to="/login" className="btn-ghost">Entrar</Link>
-            <button
-              type="button"
-              onClick={() => setComprarAberto(true)}
-              className="btn-primary"
+          <div className="flex items-center gap-2.5">
+            {/* WhatsApp como link discreto — só em telas largas */}
+            <a
+              href={WA_DUVIDA}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden lg:inline text-sm font-medium text-slate-600 hover:text-slate-900 transition"
             >
-              Comprar
-            </button>
+              WhatsApp
+            </a>
+            <Link to="/login" className="btn-ghost text-sm">Entrar</Link>
+            <Link to="/app/demo" className="hidden sm:inline-flex btn-ghost text-sm">
+              Ver sistema
+            </Link>
+            <a
+              href={CALENDLY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary text-sm"
+            >
+              Agendar demo →
+            </a>
           </div>
         </div>
       </header>
@@ -158,18 +171,18 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* VOCÊ RECONHECE ISSO? — DORES */}
-        <section id="dores" className="bg-slate-50 border-y border-slate-200 scroll-mt-20">
+        {/* VOCÊ RECONHECE ISSO? — PROBLEMAS */}
+        <section id="problemas" className="bg-slate-50 border-y border-slate-200 scroll-mt-20">
           <div className="max-w-6xl mx-auto px-6 py-16 md:py-20">
             <div className="text-center mb-12">
               <span className="inline-block text-xs font-bold uppercase tracking-[0.18em] text-laranja-dark mb-3">
                 Você reconhece isso?
               </span>
               <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight max-w-3xl mx-auto leading-tight">
-                Toda obra de esquadria tem as mesmas dores.
+                Toda obra de esquadria tem os mesmos problemas.
               </h2>
               <p className="text-slate-600 mt-4 max-w-2xl mx-auto">
-                Se você já passou por uma dessas, esse sistema foi feito pra você.
+                Se você já passou por um desses, esse sistema foi feito pra você.
               </p>
             </div>
 
