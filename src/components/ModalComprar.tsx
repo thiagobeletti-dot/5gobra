@@ -109,9 +109,15 @@ export default function ModalComprar({ aberto, onFechar, cupomInicial }: Props) 
             <h2 id="modal-comprar-titulo" className="text-xl font-bold mb-1.5">
               Comprar G Obra · R$ 349/mês
             </h2>
-            <p className="text-sm text-slate-600 leading-relaxed">
-              Sem fidelidade. 14 dias de garantia. Preenche os dados pra eu gerar seu link de pagamento.
+            <p className="text-sm text-slate-600 leading-relaxed mb-3">
+              Preenche aqui pra eu gerar teu link de pagamento. Em 10 minutos depois do
+              pagamento, tua primeira obra tá no ar.
             </p>
+            {/* Selo de garantia visível — gera confiança no momento mais crítico */}
+            <div className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-md px-2.5 py-1.5 text-xs">
+              <span aria-hidden>🛡️</span>
+              <span><strong>14 dias de garantia.</strong> Sem fidelidade. Cancela quando quiser.</span>
+            </div>
           </div>
 
           <div className="px-6 pb-4 space-y-3">
@@ -167,7 +173,7 @@ export default function ModalComprar({ aberto, onFechar, cupomInicial }: Props) 
                 </label>
                 <input
                   className="input"
-                  placeholder="00.000.000/0000-00"
+                  placeholder="Pra emissão da nota"
                   value={cpfCnpj}
                   onChange={(e) => setCpfCnpj(e.target.value)}
                   disabled={enviando}

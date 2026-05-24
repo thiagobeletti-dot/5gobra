@@ -37,39 +37,75 @@ export default function Landing() {
 
       <main className="flex-1">
         {/* HERO */}
-        <section className="max-w-6xl mx-auto px-6 py-20 md:py-28 grid md:grid-cols-2 gap-10 items-center">
+        <section className="max-w-6xl mx-auto px-6 py-16 md:py-24 grid md:grid-cols-2 gap-10 items-center">
           <div>
-            <span className="inline-block bg-laranja-soft text-laranja-dark border border-laranja-border rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide mb-5">
-              Módulo do 5G Gerenciamento
-            </span>
-            <h1 className="text-4xl md:text-5xl font-extrabold leading-tight tracking-tight mb-5">
-              Comunicação clara entre <span className="text-laranja">empresa e cliente</span> em obras de esquadria.
+            {/* Headline: pega DOR específica do esquadrista (briga sobre o combinado).
+                Alternativas pra testar (Beletti, descomenta a que quiser usar):
+                - "Sua obra de esquadria sem combinado perdido no WhatsApp."
+                - "Cada peça da sua obra com prova oficial."
+                - "A obra que termina sem cliente questionando o que ficou combinado." */}
+            <h1 className="text-4xl md:text-5xl font-extrabold leading-[1.1] tracking-tight mb-5">
+              Acabou o <span className="text-laranja">"eu jurava que era preto, não branco"</span>.
             </h1>
-            <p className="text-lg text-slate-600 mb-8 max-w-lg leading-relaxed">
-              Cada peça, cada acordo, cada apontamento registrado num lugar só. Quem deve fazer o que fica óbvio. Combinado não se perde no WhatsApp.
+            <p className="text-lg text-slate-600 mb-7 max-w-lg leading-relaxed">
+              Cada peça da sua obra com histórico oficial. Cliente acompanha pelo celular.
+              Aceite com peso jurídico. Combinado não se perde mais no WhatsApp.
             </p>
+
+            {/* CTAs invertidos: DEMO primeiro (baixa fricção, alto engajamento),
+                Comprar segundo (compromisso alto). */}
             <div className="flex gap-3 flex-wrap">
+              <Link
+                to="/app/demo"
+                className="btn-primary text-base px-6 py-3"
+              >
+                Ver o sistema funcionando →
+              </Link>
               <button
                 type="button"
                 onClick={() => setComprarAberto(true)}
-                className="btn-primary text-base px-6 py-3"
+                className="btn-ghost text-base px-6 py-3"
               >
-                Comprar G Obra · R$ 349/mês
+                Comprar · R$ 349/mês
               </button>
+            </div>
+
+            {/* Selo de garantia VISUAL (era texto fino antes) */}
+            <div className="mt-5 inline-flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-lg px-3.5 py-2">
+              <span className="text-lg" aria-hidden>🛡️</span>
+              <div>
+                <span className="font-bold text-sm">14 dias de garantia.</span>{' '}
+                <span className="text-sm">Se não gostar, devolvemos seu dinheiro. Sem perguntas.</span>
+              </div>
+            </div>
+
+            {/* Prova social — usa sua história e validação real do setor */}
+            <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-500">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" aria-hidden />
+                Construído por uma fábrica com <strong className="text-slate-700">16 anos de mercado</strong>
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" aria-hidden />
+                Validado por fábricas-referência
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" aria-hidden />
+                Sem fidelidade, cancela quando quiser
+              </span>
+            </div>
+
+            <p className="text-xs text-slate-400 mt-4">
+              Prefere falar antes?{' '}
               <a
                 href={WA_DUVIDA}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn-ghost text-base px-6 py-3"
+                className="text-laranja-dark font-medium hover:underline"
               >
-                Tirar dúvidas no WhatsApp
+                Mensagem direto pro fundador
               </a>
-            </div>
-            <p className="text-sm text-slate-500 mt-4">
-              <span className="font-semibold text-slate-700">14 dias de garantia.</span> Se não gostar, devolvemos seu dinheiro. Sem perguntas.
-            </p>
-            <p className="text-xs text-slate-400 mt-1">
-              Ou conheça antes pelo <Link to="/app/demo" className="underline hover:text-laranja-dark">modo demonstração</Link>.
+              .
             </p>
           </div>
 
@@ -215,26 +251,39 @@ export default function Landing() {
           <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">
             Pronto pra acabar com o ruído na obra?
           </h2>
-          <p className="text-slate-600 mb-8 max-w-xl mx-auto">
-            R$ 349/mês com <strong className="text-slate-900">14 dias de garantia</strong>. Se não gostar, devolvemos seu dinheiro.
+          <p className="text-slate-600 mb-2 max-w-xl mx-auto">
+            Experimenta o sistema agora. <strong className="text-slate-900">Não precisa pagar nada</strong> pra ver como funciona.
+          </p>
+          <p className="text-sm text-slate-500 mb-8 max-w-xl mx-auto">
+            Quando decidir contratar: R$ 349/mês, sem fidelidade, 14 dias de garantia.
           </p>
           <div className="flex gap-3 flex-wrap justify-center">
+            <Link
+              to="/app/demo"
+              className="btn-primary text-base px-8 py-3.5"
+            >
+              Ver o sistema funcionando →
+            </Link>
             <button
               type="button"
               onClick={() => setComprarAberto(true)}
-              className="btn-primary text-base px-8 py-3.5"
+              className="btn-ghost text-base px-8 py-3.5"
             >
-              Comprar G Obra
+              Comprar agora
             </button>
+          </div>
+          <p className="text-xs text-slate-400 mt-4">
+            Dúvida específica?{' '}
             <a
               href={WA_DUVIDA}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-ghost text-base px-8 py-3.5"
+              className="text-laranja-dark font-medium hover:underline"
             >
-              Tirar dúvidas no WhatsApp
+              Fala direto comigo no WhatsApp
             </a>
-          </div>
+            .
+          </p>
         </section>
       </main>
 
