@@ -311,8 +311,9 @@ export default function ObraTecnico() {
         </div>
       </div>
 
-      <div className="bg-white border-b border-slate-200 px-4 md:px-7 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto flex gap-1 overflow-x-auto">
+      {/* Barra de abas com gradient fade no mobile pra indicar scroll horizontal */}
+      <div className="relative bg-white border-b border-slate-200 sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto px-4 md:px-7 flex gap-1 overflow-x-auto pr-10 md:pr-7">
           {ABAS.map((a) => (
             <button
               key={a.id}
@@ -325,6 +326,10 @@ export default function ObraTecnico() {
               </span>
             </button>
           ))}
+        </div>
+        {/* Indicador de scroll horizontal — só no mobile */}
+        <div className="absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-white via-white to-transparent pointer-events-none md:hidden flex items-center justify-end pr-1.5">
+          <span className="text-slate-400 text-sm" aria-hidden>›</span>
         </div>
       </div>
 

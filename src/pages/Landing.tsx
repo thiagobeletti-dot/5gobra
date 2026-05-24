@@ -9,6 +9,9 @@ const WA_DUVIDA =
   'https://wa.me/5511995400050?text=' +
   encodeURIComponent('Olá! Tô olhando o G Obra e tenho algumas dúvidas.')
 
+// Link do Calendly do fundador (30min, qualificação prévia nos campos do form).
+const CALENDLY_URL = 'https://calendly.com/thiagobeletti/30min'
+
 export default function Landing() {
   const [comprarAberto, setComprarAberto] = useState(false)
   return (
@@ -52,23 +55,37 @@ export default function Landing() {
               Aceite com peso jurídico. Combinado não se perde mais no WhatsApp.
             </p>
 
-            {/* CTAs invertidos: DEMO primeiro (baixa fricção, alto engajamento),
-                Comprar segundo (compromisso alto). */}
+            {/* CTAs em hierarquia de FRIÇÃO crescente:
+                1. Agendar demo (Calendly, máximo engajamento qualificado)
+                2. Ver sozinho (auto-serviço pra quem quer só olhar)
+                3. Comprar (link discreto pra quem já decidiu)
+                B2B SaaS no frio raramente compra direto — demo é onde fecha. */}
             <div className="flex gap-3 flex-wrap">
-              <Link
-                to="/app/demo"
+              <a
+                href={CALENDLY_URL}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="btn-primary text-base px-6 py-3"
               >
-                Ver o sistema funcionando →
+                Agendar demonstração · 30min →
+              </a>
+              <Link
+                to="/app/demo"
+                className="btn-ghost text-base px-6 py-3"
+              >
+                Ver o sistema sozinho
               </Link>
+            </div>
+            <p className="text-sm text-slate-500 mt-3">
+              Já decidiu?{' '}
               <button
                 type="button"
                 onClick={() => setComprarAberto(true)}
-                className="btn-ghost text-base px-6 py-3"
+                className="text-laranja-dark font-medium hover:underline"
               >
-                Comprar · R$ 349/mês
+                Comprar direto · R$ 349/mês
               </button>
-            </div>
+            </p>
 
             {/* Selo de garantia VISUAL (era texto fino antes) */}
             <div className="mt-5 inline-flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-lg px-3.5 py-2">
@@ -252,37 +269,46 @@ export default function Landing() {
             Pronto pra acabar com o ruído na obra?
           </h2>
           <p className="text-slate-600 mb-2 max-w-xl mx-auto">
-            Experimenta o sistema agora. <strong className="text-slate-900">Não precisa pagar nada</strong> pra ver como funciona.
+            <strong className="text-slate-900">30 minutos</strong> comigo, sem compromisso. A gente vê
+            juntos se o sistema resolve a tua dor.
           </p>
           <p className="text-sm text-slate-500 mb-8 max-w-xl mx-auto">
             Quando decidir contratar: R$ 349/mês, sem fidelidade, 14 dias de garantia.
           </p>
           <div className="flex gap-3 flex-wrap justify-center">
-            <Link
-              to="/app/demo"
+            <a
+              href={CALENDLY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
               className="btn-primary text-base px-8 py-3.5"
             >
-              Ver o sistema funcionando →
+              Agendar demonstração →
+            </a>
+            <Link
+              to="/app/demo"
+              className="btn-ghost text-base px-8 py-3.5"
+            >
+              Ver o sistema sozinho
             </Link>
+          </div>
+          <p className="text-sm text-slate-500 mt-4">
+            Já decidiu?{' '}
             <button
               type="button"
               onClick={() => setComprarAberto(true)}
-              className="btn-ghost text-base px-8 py-3.5"
+              className="text-laranja-dark font-medium hover:underline"
             >
-              Comprar agora
+              Comprar direto · R$ 349/mês
             </button>
-          </div>
-          <p className="text-xs text-slate-400 mt-4">
-            Dúvida específica?{' '}
+            {' · '}Dúvida rápida?{' '}
             <a
               href={WA_DUVIDA}
               target="_blank"
               rel="noopener noreferrer"
               className="text-laranja-dark font-medium hover:underline"
             >
-              Fala direto comigo no WhatsApp
+              WhatsApp
             </a>
-            .
           </p>
         </section>
       </main>

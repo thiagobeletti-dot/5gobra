@@ -258,20 +258,27 @@ export default function Obra() {
           </div>
         )}
 
-        <div className="bg-white border-b border-slate-200 px-4 md:px-7 flex gap-1 overflow-x-auto">
-          {ABAS.map((a) => (
-            <button
-              key={a.id}
-              data-tour-aba={a.id}
-              onClick={() => setAbaAtiva(a.id)}
-              className={'py-3.5 px-4 text-xs md:text-[13px] font-semibold border-b-2 -mb-px whitespace-nowrap inline-flex items-center gap-2 transition ' + (abaAtiva === a.id ? 'text-laranja border-laranja' : 'text-slate-500 border-transparent hover:text-slate-900')}
-            >
-              {a.rotulo}
-              <span className={'px-2 py-0.5 rounded-full text-[11px] font-bold min-w-[20px] text-center ' + (abaAtiva === a.id ? 'bg-laranja-soft text-laranja-dark' : 'bg-slate-100 text-slate-500')}>
-                {contagem(a.id)}
-              </span>
-            </button>
-          ))}
+        {/* Barra de abas com gradient fade no mobile pra indicar scroll horizontal */}
+        <div className="relative bg-white border-b border-slate-200">
+          <div className="px-4 md:px-7 flex gap-1 overflow-x-auto pr-10 md:pr-7">
+            {ABAS.map((a) => (
+              <button
+                key={a.id}
+                data-tour-aba={a.id}
+                onClick={() => setAbaAtiva(a.id)}
+                className={'py-3.5 px-4 text-xs md:text-[13px] font-semibold border-b-2 -mb-px whitespace-nowrap inline-flex items-center gap-2 transition ' + (abaAtiva === a.id ? 'text-laranja border-laranja' : 'text-slate-500 border-transparent hover:text-slate-900')}
+              >
+                {a.rotulo}
+                <span className={'px-2 py-0.5 rounded-full text-[11px] font-bold min-w-[20px] text-center ' + (abaAtiva === a.id ? 'bg-laranja-soft text-laranja-dark' : 'bg-slate-100 text-slate-500')}>
+                  {contagem(a.id)}
+                </span>
+              </button>
+            ))}
+          </div>
+          {/* Indicador visual de scroll horizontal — só aparece no mobile */}
+          <div className="absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-white via-white to-transparent pointer-events-none md:hidden flex items-center justify-end pr-1.5">
+            <span className="text-slate-400 text-sm" aria-hidden>›</span>
+          </div>
         </div>
 
         <div className="bg-white border-b border-slate-200 px-4 md:px-7 py-3.5 text-xs text-slate-500">
