@@ -15,19 +15,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [carregando, setCarregando] = useState(true)
 
+  // Boot: monta APENAS o listener onAuthStateChange.
+  //
+  // O listener dispara `INITIAL_SESSION` automaticamente no mount, populando
+  // a sessão se houver. Não chamamos getSession() em paralelo — em
+  // @supabase/supabase-js v2.x isso causa deadlock no mutex interno e
+  // mutations posteriores (INSERT/UPDATE/signIn) ficam pendurada sem disparar
+  // fetch. Diagnóstico cravado em 30/05/2026 no G Estoque, fix preventivo
+  // aplicado aqui em 02/06/2026 antes que o bug aparecesse em prod do G Obra.
+  // Vide: Obsidian Vault / Sessões / 2026-05-30 - Bug Supabase fechado +
+  // 2 anti-patterns documentados.
   useEffect(() => {
     if (!supabase) {
       setCarregando(false)
       return
     }
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
-      setCarregando(false)
-    })
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+    let ativo = true
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      if (!ativo) return
       setSession(s)
+      // INITIAL_SESSION é o primeiro evento que o listener dispara no mount.
+      // Quando ele chega, o boot termina (carregando = false). Eventos
+      // seguintes (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED) já têm seu próprio
+      // ciclo via signIn/signOut/signUp.
+      if (event === 'INITIAL_SESSION') {
+        setCarregando(false)
+      }
     })
-    return () => sub.subscription.unsubscribe()
+    return () => {
+      ativo = false
+      sub.subscription.unsubscribe()
+    }
   }, [])
 
   return (
