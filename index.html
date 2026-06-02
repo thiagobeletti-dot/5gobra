@@ -24,6 +24,15 @@
           y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
       })(window, document, "clarity", "script", "x07iebz7we");
     </script>
+    <!-- Calendly inline widget (popup mode).
+         Carregado aqui pra que o `<a>` de "Agendar demo" abra o widget
+         POR CIMA da LP em vez de redirecionar pro calendly.com — isso
+         permite o postMessage `calendly.event_scheduled` ser capturado
+         pelo listener em main.tsx e disparar `trackLead` no Meta Pixel.
+         Fallback: se o widget falhar de carregar, o href original
+         continua funcionando como link externo. -->
+    <link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet">
+    <script src="https://assets.calendly.com/assets/external/widget.js" type="text/javascript" async></script>
   </head>
   <body>
     <div id="root"></div>

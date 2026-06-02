@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { LogoFull } from '../lib/logo'
 import CarrosselSistema from '../components/CarrosselSistema'
@@ -11,6 +11,23 @@ const WA_DUVIDA =
 
 // Link do Calendly do fundador (30min, qualificação prévia nos campos do form).
 const CALENDLY_URL = 'https://calendly.com/thiagobeletti/30min'
+
+// Abre o Calendly como popup IN-PAGE (em vez de redirecionar pro calendly.com).
+// O widget é carregado via index.html. Quando o usuário completa o agendamento,
+// o widget emite postMessage `calendly.event_scheduled` que o listener em
+// main.tsx captura e dispara `trackLead` no Meta Pixel — essencial pra
+// otimização de conversão da Campanha 2.
+//
+// Se o widget não tiver carregado (rede lenta / bloqueador), o link externo
+// (target=_blank) segue funcionando como fallback.
+function abrirCalendlyPopup(e: MouseEvent<HTMLAnchorElement>) {
+  const Calendly = (window as unknown as { Calendly?: { initPopupWidget: (opts: { url: string }) => void } }).Calendly
+  if (Calendly) {
+    e.preventDefault()
+    Calendly.initPopupWidget({ url: CALENDLY_URL })
+  }
+  // sem else: deixa o href original abrir em nova aba como fallback
+}
 
 export default function Landing() {
   const [comprarAberto, setComprarAberto] = useState(false)
@@ -43,6 +60,7 @@ export default function Landing() {
               href={CALENDLY_URL}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={abrirCalendlyPopup}
               className="btn-primary text-sm"
             >
               Agendar demo →
@@ -104,6 +122,7 @@ export default function Landing() {
                 href={CALENDLY_URL}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={abrirCalendlyPopup}
                 className="btn-primary text-base px-6 py-3"
               >
                 Agendar demonstração · 30min →
@@ -319,6 +338,7 @@ export default function Landing() {
               href={CALENDLY_URL}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={abrirCalendlyPopup}
               className="btn-primary text-base px-8 py-3.5"
             >
               Agendar demonstração →
