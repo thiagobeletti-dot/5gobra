@@ -73,51 +73,32 @@ export default function Landing() {
         {/* HERO */}
         <section className="max-w-6xl mx-auto px-6 py-16 md:py-24 grid md:grid-cols-2 gap-10 items-center">
           <div>
-            {/* Headline: DOR central do esquadrista — leva culpa por atraso que não é dele.
-                Cravada com Thiago em 24/05/2026: identifica o ponto de identidade do mercado. */}
+            {/* Headline: categorial + ICP — cravada com Thiago em 02/06/2026 pós Campanha 2.
+                Versão anterior era agitadora de dor (boa pra audiência fria/topo de funil).
+                Esta é técnica/categorial — melhor pra fundo de funil onde a audiência já
+                sabe que precisa e quer entender RAPIDAMENTE o que é o produto.
+                Ganho de dobra mobile: era 6 linhas no celular, agora cabe em 2-3. */}
             <h1 className="text-4xl md:text-5xl font-extrabold leading-[1.1] tracking-tight mb-5">
-              As esquadrias não estão atrasadas, foi a <span className="text-laranja">obra</span> que não liberou no prazo.
+              Diário de obra digital pra <span className="text-laranja">fábricas de esquadria</span>.
             </h1>
-            <p className="text-base md:text-lg text-slate-600 mb-5 max-w-lg leading-relaxed">
-              Pare de levar a culpa pelo atraso que não foi seu. O G Obra documenta cada
-              combinado, cada aprovação, cada apontamento — em um lugar só.
+            <p className="text-base md:text-lg text-slate-600 mb-7 max-w-lg leading-relaxed">
+              Cada combinado registrado, cada aprovação preservada. Comunicação clara entre
+              você e o cliente. Em um lugar só.
             </p>
 
-            {/* ACABE COM: amplificação das dores reais que toda fábrica vive */}
-            <div className="mb-7 max-w-lg">
-              <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500 mb-2.5">
-                Acabe com:
-              </p>
-              <ul className="space-y-1.5 text-sm text-slate-700">
-                <li className="flex items-start gap-2.5">
-                  <span className="text-red-500 flex-shrink-0 mt-0.5 font-bold" aria-hidden>✗</span>
-                  <span>Levar a culpa pelo atraso que <strong>não foi seu</strong></span>
-                </li>
-                <li className="flex items-start gap-2.5">
-                  <span className="text-red-500 flex-shrink-0 mt-0.5 font-bold" aria-hidden>✗</span>
-                  <span>"Eu jurava que era preto, não branco"</span>
-                </li>
-                <li className="flex items-start gap-2.5">
-                  <span className="text-red-500 flex-shrink-0 mt-0.5 font-bold" aria-hidden>✗</span>
-                  <span>Cliente cobrando "quando vai instalar?" todo dia</span>
-                </li>
-                <li className="flex items-start gap-2.5">
-                  <span className="text-red-500 flex-shrink-0 mt-0.5 font-bold" aria-hidden>✗</span>
-                  <span>Apontamento perdido em 80 mensagens do WhatsApp</span>
-                </li>
-                <li className="flex items-start gap-2.5">
-                  <span className="text-red-500 flex-shrink-0 mt-0.5 font-bold" aria-hidden>✗</span>
-                  <span>Aceite verbal que vira novela 6 meses depois</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* CTAs em hierarquia de FRIÇÃO crescente:
-                1. Agendar demo (Calendly, máximo engajamento qualificado)
-                2. Ver sozinho (auto-serviço pra quem quer só olhar)
-                3. Comprar (link discreto pra quem já decidiu)
-                B2B SaaS no frio raramente compra direto — demo é onde fecha. */}
-            <div className="flex gap-3 flex-wrap">
+            {/* CTAs simplificados — Fix #2 cravado em 02/06/2026 pós Campanha 2.
+                Hero tem APENAS 2 caminhos:
+                  1. Primário: Agendar demonstração (botão laranja, máximo destaque)
+                  2. Secundário: Mensagem direto pro fundador (link discreto, mesma linha)
+                Removidos do hero (continuam disponíveis na seção CTA final e no header):
+                  - "Ver o sistema sozinho" -> caminho de auto-serviço pra audiência fria
+                  - "Comprar direto R$ 349/mês" -> caminho pra quem já decidiu sem demo
+                Razão: a Campanha 1 trouxe 4.819 visitantes com 0 conversões. Hipótese
+                principal foi paralisia de escolha — audiência quente vê 4 CTAs e congela.
+                A Campanha 2 (fundo de funil) chega justamente pra quente — não pode repetir
+                o erro. Lista "ACABE COM:" também saiu do hero (já temos seção "VOCÊ
+                RECONHECE ISSO?" mais abaixo cobrindo as dores). */}
+            <div className="flex gap-4 flex-wrap items-center">
               <a
                 href={CALENDLY_URL}
                 target="_blank"
@@ -127,23 +108,15 @@ export default function Landing() {
               >
                 Agendar demonstração · 30min →
               </a>
-              <Link
-                to="/app/demo"
-                className="btn-ghost text-base px-6 py-3"
+              <a
+                href={WA_DUVIDA}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-medium text-slate-600 hover:text-slate-900 hover:underline"
               >
-                Ver o sistema sozinho
-              </Link>
+                Falar direto com o fundador
+              </a>
             </div>
-            <p className="text-sm text-slate-500 mt-3">
-              Já decidiu?{' '}
-              <button
-                type="button"
-                onClick={() => setComprarAberto(true)}
-                className="text-laranja-dark font-medium hover:underline"
-              >
-                Comprar direto · R$ 349/mês
-              </button>
-            </p>
 
             {/* Selo de garantia VISUAL (era texto fino antes) */}
             <div className="mt-5 inline-flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-lg px-3.5 py-2">
@@ -170,18 +143,6 @@ export default function Landing() {
               </span>
             </div>
 
-            <p className="text-xs text-slate-400 mt-4">
-              Prefere falar antes?{' '}
-              <a
-                href={WA_DUVIDA}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-laranja-dark font-medium hover:underline"
-              >
-                Mensagem direto pro fundador
-              </a>
-              .
-            </p>
           </div>
 
           {/* Carrossel das telas do sistema */}
