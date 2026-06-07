@@ -21,6 +21,16 @@ initMetaPixel()
 // postMessage que algum script de terceiro mande (XSS-style defense).
 if (typeof window !== 'undefined') {
   window.addEventListener('message', (e: MessageEvent) => {
+    // DEBUG TEMPORÁRIO (07/06/2026) — investigação do Pixel Lead que não dispara.
+    // Loga TODO postMessage que venha de qualquer subdomínio calendly. Remover
+    // depois de identificar formato real do evento de agendamento.
+    if (typeof e.origin === 'string' && e.origin.includes('calendly')) {
+      console.info('[debug-calendly] postMessage:', {
+        origin: e.origin,
+        data: e.data,
+      })
+    }
+
     const origemValida =
       typeof e.origin === 'string' && e.origin.endsWith('calendly.com')
     const eventoCalendly =
