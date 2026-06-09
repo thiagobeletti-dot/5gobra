@@ -14,6 +14,8 @@ import {
   criarCronograma,
   apagarCronograma,
   calcularDemandaAtual,
+  calcularDiasRestantes,
+  estaFaseAtrasada,
   emojiDemanda,
   rotuloDemanda,
   rotuloGatilho,
@@ -27,6 +29,18 @@ import {
   type Cronograma as CronogramaT,
 } from '../types/cronograma'
 import type { Card } from '../types/obra'
+
+/**
+ * Formata data ISO (YYYY-MM-DD) em pt-BR (DD/MM/YYYY).
+ * Retorna "—" se a data for null/undefined ou inválida.
+ */
+function formatarDataBR(data: string | null | undefined): string {
+  if (!data) return '—'
+  // Parse direto sem timezone pra evitar shift de dia
+  const [ano, mes, dia] = data.slice(0, 10).split('-')
+  if (!ano || !mes || !dia) return data
+  return `${dia}/${mes}/${ano}`
+}
 
 export default function Cronograma() {
   const { id: obraId } = useParams<{ id: string }>()
@@ -357,12 +371,17 @@ export default function Cronograma() {
       {/* Lista de fases — sem botão "Marcar concluída" (status é inferido dos cards) */}
       <h2 className="text-lg font-semibold mb-3">Fases:</h2>
       <ol className="space-y-2">
-        {cronogramaInferido.fases.map((fase) => (
+        {cronogramaInferido.fases.map((fase) => {
+          const dias = calcularDiasRestantes(fase)
+          const atrasada = estaFaseAtrasada(fase)
+          return (
           <li
             key={fase.id}
             className={`rounded-lg border p-4 ${
               fase.status === 'concluida'
                 ? 'bg-green-50 border-green-200'
+                : atrasada
+                ? 'bg-red-50 border-red-300'
                 : fase.status === 'em_andamento'
                 ? 'bg-yellow-50 border-yellow-300'
                 : 'bg-white border-slate-200'
@@ -373,20 +392,48 @@ export default function Cronograma() {
                 {fase.ordem}. {fase.nome}
               </span>
               {fase.status === 'concluida' && (
-                <span className="text-xs text-green-700">✅ {fase.concluidaEm}</span>
+                <span className="text-xs text-green-700">✅ Concluída em {formatarDataBR(fase.concluidaEm)}</span>
               )}
               {fase.status === 'em_andamento' && (
                 <span className="text-[10px] uppercase font-bold text-yellow-800 bg-yellow-200 px-1.5 py-0.5 rounded">
                   em andamento
                 </span>
               )}
+              {/* Badge de prazo — só pra fases não concluídas com previsaoFim conhecida */}
+              {fase.status !== 'concluida' && dias !== null && (
+                atrasada ? (
+                  <span className="text-[10px] uppercase font-bold text-red-800 bg-red-200 px-1.5 py-0.5 rounded">
+                    Vencido há {Math.abs(dias)} dia{Math.abs(dias) !== 1 ? 's' : ''}
+                  </span>
+                ) : dias === 0 ? (
+                  <span className="text-[10px] uppercase font-bold text-orange-800 bg-orange-200 px-1.5 py-0.5 rounded">
+                    Vence hoje
+                  </span>
+                ) : (
+                  <span className="text-[10px] uppercase font-bold text-blue-800 bg-blue-100 px-1.5 py-0.5 rounded">
+                    Restam {dias} dia{dias !== 1 ? 's' : ''}
+                  </span>
+                )
+              )}
             </div>
             <div className="text-sm text-slate-600 mt-1">
               Gatilho: {rotuloGatilho(fase.gatilhoTipo)} · {fase.prazoDias} dias ·{' '}
               {fase.responsavel === 'empresa' ? '🟢 Fábrica' : '🟡 Obra'}
             </div>
+            {/* Timeline de datas — início e previsão de fim */}
+            {(fase.iniciadaEm || fase.previsaoFim) && fase.status !== 'concluida' && (
+              <div className="text-xs text-slate-500 mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                {fase.iniciadaEm && (
+                  <span>📅 Iniciada em <strong>{formatarDataBR(fase.iniciadaEm)}</strong></span>
+                )}
+                {fase.previsaoFim && (
+                  <span>🏁 Previsão de fim: <strong>{formatarDataBR(fase.previsaoFim)}</strong></span>
+                )}
+              </div>
+            )}
           </li>
-        ))}
+          )
+        })}
       </ol>
 
       <p className="text-xs text-slate-400 mt-8">
