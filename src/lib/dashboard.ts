@@ -78,12 +78,26 @@ export async function pegarDashboard(): Promise<DashboardData> {
         listarCardsDaObra(obra.id),
       ])
 
-      // Carrega checklists pra inferência funcionar
-      let cardsCompletos: Card[] = cards
+      // Converte CardRow (snake_case do banco) → Card (camelCase) com os
+      // campos mínimos que inferirStatusFases() consome: tipo, encerrado,
+      // checklists, aba, aceiteFinal. Histórico/fotos/etc não importam aqui.
+      let cardsCompletos: Card[] = []
       if (cards.length > 0) {
         const checklistsPorCard = await listarChecklistsDeVariosCards(cards.map((c) => c.id))
-        cardsCompletos = cards.map((c) => ({
-          ...c,
+        cardsCompletos = cards.map<Card>((c) => ({
+          id: c.id,
+          tipo: c.tipo,
+          sigla: c.sigla,
+          nome: c.nome,
+          descricao: c.descricao ?? '',
+          aba: c.aba,
+          statusEmAndamento: c.status_em_andamento,
+          subStatus: c.sub_status ?? null,
+          prazoContrato: c.prazo_contrato,
+          encerrado: c.encerrado,
+          aceiteFinal: c.aceite_final_at,
+          historico: [],
+          fotos: [],
           checklists: checklistsPorCard[c.id] ?? [],
         }))
       }
