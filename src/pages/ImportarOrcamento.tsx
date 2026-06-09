@@ -48,10 +48,17 @@ export default function ImportarOrcamento() {
     setEtapa('extraindo')
     try {
       const texto = await extrairTextoDoPdf(arquivo)
+      // Debug temporário (09/06/2026) — log do texto extraído pra ajustar parser
+      // conforme o formato real que o pdfjs produz no browser. Remover quando
+      // parser estiver estável em prod.
+      console.info('[importar-orcamento] Texto extraído do PDF:', texto)
+      console.info('[importar-orcamento] Tamanho:', texto.length, 'caracteres')
+
       const orc = parsearTextoWvetro(texto)
       if (orc.itens.length === 0) {
+        console.warn('[importar-orcamento] Parser não encontrou itens. Cliente detectado:', orc.cliente)
         throw new Error(
-          'Nenhum item identificado no PDF. Confira se o arquivo é um orçamento padrão com itens listados (tipo, dimensões, quantidade).',
+          `Nenhum item identificado no PDF (${texto.length} caracteres extraídos). Abre o console do navegador (F12 → Console) e me manda o texto que o sistema extraiu — vou ajustar o parser.`,
         )
       }
       const cardsExpandidos = expandirItensEmCards(orc.itens)
