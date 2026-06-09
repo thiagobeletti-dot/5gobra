@@ -512,7 +512,87 @@ export function inferirStatusFases(cronograma: Cronograma, cards: Card[]): Crono
     fasesAtualizadas[proximaAtiva] = { ...fasesAtualizadas[proximaAtiva], status: 'em_andamento' }
   }
 
-  return { ...cronograma, fases: fasesAtualizadas }
+  // ============================================================
+  // INFERÊNCIA DE PRAZOS — `iniciada_em` e `previsao_fim`
+  // ============================================================
+  // Antes desta inferência, `previsao_fim` ficava SEMPRE NULL no banco (código
+  // nunca populava). Resultado: `calcularDiasRestantes` retornava null → UI não
+  // mostrava "Dentro do prazo" nem "Vencido". Bug detectado por Thiago em 09/06/2026
+  // após reunião com Vilumi (Bruno levantou que cronograma não conta prazo).
+  //
+  // Fix arquitetural: mesma filosofia da inferência de status — cronograma é
+  // REFLEXO do trabalho. Calculamos `iniciadaEm` efetiva (quando o gatilho da
+  // fase realmente disparou) e derivamos `previsaoFim = iniciadaEm + prazoDias`
+  // em runtime. Sem migration, sem tocar no banco.
+  //
+  // Regras de início efetivo por gatilho:
+  //   - assinatura_contrato → cronograma.aceitoEm
+  //   - liberacao_vao       → cronograma.vaoLiberadoEm (ou data da inferência todosLiberaramVao)
+  //   - fim_fase_anterior   → fase_anterior.concluidaEm (cascata)
+  //   - data_fixa           → fase.gatilhoData
+  const aceitoEmData = cronograma.aceitoEm?.slice(0, 10) ?? null
+  const vaoLiberadoEmData = cronograma.vaoLiberadoEm?.slice(0, 10) ?? null
+  const hoje = new Date().toISOString().slice(0, 10)
+
+  const fasesComPrazos: CronogramaFase[] = fasesAtualizadas.map((fase, idx) => {
+    // Se já tem previsão_fim do banco (caso raro mas possível), respeita
+    if (fase.previsaoFim) return fase
+
+    // Determina data de início efetiva baseada no gatilho
+    let iniciadaEmEfetiva: string | null = fase.iniciadaEm
+
+    if (!iniciadaEmEfetiva) {
+      switch (fase.gatilhoTipo) {
+        case 'assinatura_contrato':
+          iniciadaEmEfetiva = aceitoEmData
+          break
+        case 'liberacao_vao':
+          iniciadaEmEfetiva = vaoLiberadoEmData
+          break
+        case 'data_fixa':
+          iniciadaEmEfetiva = fase.gatilhoData ?? null
+          break
+        case 'fim_fase_anterior': {
+          // Pega a fase anterior pela ordem (idx > 0) ou pelo gatilhoFaseId
+          const anterior = fase.gatilhoFaseId
+            ? fasesAtualizadas.find((f) => f.id === fase.gatilhoFaseId)
+            : idx > 0 ? fasesAtualizadas[idx - 1] : null
+          iniciadaEmEfetiva = anterior?.concluidaEm ?? null
+          break
+        }
+      }
+    }
+
+    // Se a fase está em andamento e ainda não tem início, assume hoje (recém-disparada)
+    if (!iniciadaEmEfetiva && fase.status === 'em_andamento') {
+      iniciadaEmEfetiva = hoje
+    }
+
+    if (!iniciadaEmEfetiva) return fase
+
+    // Calcula previsão de fim
+    const previsaoFimEfetiva = somarDiasCorridos(iniciadaEmEfetiva, fase.prazoDias)
+
+    return {
+      ...fase,
+      iniciadaEm: fase.iniciadaEm ?? iniciadaEmEfetiva,
+      previsaoInicio: fase.previsaoInicio ?? iniciadaEmEfetiva,
+      previsaoFim: previsaoFimEfetiva,
+    }
+  })
+
+  return { ...cronograma, fases: fasesComPrazos }
+}
+
+/**
+ * Soma N dias corridos a uma data no formato YYYY-MM-DD.
+ * V1 usa dias corridos pra alinhar com o que o usuário cadastra em `prazo_dias`.
+ * V2 considerar opção de dias úteis se Thiago pedir.
+ */
+function somarDiasCorridos(dataISO: string, dias: number): string {
+  const d = new Date(dataISO + 'T00:00:00')
+  d.setDate(d.getDate() + dias)
+  return d.toISOString().slice(0, 10)
 }
 
 // ============================================================
