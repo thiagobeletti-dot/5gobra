@@ -1,4 +1,4 @@
-import { useEffect, useState, FormEvent } from 'react'
+import { useEffect, useMemo, useState, FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { LogoFull } from '../lib/logo'
 import { sair, useAuth } from '../lib/auth'
@@ -25,6 +25,34 @@ export default function Obras() {
   const { status: onboarding, marcar: marcarOnb } = useOnboarding()
   const [tourAtivo, setTourAtivo] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
+  // Ordenação da lista. Cravado em 08/06 após reunião com Bruno (Vilumi Esquadrias):
+  // gestor de fábrica com 30+ obras quer atender as MAIS ANTIGAS primeiro (ficaram
+  // mais tempo paradas). Default continua 'recente' pra novos usuários — preferência
+  // persiste em localStorage por empresa.
+  const [ordenacao, setOrdenacao] = useState<'recente' | 'antiga'>(() => {
+    if (typeof window === 'undefined') return 'recente'
+    const v = window.localStorage.getItem('gobra:obras-ordenacao')
+    return v === 'antiga' ? 'antiga' : 'recente'
+  })
+
+  // Aplica sort local (created_at). Sem refazer query — a lista vem ordenada
+  // descendente do banco e a gente inverte aqui se necessário.
+  const obrasOrdenadas = useMemo(() => {
+    const arr = [...obras]
+    arr.sort((a, b) => {
+      const ta = new Date(a.created_at ?? 0).getTime()
+      const tb = new Date(b.created_at ?? 0).getTime()
+      return ordenacao === 'antiga' ? ta - tb : tb - ta
+    })
+    return arr
+  }, [obras, ordenacao])
+
+  function trocarOrdenacao(nova: 'recente' | 'antiga') {
+    setOrdenacao(nova)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('gobra:obras-ordenacao', nova)
+    }
+  }
 
   useEffect(() => {
     let ativo = true
@@ -162,8 +190,23 @@ export default function Obras() {
             <button className="btn-primary" onClick={() => setNovoAberto(true)}>+ Criar primeira obra</button>
           </div>
         ) : (
-          <div className="grid gap-3 md:grid-cols-2">
-            {obras.map((o) => (
+          <>
+            <div className="flex items-center justify-end mb-4">
+              <label className="text-xs text-slate-500 mr-2 font-medium" htmlFor="ordenar-obras">
+                Ordenar por:
+              </label>
+              <select
+                id="ordenar-obras"
+                value={ordenacao}
+                onChange={(e) => trocarOrdenacao(e.target.value as 'recente' | 'antiga')}
+                className="text-sm border border-slate-300 rounded-md px-2 py-1 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-laranja-dark"
+              >
+                <option value="recente">Mais recentes primeiro</option>
+                <option value="antiga">Mais antigas primeiro</option>
+              </select>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              {obrasOrdenadas.map((o) => (
               <div key={o.id} className="bg-white border border-slate-200 rounded-xl p-5 hover:border-slate-300 hover:shadow-md transition flex flex-col">
                 <Link to={`/app/obra/${o.id}`} className="block flex-1">
                   <div className="font-semibold text-base mb-1">{o.nome}</div>
@@ -190,8 +233,9 @@ export default function Obras() {
                   </button>
                 </div>
               </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </>
         )}
 
         {empresaId && obras.length > 0 && (
