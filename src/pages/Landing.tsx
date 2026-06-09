@@ -1,4 +1,4 @@
-import { useState, type MouseEvent } from 'react'
+import { useEffect, useState, type MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { LogoFull } from '../lib/logo'
 import CarrosselSistema from '../components/CarrosselSistema'
@@ -31,6 +31,17 @@ function abrirCalendlyPopup(e: MouseEvent<HTMLAnchorElement>) {
 
 export default function Landing() {
   const [comprarAberto, setComprarAberto] = useState(false)
+
+  // URL param `?comprar=1` abre o modal de contratação automaticamente.
+  // Permite mandar link direto pós-reunião: "5gobra.com.br?comprar=1".
+  // Cravado em 09/06/2026 após Thiago não achar o botão na reunião do Carlos.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('comprar') === '1') {
+      setComprarAberto(true)
+    }
+  }, [])
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* HEADER */}
@@ -53,9 +64,19 @@ export default function Landing() {
               WhatsApp
             </a>
             <Link to="/login" className="btn-ghost text-sm">Entrar</Link>
-            <Link to="/app/demo" className="hidden sm:inline-flex btn-ghost text-sm">
+            <Link to="/app/demo" className="hidden md:inline-flex btn-ghost text-sm">
               Ver sistema
             </Link>
+            {/* Botão "Contratar" cravado em 09/06/2026 após Thiago não achar o
+                link discreto na reunião do Carlos. Estilo destacado (borda laranja)
+                mas secundário ao "Agendar demo" — não compete pela ação primária. */}
+            <button
+              type="button"
+              onClick={() => setComprarAberto(true)}
+              className="hidden sm:inline-flex items-center text-sm font-semibold text-laranja-dark border-2 border-laranja-dark px-3 py-1.5 rounded-md hover:bg-laranja-dark hover:text-white transition"
+            >
+              Contratar
+            </button>
             <a
               href={CALENDLY_URL}
               target="_blank"
@@ -311,25 +332,26 @@ export default function Landing() {
               Ver o sistema sozinho
             </Link>
           </div>
-          <p className="text-sm text-slate-500 mt-4">
-            Já decidiu?{' '}
+          {/* Botão "Contratar agora" cravado em 09/06/2026 — antes era link
+              discreto que ninguém achava (incl. próprio Thiago). Agora é botão
+              destacado, mesma proeminência dos CTAs primários acima. */}
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-center mt-6">
             <button
               type="button"
               onClick={() => setComprarAberto(true)}
-              className="text-laranja-dark font-medium hover:underline"
+              className="inline-flex items-center justify-center text-base font-semibold text-white bg-laranja-dark hover:bg-laranja px-8 py-3.5 rounded-md transition shadow-sm"
             >
-              Comprar direto · R$ 349/mês
+              Contratar agora · R$ 349/mês
             </button>
-            {' · '}Dúvida rápida?{' '}
             <a
               href={WA_DUVIDA}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-laranja-dark font-medium hover:underline"
+              className="text-sm text-slate-500 hover:text-laranja-dark transition"
             >
-              WhatsApp
+              ou dúvida rápida via WhatsApp →
             </a>
-          </p>
+          </div>
         </section>
       </main>
 
