@@ -194,7 +194,11 @@ export default function FormMedicao1({ inicial, onSalvar, onCancelar }: Props) {
       if (!d.motor_tensao) return 'Preencha a tensão do motor.'
     }
 
-    if (!d.instalacao) return 'Preencha a orientação de instalação do trilho.'
+    // "Orientação de instalação no vão" só faz sentido pra tipologias que abrem
+    // (correr e giro). Pra fixo/maxim-ar não precisa.
+    if ((d.tipologia === 'correr' || d.tipologia === 'giro') && !d.instalacao) {
+      return 'Preencha "Orientação de instalação no vão" (Face Interna / Face Externa / Eixo) — está na seção "Estrutura e acabamento", abaixo do trilho.'
+    }
 
     if (d.arremate_externo && !d.arremate_externo_tipo) {
       return 'Preencha o tipo do arremate externo (cantoneira ou meia-cana).'
@@ -463,12 +467,16 @@ export default function FormMedicao1({ inicial, onSalvar, onCancelar }: Props) {
                   </div>
                 )}
 
-                <GrupoRadio
-                  label="Instalação — orientação do trilho"
-                  valor={d.instalacao}
-                  opcoes={[{ v: 'face_interna', l: 'Face Interna' }, { v: 'face_externa', l: 'Face Externa' }, { v: 'eixo', l: 'Eixo' }]}
-                  onChange={(v) => up('instalacao', v)}
-                />
+                {/* Orientação no vão: só faz sentido pra esquadrias que ABREM
+                    (correr e giro). Fixo e maxim-ar não definem face. */}
+                {(d.tipologia === 'correr' || d.tipologia === 'giro') && (
+                  <GrupoRadio
+                    label="Orientação de instalação no vão"
+                    valor={d.instalacao}
+                    opcoes={[{ v: 'face_interna', l: 'Face Interna' }, { v: 'face_externa', l: 'Face Externa' }, { v: 'eixo', l: 'Eixo' }]}
+                    onChange={(v) => up('instalacao', v)}
+                  />
+                )}
 
                 <div>
                   <span className="block text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1.5">Acabamento</span>
