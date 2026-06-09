@@ -5,6 +5,7 @@ import Login from './pages/Login'
 import Cadastro from './pages/Cadastro'
 import Dashboard from './pages/Dashboard'
 import Obras from './pages/Obras'
+import ImportarOrcamento from './pages/ImportarOrcamento'
 import Obra from './pages/Obra'
 import Cronograma from './pages/Cronograma'
 import ObraCliente from './pages/ObraCliente'
@@ -26,7 +27,9 @@ function App() {
           <Route path="/cadastro" element={<Cadastro />} />
           <Route path="/termos" element={<Termos />} />
           <Route path="/privacidade" element={<Privacidade />} />
-          <Route path="/app" element={<Navigate to="/app/dashboard" replace />} />
+          {/* Login default vai pra /app/obras (decidido por Thiago em 09/06). Dashboard
+              continua acessível via menu — abre quando a pessoa quiser, não na entrada. */}
+          <Route path="/app" element={<Navigate to="/app/obras" replace />} />
           <Route
             path="/app/dashboard"
             element={
@@ -40,6 +43,14 @@ function App() {
             element={
               <RotaProtegida>
                 <Obras />
+              </RotaProtegida>
+            }
+          />
+          <Route
+            path="/app/importar-orcamento"
+            element={
+              <RotaProtegida>
+                <ImportarOrcamento />
               </RotaProtegida>
             }
           />

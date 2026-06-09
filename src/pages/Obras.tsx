@@ -171,7 +171,16 @@ export default function Obras() {
             {empresaNome && <p className="text-sm text-slate-500 mt-1">{empresaNome}</p>}
           </div>
           {empresaId && (
-            <button data-tour="nova-obra" className="btn-primary" onClick={() => setNovoAberto(true)}>+ Nova obra</button>
+            <div className="flex items-center gap-2">
+              <Link
+                to="/app/importar-orcamento"
+                className="inline-flex items-center text-sm font-semibold text-laranja-dark border-2 border-laranja-dark px-3 py-1.5 rounded-md hover:bg-laranja-dark hover:text-white transition"
+                title="Suba um PDF de orçamento e crie a obra com todas as peças automaticamente"
+              >
+                Importar Orçamento
+              </Link>
+              <button data-tour="nova-obra" className="btn-primary" onClick={() => setNovoAberto(true)}>+ Nova obra</button>
+            </div>
           )}
         </div>
 
