@@ -95,16 +95,38 @@ export function parsearTextoWvetro(texto: string): OrcamentoWvetro {
 // ============================================================
 
 function extrairCliente(texto: string): ClienteWvetro {
-  // Padrão: "CLIENTE: LEMAM - ARAÇATUBA"
-  const nomeMatch = texto.match(/CLIENTE:\s*([^\n\r]+?)(?:\s*TEL\.|\s*$)/m)
-  // Endereço aparece depois de "ENDEREÇO:"
-  const endMatch = texto.match(/ENDEREÇO:\s*([^\n\r]*?)(?:\s*IE\/RG:|$)/m)
-  // CEP cliente vem em "CEP: - <cidade>/<UF> -"
-  const cepClienteMatch = texto.match(/CEP:\s*([0-9]{8}|[^\n\r]*?-\s*[A-ZÁÉÍÓÚÂÊÔÃÇ]+\/[A-Z]{2})/)
+  // ATUALIZADO 09/06/2026 com base no texto REAL extraído pelo pdfjs-dist.
+  // O pdfjs lê PDFs por posição (Y depois X), então labels e valores aparecem
+  // em ordens não-óbvias. Heurística que funciona com o orçamento Wvetro:
+  // o nome do cliente aparece num padrão "NOME - CIDADE" em linha solta,
+  // tipicamente antes do label "CLIENTE:" (que vem com valor confuso da tabela).
+  //
+  // Ex: "LEMAM - ARAÇATUBA" em linha própria, antes de "CLIENTE: CELULAR TEL. FIXO:"
+
+  // 1ª tentativa: padrão NOME - CIDADE em linha solta (maiúsculas, separador " - ")
+  const linhas = texto.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+  let nomeCandidato: string | null = null
+
+  for (const linha of linhas) {
+    // Pula linhas que claramente NÃO são nome de cliente
+    if (/^(CEP|EMAIL|TEL|CLIENTE|CNPJ|ENDEREÇO|TIPO|ITEM|VLR|QTDE|LINHA|L\.|RUA|AV|\*)/i.test(linha)) continue
+    // Pula linhas que começam com pontuação, ano, hora
+    if (/^[,.\d/]/.test(linha)) continue
+    // Padrão: TEXTO MAIÚSCULO - TEXTO MAIÚSCULO (sem outros caracteres)
+    const m = linha.match(/^([A-ZÁÉÍÓÚÂÊÔÃÇ&\s.]{2,})\s+-\s+([A-ZÁÉÍÓÚÂÊÔÃÇ\s]{2,})$/)
+    if (m) {
+      nomeCandidato = linha
+      break
+    }
+  }
+
+  // Endereço fica complicado por causa do layout do pdfjs (campos misturados);
+  // deixa null em V1. CEP só se vier num formato muito claro.
+  const cepClienteMatch = texto.match(/CEP:\s*([0-9]{5}-?[0-9]{3})/)
 
   return {
-    nome: nomeMatch?.[1]?.trim() || null,
-    endereco: endMatch?.[1]?.trim() || null,
+    nome: nomeCandidato,
+    endereco: null,
     cep: cepClienteMatch?.[1]?.trim() || null,
   }
 }
@@ -114,86 +136,221 @@ function extrairCliente(texto: string): ClienteWvetro {
 // ============================================================
 
 function extrairItens(texto: string): ItemWvetro[] {
-  // Divide o texto em blocos por "DATA ENTREGA: / /" (marcador de início de item)
-  // Cada bloco contém um item completo.
-  const blocos = texto.split(/DATA ENTREGA:\s*\/\s*\/\s*/i).slice(1)
-  // O primeiro split é "antes do primeiro DATA ENTREGA" = cabeçalho. Pula com slice(1).
+  // ATUALIZADO 09/06/2026 com base no texto REAL do pdfjs-dist (não como eu
+  // imaginei na 1ª versão). O pdfjs entrega ordem visual top-down, e cada
+  // item tem estrutura previsível em ~15 linhas. Estratégia: state machine
+  // linha a linha, ao invés de regex em texto contínuo.
+  //
+  // Padrão real de um item (verificado em produção com PDF do Vitor):
+  //
+  //   / / DATA ENTREGA:           ← MARCADOR de início de item
+  //   TIPO:   <codigo>             ← código (PA1, PA2, JA1, etc — pode ser vazio)
+  //   <ordem>                       ← número do item (1, 2, 3...)
+  //   ITEM
+  //   <vlr_unit>   <vlr_total>      ← valores (DESCARTADOS — só marcador)
+  //   *LOCAL/AMBIENTE:   <texto>
+  //   *COR PERFIL:   <cor>
+  //   <vidro_desc>                  ← "INCOLOR 06MM - TEMPERADO" ou "SEM VIDRO"
+  //   <cor_acessorio>               ← geralmente "BRANCO"
+  //   <descricao> | <linha>         ← pode quebrar em 2 linhas se descrição longa
+  //   L. <linha>
+  //   *COR ACESSÓRIO:
+  //   LINHA:
+  //   QTDE.   LARGURA:   ALTURA:   COR E ESPESSURA   VLR. TOTAL
+  //   <qtde>   <larg>   <alt>
+  //   VLR. UNIT.
+
+  const linhas = texto
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
 
   const itens: ItemWvetro[] = []
+  let bloco: string[] = []
+  let dentroDeItem = false
 
-  for (const bloco of blocos) {
-    const item = parsearBlocoItem(bloco)
+  for (const linha of linhas) {
+    if (/^\/\s*\/\s*DATA ENTREGA:/i.test(linha)) {
+      // Início de novo item — fecha o anterior se houver
+      if (dentroDeItem && bloco.length > 0) {
+        const item = parsearBlocoItemLinhas(bloco)
+        if (item) itens.push(item)
+      }
+      bloco = []
+      dentroDeItem = true
+      continue
+    }
+    if (dentroDeItem) {
+      bloco.push(linha)
+    }
+  }
+  // Fecha último bloco
+  if (dentroDeItem && bloco.length > 0) {
+    const item = parsearBlocoItemLinhas(bloco)
     if (item) itens.push(item)
   }
 
   return itens
 }
 
-function parsearBlocoItem(bloco: string): ItemWvetro | null {
-  // Padrões esperados (em qualquer ordem, dentro do bloco):
-  //   TIPO: <codigo>     (PA1, PA2, JA1, JA3, PA07, etc — código de tipologia)
-  //   <ordem>            (1, 2, 3... número do item)
-  //   ITEM
-  //   <vlr_unit> <vlr_total>
-  //   *LOCAL/AMBIENTE: <texto>
-  //   *COR PERFIL: <cor>
-  //   <vidro_descricao>  (linha solta — INCOLOR 06MM - TEMPERADO / SEM VIDRO / MINI-BOREAL 04MM - COMUM)
-  //   <cor_acessorio>
-  //   <descricao_esquadria> | <linha>
-  //   L. <linha>
-  //   QTDE. LARGURA: ALTURA: COR E ESPESSURA VLR. TOTAL
-  //   <qtde> <largura> <altura>
+/**
+ * Parseia um bloco de item (lista de linhas entre 2 marcadores DATA ENTREGA).
+ * Usa state machine pra extrair os campos na ordem que aparecem no PDF do Wvetro.
+ */
+function parsearBlocoItemLinhas(linhas: string[]): ItemWvetro | null {
+  let tipo = ''
+  let ordem: number | null = null
+  let vlrEncontrado = false
+  let ambiente = ''
+  let corPerfil = ''
+  let vidroDesc = ''
+  let corAcessorio = ''
+  let descricaoBuffer = ''
+  let descricaoCompleta = ''
+  let linhaProduto = ''
+  let qtde: number | null = null
+  let larguraMm: number | null = null
+  let alturaMm: number | null = null
 
-  const tipoMatch = bloco.match(/TIPO:\s*([A-Z0-9]*)/i)
-  const ambienteMatch = bloco.match(/\*LOCAL\/AMBIENTE:\s*([^\n\r*]+?)(?:\s*\*|\n|$)/i)
-  const corPerfilMatch = bloco.match(/\*COR PERFIL:\s*([A-ZÁÉÍÓÚÂÊÔÃÇ\s]+?)(?:\s*\*|\n|$)/i)
-  const linhaMatch = bloco.match(/L\.\s*([A-ZÁÉÍÓÚÂÊÔÃÇ]+)/i)
-  const ordemEValoresMatch = bloco.match(/(\d+)\s*\n\s*ITEM\s*\n\s*([\d.]+,\d{2})\s+([\d.]+,\d{2})/)
+  type Estado =
+    | 'tipo'
+    | 'ordem'
+    | 'item'
+    | 'valores'
+    | 'ambiente'
+    | 'corPerfil'
+    | 'vidro'
+    | 'corAcessorio'
+    | 'descricao'
+    | 'linhaProduto'
+    | 'qtdeLabel'
+    | 'dimensoes'
+    | 'fim'
 
-  // Qtde + largura + altura: padrão "1 2600 2100" ou "4 1000 2100"
-  // Aparece DEPOIS de "QTDE. LARGURA: ALTURA:..."
-  const dimsMatch = bloco.match(/QTDE\.[^\n]*\n\s*(\d+)\s+(\d+)\s+(\d+)/i)
+  let estado: Estado = 'tipo'
 
-  // Descrição da esquadria: aparece antes de "| SUPREMA" (ou outra linha)
-  // Pode quebrar em duas linhas no PDF — capturamos até ver "| LINHA" ou "L. LINHA"
-  const descMatch = bloco.match(/([A-ZÁÉÍÓÚÂÊÔÃÇ0-9°º ]+(?:GIRO|CORRER|MAXIM-?AR|FIXO|JANELA|PORTA)[A-ZÁÉÍÓÚÂÊÔÃÇ0-9°º ]+)\s*\|\s*([A-ZÁÉÍÓÚÂÊÔÃÇ\s]+)/i)
+  for (const linha of linhas) {
+    // Normaliza espaços múltiplos pra um só
+    const l = linha.replace(/\s+/g, ' ').trim()
 
-  // Cor/espessura do vidro: linha solta entre "*COR PERFIL: X" e "<cor_acessorio>"
-  // Padrão típico: "INCOLOR 06MM - TEMPERADO" ou "SEM VIDRO" ou "MINI-BOREAL 04MM - COMUM"
-  const vidroMatch = bloco.match(/\*COR PERFIL:[^\n]*\n\s*([A-ZÁÉÍÓÚÂÊÔÃÇ0-9 \-]+)\s*\n/i)
+    if (estado === 'tipo' && /^TIPO:/i.test(l)) {
+      tipo = l.replace(/^TIPO:/i, '').trim()
+      estado = 'ordem'
+      continue
+    }
+    if (estado === 'ordem' && /^\d+$/.test(l)) {
+      ordem = parseInt(l, 10)
+      estado = 'item'
+      continue
+    }
+    if (estado === 'item' && /^ITEM$/i.test(l)) {
+      estado = 'valores'
+      continue
+    }
+    if (estado === 'valores' && /[\d.]+,\d{2}.*[\d.]+,\d{2}/.test(l)) {
+      // Linha "4.245,74   4.245,74" — descarta valores, só marca passagem
+      vlrEncontrado = true
+      estado = 'ambiente'
+      continue
+    }
+    if (estado === 'ambiente' && /^\*LOCAL\/AMBIENTE:/i.test(l)) {
+      ambiente = l.replace(/^\*LOCAL\/AMBIENTE:/i, '').trim()
+      estado = 'corPerfil'
+      continue
+    }
+    if (estado === 'corPerfil' && /^\*COR PERFIL:/i.test(l)) {
+      corPerfil = l.replace(/^\*COR PERFIL:/i, '').trim()
+      estado = 'vidro'
+      continue
+    }
+    if (estado === 'vidro') {
+      // Linha solta — pode ser "INCOLOR 06MM - TEMPERADO", "SEM VIDRO", etc
+      vidroDesc = l
+      estado = 'corAcessorio'
+      continue
+    }
+    if (estado === 'corAcessorio') {
+      // Linha solta — geralmente "BRANCO"
+      corAcessorio = l
+      estado = 'descricao'
+      continue
+    }
+    if (estado === 'descricao') {
+      // Descrição da esquadria. Pode quebrar em duas linhas se vier longa:
+      //   "PORTA DE GIRO ... |"
+      //   "SUPREMA"
+      // ou vir tudo numa só:
+      //   "JANELA DE CORRER 02 FOLHAS MÓVEIS | SUPREMA"
+      if (l.includes('|')) {
+        const [desc, lp] = l.split('|').map((s) => s.trim())
+        descricaoCompleta = desc
+        if (lp) linhaProduto = lp
+        estado = lp ? 'linhaProduto' : 'descricao'
+        // Se já capturou o "| LINHA" tudo, próxima linha é "L. SUPREMA" — vai pra qtdeLabel
+        if (lp) estado = 'qtdeLabel'
+        continue
+      }
+      // Descrição numa linha sem "|" — vai pra próxima esperando o complemento
+      if (descricaoBuffer) {
+        descricaoBuffer += ' ' + l
+      } else {
+        descricaoBuffer = l
+      }
+      // Continua aguardando "|" na próxima linha
+      continue
+    }
+    if (estado === 'linhaProduto') {
+      // Esperando linha "SUPREMA" (segunda parte da descrição quebrada)
+      linhaProduto = l
+      descricaoCompleta = (descricaoBuffer || descricaoCompleta).replace(/\|$/, '').trim()
+      estado = 'qtdeLabel'
+      continue
+    }
+    // "L. SUPREMA" — confirma linha
+    if (/^L\.\s*([A-ZÁÉÍÓÚÂÊÔÃÇ]+)/i.test(l)) {
+      const m = l.match(/^L\.\s*([A-ZÁÉÍÓÚÂÊÔÃÇ]+)/i)
+      if (m && !linhaProduto) linhaProduto = m[1]
+      estado = 'qtdeLabel'
+      continue
+    }
+    if (estado === 'qtdeLabel' && /^QTDE\./i.test(l)) {
+      estado = 'dimensoes'
+      continue
+    }
+    if (estado === 'dimensoes') {
+      // Linha "1 2600 2100" — qtde, largura, altura
+      const m = l.match(/^(\d+)\s+(\d+)\s+(\d+)/)
+      if (m) {
+        qtde = parseInt(m[1], 10)
+        larguraMm = parseInt(m[2], 10)
+        alturaMm = parseInt(m[3], 10)
+        estado = 'fim'
+        continue
+      }
+    }
+  }
 
-  // Cor acessório: linha solta após cor/espessura (geralmente "BRANCO")
-  const corAcessorioMatch = bloco.match(/\*COR ACESSÓRIO:[^\n]*\n[\s\S]*?(?:\n([A-ZÁÉÍÓÚÂÊÔÃÇ]+)\s*\n[A-ZÁÉÍÓÚÂÊÔÃÇ0-9 ]+\|)/i)
-
-  if (!ordemEValoresMatch || !dimsMatch) {
-    // Bloco sem ordem/valores ou sem dimensões = sucata. Possivelmente é o rodapé.
-    // Nota: regex de valores é usada APENAS como âncora pra identificar o início
-    // do bloco — os valores em si são descartados (G Obra não armazena dados
-    // financeiros do orçamento).
+  if (!vlrEncontrado || ordem === null || qtde === null || larguraMm === null || alturaMm === null) {
     return null
   }
 
-  const ordem = parseInt(ordemEValoresMatch[1], 10)
-  const qtde = parseInt(dimsMatch[1], 10)
-  const larg = parseInt(dimsMatch[2], 10)
-  const alt = parseInt(dimsMatch[3], 10)
-
-  const descricaoCompleta = (descMatch?.[1] ?? '').trim()
-  const linha = (descMatch?.[2] ?? linhaMatch?.[1] ?? '').trim()
-  const vidroDesc = (vidroMatch?.[1] ?? '').trim()
+  // Se descrição ficou no buffer mas não foi finalizada com "|", usa o buffer
+  if (!descricaoCompleta && descricaoBuffer) {
+    descricaoCompleta = descricaoBuffer
+  }
 
   return {
     ordem,
-    tipo: tipoMatch?.[1]?.trim() ?? '',
-    ambiente: ambienteMatch?.[1]?.trim() ?? '',
+    tipo,
+    ambiente,
     descricaoCompleta,
     tipologia: inferirTipologia(descricaoCompleta),
-    linha,
-    corPerfil: corPerfilMatch?.[1]?.trim() ?? '',
-    corAcessorio: corAcessorioMatch?.[1]?.trim() ?? '',
+    linha: linhaProduto,
+    corPerfil,
+    corAcessorio,
     qtde,
-    larguraMm: larg,
-    alturaMm: alt,
+    larguraMm,
+    alturaMm,
     vidro: parsearVidro(vidroDesc),
   }
 }
