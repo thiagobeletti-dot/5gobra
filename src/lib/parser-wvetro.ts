@@ -276,37 +276,55 @@ function parsearBlocoItemLinhas(linhas: string[]): ItemWvetro | null {
       continue
     }
     if (estado === 'descricao') {
-      // Descrição da esquadria. Pode quebrar em duas linhas se vier longa:
-      //   "PORTA DE GIRO ... |"
-      //   "SUPREMA"
-      // ou vir tudo numa só:
-      //   "JANELA DE CORRER 02 FOLHAS MÓVEIS | SUPREMA"
-      if (l.includes('|')) {
-        const [desc, lp] = l.split('|').map((s) => s.trim())
-        descricaoCompleta = desc
-        if (lp) linhaProduto = lp
-        estado = lp ? 'linhaProduto' : 'descricao'
-        // Se já capturou o "| LINHA" tudo, próxima linha é "L. SUPREMA" — vai pra qtdeLabel
-        if (lp) estado = 'qtdeLabel'
+      // Caso 1: linha "L. SUPREMA" — encerra descrição. Cravado 09/06 após
+      // bug em prod: state machine ficava preso em 'descricao' acumulando
+      // linhas indefinidamente porque o check de "L." estava fora do bloco.
+      const lMatch = l.match(/^L\.\s*([A-ZÁÉÍÓÚÂÊÔÃÇ]+)/i)
+      if (lMatch) {
+        if (!linhaProduto) linhaProduto = lMatch[1]
+        if (!descricaoCompleta && descricaoBuffer) {
+          descricaoCompleta = descricaoBuffer
+        }
+        estado = 'qtdeLabel'
         continue
       }
-      // Descrição numa linha sem "|" — vai pra próxima esperando o complemento
+
+      // Caso 2: linha contém "|" — descrição + linha de produto na mesma linha
+      // ou descrição quebrada (termina com "|" sem linha de produto)
+      if (l.includes('|')) {
+        const [desc, lp] = l.split('|').map((s) => s.trim())
+        if (desc) descricaoCompleta = desc
+        if (lp) {
+          // "PORTA DE GIRO ... | SUPREMA" — tudo numa linha
+          linhaProduto = lp
+          estado = 'qtdeLabel'
+        } else {
+          // "PORTA DE GIRO ... |" sozinho — próxima linha é a linha do produto
+          estado = 'linhaProduto'
+        }
+        continue
+      }
+
+      // Caso 3: linha sem "|" e sem "L." — acumula no buffer (descrição longa
+      // que pode vir em múltiplas linhas antes do "|")
       if (descricaoBuffer) {
         descricaoBuffer += ' ' + l
       } else {
         descricaoBuffer = l
       }
-      // Continua aguardando "|" na próxima linha
       continue
     }
+
     if (estado === 'linhaProduto') {
-      // Esperando linha "SUPREMA" (segunda parte da descrição quebrada)
+      // Vem após "PORTA DE GIRO ... |" sozinho. Próxima linha (ex: "SUPREMA")
+      // é a linha de produto. Aí vem o "L. SUPREMA" que cai em qtdeLabel.
       linhaProduto = l
-      descricaoCompleta = (descricaoBuffer || descricaoCompleta).replace(/\|$/, '').trim()
       estado = 'qtdeLabel'
       continue
     }
-    // "L. SUPREMA" — confirma linha
+
+    // Fora do estado 'descricao' — "L. SUPREMA" como fallback (caso raríssimo
+    // de chegar aqui sem ter passado pelo if interno acima)
     if (/^L\.\s*([A-ZÁÉÍÓÚÂÊÔÃÇ]+)/i.test(l)) {
       const m = l.match(/^L\.\s*([A-ZÁÉÍÓÚÂÊÔÃÇ]+)/i)
       if (m && !linhaProduto) linhaProduto = m[1]
