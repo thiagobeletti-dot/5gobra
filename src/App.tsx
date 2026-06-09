@@ -3,6 +3,7 @@ import { AuthProvider } from './lib/auth'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Cadastro from './pages/Cadastro'
+import Dashboard from './pages/Dashboard'
 import Obras from './pages/Obras'
 import Obra from './pages/Obra'
 import Cronograma from './pages/Cronograma'
@@ -25,7 +26,15 @@ function App() {
           <Route path="/cadastro" element={<Cadastro />} />
           <Route path="/termos" element={<Termos />} />
           <Route path="/privacidade" element={<Privacidade />} />
-          <Route path="/app" element={<Navigate to="/app/obras" replace />} />
+          <Route path="/app" element={<Navigate to="/app/dashboard" replace />} />
+          <Route
+            path="/app/dashboard"
+            element={
+              <RotaProtegida>
+                <Dashboard />
+              </RotaProtegida>
+            }
+          />
           <Route
             path="/app/obras"
             element={

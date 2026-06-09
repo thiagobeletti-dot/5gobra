@@ -129,16 +129,24 @@ export default function Obras() {
   return (
     <div className="min-h-screen">
       <header className="bg-white border-b border-slate-200">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link to="/app/obras"><LogoFull /></Link>
-          <div className="flex items-center gap-4">
-            <Link to="/app/ajuda" className="text-sm text-slate-500 hover:text-slate-900">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between gap-3">
+          <Link to="/app/dashboard"><LogoFull /></Link>
+          <nav className="hidden md:flex items-center gap-5 text-sm">
+            <Link to="/app/dashboard" className="text-slate-500 hover:text-slate-900">
+              Dashboard
+            </Link>
+            <Link to="/app/obras" className="font-semibold text-laranja-dark">
+              Obras
+            </Link>
+            <Link to="/app/ajuda" className="text-slate-500 hover:text-slate-900">
               Ajuda
             </Link>
-            <Link to="/app/configuracoes" className="text-sm text-slate-500 hover:text-slate-900">
+            <Link to="/app/configuracoes" className="text-slate-500 hover:text-slate-900">
               Configurações
             </Link>
-            <span className="text-sm text-slate-500 hidden md:inline">{user?.email}</span>
+          </nav>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-slate-500 hidden lg:inline">{user?.email}</span>
             <button onClick={logout} className="btn-ghost text-xs">Sair</button>
           </div>
         </div>
