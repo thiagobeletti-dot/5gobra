@@ -97,8 +97,12 @@ export async function parsearPdfOrcamentoCompleto(
   const texto = await extrairTextoDoPdf(arquivo)
   const sistema = detectarSistema(texto)
 
+  // DEBUG TEMPORÁRIO (10/06): loga sempre o texto extraído + sistema detectado.
+  // Remover depois do parser SmartCEM/Wvetro estar 100% estável em prod.
+  console.info('[parser-orcamento] Sistema detectado:', sistema)
+  console.info('[parser-orcamento] Texto extraído (' + texto.length + ' chars):\n' + texto)
+
   if (!sistema) {
-    console.warn('[parser-orcamento] Sistema não reconhecido. Texto extraído:', texto.slice(0, 500))
     throw new Error(
       'Formato do PDF não reconhecido. Hoje aceito orçamentos do SmartCEM/Alumisoft e do W.Vetro. Se você usa outro sistema, fala comigo que adiciono.',
     )
@@ -107,6 +111,7 @@ export async function parsearPdfOrcamentoCompleto(
   if (sistema === 'wvetro') {
     const orc = parsearTextoWvetro(texto)
     if (orc.itens.length === 0) {
+      console.warn('[parser-orcamento] Wvetro detectado mas 0 itens parseados. Cliente:', orc.cliente)
       throw new Error(
         'PDF reconhecido como W.Vetro, mas nenhum item foi identificado. Confere se é o PDF de orçamento completo (com tipo, dimensões e quantidades por item).',
       )
@@ -124,6 +129,7 @@ export async function parsearPdfOrcamentoCompleto(
   if (sistema === 'smartcem') {
     const orc = parsearTextoSmartCEM(texto)
     if (orc.itens.length === 0) {
+      console.warn('[parser-orcamento] SmartCEM detectado mas 0 itens parseados. Cliente:', orc.cliente, 'Proposta:', orc.propostaNumero)
       throw new Error(
         'PDF reconhecido como SmartCEM, mas nenhum item foi identificado. Confere se é o PDF de orçamento completo da proposta.',
       )
