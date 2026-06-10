@@ -525,3 +525,72 @@ function formatarTitulo(s: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase())
     .replace(/\b(De|Do|Da|Com|E|Em|Pra)\b/g, (c) => c.toLowerCase())
 }
+
+// ============================================================
+// EXTRAÇÃO DE TEXTO DO PDF — usa pdfjs-dist (browser)
+// Centralizado aqui pra ser reusado por ImportarOrcamento + ImportarItens
+// ============================================================
+
+/**
+ * Extrai texto bruto de um arquivo PDF usando pdfjs-dist no browser.
+ * Reconstrói linhas baseado na posição Y do transform de cada item.
+ */
+export async function extrairTextoDoPdf(arquivo: File): Promise<string> {
+  // Import dinâmico pra split do bundle
+  const pdfjs = await import('pdfjs-dist')
+
+  // Worker via CDN (necessário pro pdfjs funcionar em browser).
+  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`
+
+  const buffer = await arquivo.arrayBuffer()
+  const pdf = await pdfjs.getDocument({ data: buffer }).promise
+
+  const partes: string[] = []
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const pagina = await pdf.getPage(i)
+    const textContent = await pagina.getTextContent()
+    const linhas: string[] = []
+    let linhaAtual = ''
+    let yAnterior: number | null = null
+
+    // Reconstrói linhas: itens com mesma altura Y são da mesma linha visual.
+    for (const item of textContent.items as Array<{ str: string; transform: number[] }>) {
+      const y = item.transform[5]
+      if (yAnterior !== null && Math.abs(y - yAnterior) > 2) {
+        linhas.push(linhaAtual)
+        linhaAtual = ''
+      }
+      linhaAtual += (linhaAtual ? ' ' : '') + item.str
+      yAnterior = y
+    }
+    if (linhaAtual) linhas.push(linhaAtual)
+
+    partes.push(linhas.join('\n'))
+  }
+
+  return partes.join('\n')
+}
+
+/**
+ * Pipeline completo: PDF → orçamento parseado + cards expandidos.
+ * Lança erro descritivo se nenhum item for detectado.
+ */
+export async function parsearPdfWvetroCompleto(
+  arquivo: File,
+): Promise<{ orcamento: OrcamentoWvetro; cards: CardImportadoWvetro[] }> {
+  if (arquivo.size > 10 * 1024 * 1024) {
+    throw new Error(
+      `Arquivo muito grande (${(arquivo.size / 1024 / 1024).toFixed(1)}MB). Limite: 10MB.`,
+    )
+  }
+  const texto = await extrairTextoDoPdf(arquivo)
+  const orcamento = parsearTextoWvetro(texto)
+  if (orcamento.itens.length === 0) {
+    console.warn('[parser-wvetro] Nenhum item encontrado. Texto extraído:', texto)
+    throw new Error(
+      'Nenhum item identificado no PDF. Confere se é o PDF de orçamento completo com tipo, dimensões e quantidades por item.',
+    )
+  }
+  const cards = expandirItensEmCards(orcamento.itens)
+  return { orcamento, cards }
+}

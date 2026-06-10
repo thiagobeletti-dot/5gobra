@@ -20,11 +20,11 @@ import { LogoFull } from '../lib/logo'
 import { useAuth, sair } from '../lib/auth'
 import { criarObra, criarVariosCards, pegarMinhaEmpresa } from '../lib/api'
 import {
-  parsearTextoWvetro,
-  expandirItensEmCards,
-  type OrcamentoWvetro,
-  type CardImportadoWvetro,
-} from '../lib/parser-wvetro'
+  parsearPdfOrcamentoCompleto,
+  nomeSistema,
+  type OrcamentoUnificado,
+  type CardImportadoUnificado,
+} from '../lib/parser-orcamento'
 
 type Etapa = 'selecionar' | 'extraindo' | 'preview' | 'salvando' | 'concluido'
 
@@ -32,8 +32,8 @@ export default function ImportarOrcamento() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [etapa, setEtapa] = useState<Etapa>('selecionar')
-  const [orcamento, setOrcamento] = useState<OrcamentoWvetro | null>(null)
-  const [cards, setCards] = useState<CardImportadoWvetro[]>([])
+  const [orcamento, setOrcamento] = useState<OrcamentoUnificado | null>(null)
+  const [cards, setCards] = useState<CardImportadoUnificado[]>([])
   const [nomeObraEdit, setNomeObraEdit] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [obraIdCriada, setObraIdCriada] = useState<string | null>(null)
@@ -47,23 +47,12 @@ export default function ImportarOrcamento() {
     setErro(null)
     setEtapa('extraindo')
     try {
-      const texto = await extrairTextoDoPdf(arquivo)
-      // Debug temporário (09/06/2026) — log do texto extraído pra ajustar parser
-      // conforme o formato real que o pdfjs produz no browser. Remover quando
-      // parser estiver estável em prod.
-      console.info('[importar-orcamento] Texto extraído do PDF:', texto)
-      console.info('[importar-orcamento] Tamanho:', texto.length, 'caracteres')
-
-      const orc = parsearTextoWvetro(texto)
-      if (orc.itens.length === 0) {
-        console.warn('[importar-orcamento] Parser não encontrou itens. Cliente detectado:', orc.cliente)
-        throw new Error(
-          `Nenhum item identificado no PDF (${texto.length} caracteres extraídos). Abre o console do navegador (F12 → Console) e me manda o texto que o sistema extraiu — vou ajustar o parser.`,
-        )
+      if (arquivo.type && !arquivo.type.includes('pdf')) {
+        throw new Error('O arquivo precisa ser um PDF.')
       }
-      const cardsExpandidos = expandirItensEmCards(orc.itens)
+      const orc = await parsearPdfOrcamentoCompleto(arquivo)
       setOrcamento(orc)
-      setCards(cardsExpandidos)
+      setCards(orc.cards)
       setNomeObraEdit(orc.cliente.nome ?? 'Obra importada')
       setEtapa('preview')
     } catch (e: any) {
@@ -156,8 +145,11 @@ export default function ImportarOrcamento() {
 
         {etapa === 'extraindo' && (
           <div className="bg-white border border-slate-200 rounded-xl p-10 text-center">
-            <div className="text-3xl mb-3 animate-pulse">📄</div>
-            <p className="text-sm text-slate-600">Lendo o PDF e identificando itens...</p>
+            <div className="text-4xl mb-3 animate-pulse">📄</div>
+            <p className="text-base font-semibold text-slate-800">Lendo o PDF</p>
+            <p className="text-sm text-slate-500 mt-1">
+              Extraindo texto e identificando itens... costuma levar 2-5 segundos.
+            </p>
           </div>
         )}
 
@@ -174,9 +166,10 @@ export default function ImportarOrcamento() {
 
         {etapa === 'salvando' && (
           <div className="bg-white border border-slate-200 rounded-xl p-10 text-center">
-            <div className="text-3xl mb-3 animate-pulse">💾</div>
-            <p className="text-sm text-slate-600">
-              Criando obra e {cards.length} cards no sistema...
+            <div className="text-4xl mb-3 animate-pulse">💾</div>
+            <p className="text-base font-semibold text-slate-800">Criando obra no G Obra</p>
+            <p className="text-sm text-slate-500 mt-1">
+              Salvando a obra e os {cards.length} cards de peça... quase lá.
             </p>
           </div>
         )}
@@ -239,6 +232,52 @@ function SelecionarArquivo({ onArquivo }: { onArquivo: (f: File) => void }) {
   )
 }
 
+// Item normalizado pra exibição no preview (campos comuns entre sistemas).
+type ItemPreview = {
+  chave: string
+  codigo: string                   // PA1, PA2, T1, T2...
+  descricao: string
+  qtde: number
+  larguraMm: number
+  alturaMm: number
+  ambiente: string
+  tipologia: string
+  vidroDescricao: string
+  corPerfil: string
+}
+
+function itensDoOrcamento(orc: OrcamentoUnificado): ItemPreview[] {
+  if (orc.detalhes.wvetro) {
+    return orc.detalhes.wvetro.itens.map((i) => ({
+      chave: String(i.ordem),
+      codigo: i.tipo || `IT${i.ordem}`,
+      descricao: i.descricaoCompleta,
+      qtde: i.qtde,
+      larguraMm: i.larguraMm,
+      alturaMm: i.alturaMm,
+      ambiente: i.ambiente,
+      tipologia: i.tipologia,
+      vidroDescricao: i.vidro.descricaoBruta || 'Sem vidro',
+      corPerfil: i.corPerfil,
+    }))
+  }
+  if (orc.detalhes.smartcem) {
+    return orc.detalhes.smartcem.itens.map((i) => ({
+      chave: String(i.ordem),
+      codigo: `T${i.ordem}`,
+      descricao: i.descricaoCompleta,
+      qtde: i.qtde,
+      larguraMm: i.larguraMm,
+      alturaMm: i.alturaMm,
+      ambiente: i.ambiente,
+      tipologia: i.tipologia,
+      vidroDescricao: i.vidro.descricaoBruta || 'Sem vidro',
+      corPerfil: i.corPerfil,
+    }))
+  }
+  return []
+}
+
 function Preview({
   orcamento,
   cards,
@@ -247,32 +286,44 @@ function Preview({
   onConfirmar,
   onVoltar,
 }: {
-  orcamento: OrcamentoWvetro
-  cards: CardImportadoWvetro[]
+  orcamento: OrcamentoUnificado
+  cards: CardImportadoUnificado[]
   nomeObra: string
   onNomeObraChange: (v: string) => void
   onConfirmar: () => void
   onVoltar: () => void
 }) {
-  const qtdeItens = orcamento.itens.length
+  const itensPreview = itensDoOrcamento(orcamento)
+  const qtdeItens = itensPreview.length
 
   return (
     <div className="space-y-6">
       <section className="bg-white border border-slate-200 rounded-xl p-5">
-        <h2 className="font-semibold mb-3 text-base">📄 Dados identificados</h2>
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+        <h2 className="font-semibold mb-3 text-base flex items-center gap-2 flex-wrap">
+          <span>📄 Dados identificados</span>
+          <span className="text-xs font-normal text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
+            ✓ PDF lido
+          </span>
+          <span className="text-xs font-normal text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+            {nomeSistema(orcamento.sistema)}
+          </span>
+        </h2>
+        <dl className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-3 text-sm">
           <div>
-            <dt className="text-slate-500 text-xs">Cliente</dt>
-            <dd className="font-medium">{orcamento.cliente.nome ?? '—'}</dd>
+            <dt className="text-slate-500 text-xs uppercase tracking-wide">Cliente</dt>
+            <dd className="font-semibold text-slate-900">{orcamento.cliente.nome ?? '—'}</dd>
           </div>
+          {orcamento.cliente.endereco && (
+            <div>
+              <dt className="text-slate-500 text-xs uppercase tracking-wide">Endereço</dt>
+              <dd className="font-semibold text-slate-900">{orcamento.cliente.endereco}</dd>
+            </div>
+          )}
           <div>
-            <dt className="text-slate-500 text-xs">Endereço</dt>
-            <dd className="font-medium">{orcamento.cliente.endereco ?? '—'}</dd>
-          </div>
-          <div>
-            <dt className="text-slate-500 text-xs">Tipos de item</dt>
-            <dd className="font-medium">
-              {qtdeItens} item{qtdeItens !== 1 ? 's' : ''} · {cards.length} peças no total
+            <dt className="text-slate-500 text-xs uppercase tracking-wide">Itens detectados</dt>
+            <dd className="font-semibold text-slate-900">
+              <span className="text-laranja">{qtdeItens}</span> tipo{qtdeItens !== 1 ? 's' : ''} ·{' '}
+              <span className="text-laranja">{cards.length}</span> peça{cards.length !== 1 ? 's' : ''} no total
             </dd>
           </div>
         </dl>
@@ -294,19 +345,19 @@ function Preview({
 
       <section className="bg-white border border-slate-200 rounded-xl p-5">
         <h2 className="font-semibold mb-3 text-base">
-          📦 Itens identificados ({orcamento.itens.length})
+          📦 Itens identificados ({qtdeItens})
         </h2>
         <ul className="space-y-2">
-          {orcamento.itens.map((item) => (
+          {itensPreview.map((item) => (
             <li
-              key={item.ordem}
+              key={item.chave}
               className="border border-slate-200 rounded-lg p-3 text-sm"
             >
               <div className="font-semibold flex items-center gap-2 flex-wrap">
                 <span className="inline-block px-2 py-0.5 rounded bg-slate-100 text-xs text-slate-700 font-mono">
-                  {item.tipo || `IT${item.ordem}`}
+                  {item.codigo}
                 </span>
-                <span>{item.descricaoCompleta}</span>
+                <span>{item.descricao}</span>
                 <span className="text-xs text-slate-500">
                   · {item.qtde}× {item.larguraMm}×{item.alturaMm}mm
                 </span>
@@ -314,7 +365,7 @@ function Preview({
               <div className="text-xs text-slate-500 mt-1">
                 <strong>Ambiente:</strong> {item.ambiente || '—'} ·{' '}
                 <strong>Tipologia:</strong> {item.tipologia} ·{' '}
-                <strong>Vidro:</strong> {item.vidro.descricaoBruta || 'Sem vidro'} ·{' '}
+                <strong>Vidro:</strong> {item.vidroDescricao} ·{' '}
                 <strong>Cor perfil:</strong> {item.corPerfil || '—'}
               </div>
             </li>
@@ -327,13 +378,22 @@ function Preview({
         </p>
       </section>
 
-      <div className="flex items-center justify-end gap-3 pt-2">
-        <button onClick={onVoltar} className="btn-ghost">
-          ← Voltar
-        </button>
-        <button onClick={onConfirmar} className="btn-primary">
-          Criar obra com {cards.length} peças →
-        </button>
+      <div className="bg-gradient-to-r from-laranja-soft to-amber-50 border border-laranja/30 rounded-xl p-5 flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex-1 min-w-0">
+          <div className="font-semibold text-slate-900">Tudo certo pra criar a obra?</div>
+          <div className="text-xs text-slate-600 mt-1">
+            Vamos criar <strong>1 obra</strong> e <strong>{cards.length} card{cards.length !== 1 ? 's' : ''} de peça</strong> no
+            G Obra. Pode ajustar depois a vontade.
+          </div>
+        </div>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <button onClick={onVoltar} className="btn-ghost">
+            ← Voltar
+          </button>
+          <button onClick={onConfirmar} className="btn-primary">
+            Criar obra →
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -360,42 +420,3 @@ function ConcluidoCard({ obraId, qtdeCards }: { obraId: string; qtdeCards: numbe
   )
 }
 
-// ============================================================
-// EXTRAÇÃO DE TEXTO DO PDF — usa pdfjs-dist (browser)
-// ============================================================
-
-async function extrairTextoDoPdf(arquivo: File): Promise<string> {
-  // Import dinâmico pra split do bundle
-  const pdfjs = await import('pdfjs-dist')
-
-  // Worker via CDN (necessário pro pdfjs funcionar em browser).
-  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`
-
-  const buffer = await arquivo.arrayBuffer()
-  const pdf = await pdfjs.getDocument({ data: buffer }).promise
-
-  const partes: string[] = []
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const pagina = await pdf.getPage(i)
-    const textContent = await pagina.getTextContent()
-    const linhas: string[] = []
-    let linhaAtual = ''
-    let yAnterior: number | null = null
-
-    // Reconstrói linhas: itens com mesma altura Y são da mesma linha visual.
-    for (const item of textContent.items as Array<{ str: string; transform: number[] }>) {
-      const y = item.transform[5]
-      if (yAnterior !== null && Math.abs(y - yAnterior) > 2) {
-        linhas.push(linhaAtual)
-        linhaAtual = ''
-      }
-      linhaAtual += (linhaAtual ? ' ' : '') + item.str
-      yAnterior = y
-    }
-    if (linhaAtual) linhas.push(linhaAtual)
-
-    partes.push(linhas.join('\n'))
-  }
-
-  return partes.join('\n')
-}

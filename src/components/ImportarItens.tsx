@@ -10,8 +10,38 @@ import {
   parsePlanilhaArquivo,
   baixarTemplate,
 } from '../lib/planilha-import'
+import {
+  parsearPdfOrcamentoCompleto,
+  nomeSistema,
+  type CardImportadoUnificado,
+  type SistemaOrcamento,
+} from '../lib/parser-orcamento'
 import { useEscClose } from '../hooks/useEscClose'
 import { mensagemDeErro } from '../lib/erros'
+
+/**
+ * Adapter: converte cards unificados do roteador (SmartCEM/Wvetro) pro tipo
+ * `ItemImportado` usado pelo fluxo unificado de importação dentro da obra.
+ *
+ * V1 não traz valores monetários (decisão Thiago 09/06: G Obra é gestão,
+ * não financeiro). `precoUnit = 0`.
+ */
+function cardsUnificadosParaItensImportados(
+  cards: CardImportadoUnificado[],
+  sistema: SistemaOrcamento,
+): ItemImportado[] {
+  return cards.map((c) => ({
+    sigla: c.sigla,
+    nome: c.nome,
+    descricao: c.descricao,
+    tipo: 'peca',
+    larguraMm: c.larguraMm,
+    alturaMm: c.alturaMm,
+    localizacao: c.ambiente || '',
+    precoUnit: 0,
+    origemTipologia: `${sistema}-pdf`,
+  }))
+}
 
 interface ImportarItensProps {
   obraId: string  // pra log/debug, e pra criar os cards depois
@@ -19,14 +49,15 @@ interface ImportarItensProps {
   onImportar: (itens: ItemImportado[]) => Promise<void>
 }
 
-// Os 3 "modos" do fluxo:
-//   - 'escolha-origem': tela inicial onde user escolhe Alumisoft vs Planilha
-//   - 'alumisoft': cole o XML / anexe o arquivo .xml
+// Os "modos" do fluxo:
+//   - 'escolha-origem': tela inicial onde user escolhe a origem (A/B/C)
+//   - 'alumisoft': cole o XML / anexe o arquivo .xml (Alumisoft/SmartCEM)
+//   - 'pdf-orcamento': anexe PDF do orçamento (parser Wvetro)
 //   - 'planilha':  baixe o template / anexe a planilha preenchida
 //   - 'preview':   confere e edita antes de confirmar
-type Modo = 'escolha-origem' | 'alumisoft' | 'planilha' | 'preview'
+type Modo = 'escolha-origem' | 'alumisoft' | 'pdf-orcamento' | 'planilha' | 'preview'
 
-type Origem = 'alumisoft' | 'planilha'
+type Origem = 'alumisoft' | 'pdf-orcamento' | 'planilha'
 
 export default function ImportarItens({ obraId: _obraId, onClose, onImportar }: ImportarItensProps) {
   const [modo, setModo] = useState<Modo>('escolha-origem')
@@ -35,6 +66,9 @@ export default function ImportarItens({ obraId: _obraId, onClose, onImportar }: 
   const [erro, setErro] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [obraAlumisoft, setObraAlumisoft] = useState<AlumisoftObra | null>(null)
+  const [clientePdf, setClientePdf] = useState<string | null>(null)
+  const [sistemaPdfDetectado, setSistemaPdfDetectado] = useState<SistemaOrcamento | null>(null)
+  const [extraindoPdf, setExtraindoPdf] = useState(false)
   const [itens, setItens] = useState<ItemImportado[]>([])
   const [importando, setImportando] = useState(false)
   useEscClose(true, onClose)
@@ -75,6 +109,29 @@ export default function ImportarItens({ obraId: _obraId, onClose, onImportar }: 
       setModo('preview')
     } catch (err) {
       setErro('Não consegui interpretar o XML: ' + mensagemDeErro(err))
+    }
+  }
+
+  // ============ Processador PDF (Wvetro) ============
+
+  async function processarArquivoPdf(e: ChangeEvent<HTMLInputElement>) {
+    const arquivo = e.target.files?.[0]
+    if (!arquivo) return
+    setErro(null)
+    setAviso(null)
+    setExtraindoPdf(true)
+    try {
+      const orcamento = await parsearPdfOrcamentoCompleto(arquivo)
+      const itensConvertidos = cardsUnificadosParaItensImportados(orcamento.cards, orcamento.sistema)
+      setItens(itensConvertidos)
+      setClientePdf(orcamento.cliente.nome ?? null)
+      setSistemaPdfDetectado(orcamento.sistema)
+      setObraAlumisoft(null)
+      setModo('preview')
+    } catch (err) {
+      setErro(mensagemDeErro(err))
+    } finally {
+      setExtraindoPdf(false)
     }
   }
 
@@ -123,6 +180,8 @@ export default function ImportarItens({ obraId: _obraId, onClose, onImportar }: 
     setModo('escolha-origem')
     setItens([])
     setObraAlumisoft(null)
+    setClientePdf(null)
+    setSistemaPdfDetectado(null)
     setErro(null)
     setAviso(null)
     setTextoXml('')
@@ -141,6 +200,7 @@ export default function ImportarItens({ obraId: _obraId, onClose, onImportar }: 
             <div className="text-sm text-slate-500">
               {modo === 'escolha-origem' && 'Escolha como você quer importar a obra.'}
               {modo === 'alumisoft' && 'Use o XML exportado do Alumisoft (SmartCEM).'}
+              {modo === 'pdf-orcamento' && 'Anexe o PDF do orçamento. O sistema lê o cliente, as peças e cria os cards automaticamente.'}
               {modo === 'planilha' && 'Baixe o template, preencha em Excel/Google Sheets, depois anexe aqui.'}
               {modo === 'preview' && `${itens.length} ${itens.length === 1 ? 'item detectado' : 'itens detectados'}. Confira e ajuste antes de importar.`}
             </div>
@@ -153,7 +213,7 @@ export default function ImportarItens({ obraId: _obraId, onClose, onImportar }: 
         {modo === 'escolha-origem' && (
           <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
             <p className="text-sm text-slate-600">
-              Você pode importar de duas formas. Escolha a que se aplica ao seu caso:
+              Escolha a origem das peças. As 3 opções importam pra esta obra existente.
             </p>
 
             <button
@@ -172,13 +232,31 @@ export default function ImportarItens({ obraId: _obraId, onClose, onImportar }: 
             </button>
 
             <button
-              onClick={() => selecionarOrigem('planilha')}
+              onClick={() => selecionarOrigem('pdf-orcamento')}
               className="w-full text-left bg-white hover:bg-slate-50 border border-slate-200 rounded-xl p-5 transition group"
             >
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-lg bg-laranja-soft text-laranja-dark grid place-items-center font-bold text-lg flex-shrink-0">B</div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold text-slate-900 mb-1">Eu não uso Alumisoft — vou preencher uma planilha</div>
+                  <div className="font-bold text-slate-900 mb-1 flex items-center gap-2 flex-wrap">
+                    <span>Tenho o PDF do orçamento</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Novo</span>
+                  </div>
+                  <div className="text-sm text-slate-600">
+                    Anexe o PDF do orçamento — o sistema reconhece formatos padrão da indústria de esquadrias automaticamente. Lê o cliente, as peças e cria os cards.
+                  </div>
+                </div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => selecionarOrigem('planilha')}
+              className="w-full text-left bg-white hover:bg-slate-50 border border-slate-200 rounded-xl p-5 transition group"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-laranja-soft text-laranja-dark grid place-items-center font-bold text-lg flex-shrink-0">C</div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-slate-900 mb-1">Vou preencher uma planilha</div>
                   <div className="text-sm text-slate-600">
                     Baixe o nosso template em Excel/Google Sheets, preencha com as peças da obra e anexe de volta. Aceita .xlsx, .xls e .csv.
                   </div>
@@ -187,7 +265,7 @@ export default function ImportarItens({ obraId: _obraId, onClose, onImportar }: 
             </button>
 
             <div className="text-xs text-slate-400 pt-2">
-              <strong>Sem Alumisoft e sem planilha?</strong> Você pode criar os cards um por um pelo botão "+ Novo item" na tela da obra. A importação em massa é só pra acelerar quando você tem muitas peças.
+              <strong>Não usa nenhuma das três?</strong> Você pode criar os cards um por um pelo botão "+ Novo item" na tela da obra. A importação em massa é só pra acelerar quando você tem muitas peças.
             </div>
           </div>
         )}
@@ -221,6 +299,53 @@ export default function ImportarItens({ obraId: _obraId, onClose, onImportar }: 
               />
               <button className="btn-primary mt-3" onClick={processarTexto} disabled={!textoXml.trim()}>Processar XML</button>
             </div>
+
+            {erro && <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm">{erro}</div>}
+          </div>
+        )}
+
+        {modo === 'pdf-orcamento' && (
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+            <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-xs text-slate-600">
+              <div className="font-semibold text-slate-700 mb-1">Como funciona</div>
+              Anexe o PDF do orçamento. O sistema identifica automaticamente o cliente, as peças (tipologias, dimensões, vidros) e cria os cards prontos pra você ajustar antes de importar. Funciona com o formato de orçamento padrão da indústria de esquadrias.
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Anexar PDF do orçamento</label>
+              <input
+                type="file"
+                accept="application/pdf,.pdf"
+                onChange={processarArquivoPdf}
+                disabled={extraindoPdf}
+                className="block w-full text-sm text-slate-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border file:border-slate-200 file:text-sm file:font-semibold file:bg-white file:text-slate-700 hover:file:bg-slate-50 disabled:opacity-50"
+              />
+              <div className="text-xs text-slate-400 mt-2">
+                Tamanho máximo: 10MB. Costuma levar 2-5 segundos pra processar.
+              </div>
+            </div>
+
+            {extraindoPdf && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
+                <span className="animate-pulse">📄</span>
+                <span>Lendo o PDF e identificando itens...</span>
+              </div>
+            )}
+
+            <details className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <summary className="cursor-pointer font-semibold text-slate-700">O que o sistema identifica</summary>
+              <ul className="mt-2 space-y-1 list-disc list-inside">
+                <li><strong>Cliente</strong> do orçamento (nome / cidade)</li>
+                <li><strong>Tipo, descrição e quantidade</strong> de cada item</li>
+                <li><strong>Dimensões</strong> (largura × altura em mm)</li>
+                <li><strong>Tipologia</strong> (correr, giro, maxim-ar, fixo)</li>
+                <li><strong>Vidro</strong> (cor, espessura, tratamento)</li>
+                <li><strong>Cor do perfil</strong> e ambiente de instalação</li>
+              </ul>
+              <p className="mt-2 text-slate-500">
+                Cada item com quantidade &gt; 1 vira N cards individuais (ex: PA2 com qtde 4 → PA2-1, PA2-2, PA2-3, PA2-4).
+              </p>
+            </details>
 
             {erro && <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm">{erro}</div>}
           </div>
@@ -303,6 +428,28 @@ export default function ImportarItens({ obraId: _obraId, onClose, onImportar }: 
               </div>
             )}
 
+            {!obraAlumisoft && origem === 'pdf-orcamento' && (
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-2 flex-wrap">
+                  <span>Detectado no PDF</span>
+                  {sistemaPdfDetectado && (
+                    <span className="font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full normal-case tracking-normal">
+                      {nomeSistema(sistemaPdfDetectado)}
+                    </span>
+                  )}
+                </div>
+                <div className="text-sm text-slate-700 space-y-1">
+                  {clientePdf && (
+                    <div><span className="text-slate-500">Cliente:</span> <strong>{clientePdf}</strong></div>
+                  )}
+                  <div>
+                    <span className="text-slate-500">Peças:</span>{' '}
+                    <strong>{itens.length}</strong> {itens.length === 1 ? 'card detectado' : 'cards detectados'} (1 por unidade da quantidade).
+                  </div>
+                </div>
+              </div>
+            )}
+
             {aviso && (
               <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg text-sm">
                 {aviso}
@@ -353,7 +500,7 @@ export default function ImportarItens({ obraId: _obraId, onClose, onImportar }: 
           {modo === 'preview' && (
             <button className="btn-ghost" onClick={voltarParaEscolha}>Voltar</button>
           )}
-          {(modo === 'alumisoft' || modo === 'planilha') && (
+          {(modo === 'alumisoft' || modo === 'pdf-orcamento' || modo === 'planilha') && (
             <button className="btn-ghost" onClick={() => setModo('escolha-origem')}>Voltar</button>
           )}
           <button className="btn-ghost" onClick={onClose}>Cancelar</button>
