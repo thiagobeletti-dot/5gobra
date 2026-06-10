@@ -136,57 +136,75 @@ function extrairCliente(texto: string): ClienteWvetro {
 // ============================================================
 
 function extrairItens(texto: string): ItemWvetro[] {
-  // ATUALIZADO 09/06/2026 com base no texto REAL do pdfjs-dist (não como eu
-  // imaginei na 1ª versão). O pdfjs entrega ordem visual top-down, e cada
-  // item tem estrutura previsível em ~15 linhas. Estratégia: state machine
-  // linha a linha, ao invés de regex em texto contínuo.
+  // REFATORADO 10/06/2026 — domínio confirmado pelo Thiago:
+  //   "No Wvetro o ITEM é obrigatório, o TIPO é opcional.
+  //    No SmartCEM (CEM) o Tipo é obrigatório."
   //
-  // Padrão real de um item (verificado em produção com PDF do Vitor):
+  // Por isso a âncora PRIMÁRIA do parser Wvetro é "ITEM <n>" — sempre presente.
+  // "DATA ENTREGA: / /" também serve, mas em PDFs com layout 2-colunas pode
+  // aparecer na mesma linha de outros campos (LINHA: L. SUPREMA / / DATA ENTREGA: / /).
   //
-  //   / / DATA ENTREGA:           ← MARCADOR de início de item
-  //   TIPO:   <codigo>             ← código (PA1, PA2, JA1, etc — pode ser vazio)
-  //   <ordem>                       ← número do item (1, 2, 3...)
-  //   ITEM
-  //   <vlr_unit>   <vlr_total>      ← valores (DESCARTADOS — só marcador)
-  //   *LOCAL/AMBIENTE:   <texto>
-  //   *COR PERFIL:   <cor>
-  //   <vidro_desc>                  ← "INCOLOR 06MM - TEMPERADO" ou "SEM VIDRO"
-  //   <cor_acessorio>               ← geralmente "BRANCO"
-  //   <descricao> | <linha>         ← pode quebrar em 2 linhas se descrição longa
-  //   L. <linha>
-  //   *COR ACESSÓRIO:
-  //   LINHA:
-  //   QTDE.   LARGURA:   ALTURA:   COR E ESPESSURA   VLR. TOTAL
-  //   <qtde>   <larg>   <alt>
-  //   VLR. UNIT.
+  // Estratégia de detecção de blocos:
+  //   1. Detecta TODAS as ocorrências de "ITEM" em linha solta + número de ordem
+  //   2. Cada bloco vai de uma ocorrência de ITEM até a próxima (ou até o fim)
+  //   3. Bloco é parseado por busca anchorada (parsearBlocoItemLinhas)
+  //
+  // Variações de layout cobertas:
+  //   - LEMAM (Vitor): 1 coluna, TIPO preenchido, ITEM e número em linhas separadas
+  //   - ELVIS CALHAS (Anderson): 2 colunas, TIPO vazio, layout multi-coluna
 
   const linhas = texto
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter(Boolean)
 
-  const itens: ItemWvetro[] = []
-  let bloco: string[] = []
-  let dentroDeItem = false
-
-  for (const linha of linhas) {
-    if (/^\/\s*\/\s*DATA ENTREGA:/i.test(linha)) {
-      // Início de novo item — fecha o anterior se houver
-      if (dentroDeItem && bloco.length > 0) {
-        const item = parsearBlocoItemLinhas(bloco)
-        if (item) itens.push(item)
+  // Acha índices de cada linha "ITEM" que tem número em sequência (ordem do item).
+  // Cuidado: header de tabela tem "ITEM | QTDE | ..." — descartamos esses casos.
+  const indicesItem: { idx: number; ordem: number }[] = []
+  for (let i = 0; i < linhas.length; i++) {
+    const l = linhas[i]
+    // Linha que é EXATAMENTE "ITEM" (com possíveis variações de espaço)
+    if (/^ITEM\s*$/i.test(l)) {
+      // Procura próxima linha que seja um número puro (ordem do item)
+      // Pode estar 1-3 linhas adiante (pdfjs ordena por XY)
+      for (let j = i - 3; j <= i + 3; j++) {
+        if (j < 0 || j >= linhas.length || j === i) continue
+        if (/^\d+$/.test(linhas[j])) {
+          const n = parseInt(linhas[j], 10)
+          if (n >= 1 && n < 1000) {
+            indicesItem.push({ idx: i, ordem: n })
+            break
+          }
+        }
       }
-      bloco = []
-      dentroDeItem = true
-      continue
-    }
-    if (dentroDeItem) {
-      bloco.push(linha)
     }
   }
-  // Fecha último bloco
-  if (dentroDeItem && bloco.length > 0) {
-    const item = parsearBlocoItemLinhas(bloco)
+
+  // Fallback: se NENHUM "ITEM" sozinho foi achado, usa "DATA ENTREGA" como âncora
+  // (cobre PDFs onde a estrutura é mais condensada).
+  if (indicesItem.length === 0) {
+    const reInicioItemFallback = /\/\s*\/\s*DATA\s*ENTREGA:/i
+    let ordemContador = 0
+    for (let i = 0; i < linhas.length; i++) {
+      if (reInicioItemFallback.test(linhas[i])) {
+        ordemContador += 1
+        indicesItem.push({ idx: i, ordem: ordemContador })
+      }
+    }
+  }
+
+  if (indicesItem.length === 0) return []
+
+  // Pra cada âncora, monta bloco do item: das ~10 linhas antes até a próxima âncora.
+  // Inclui linhas anteriores porque o pdfjs com ordenação XY pode ter o cabeçalho
+  // do item (descrição, cor, vidro) ANTES do "ITEM" na ordem do texto.
+  const itens: ItemWvetro[] = []
+  for (let i = 0; i < indicesItem.length; i++) {
+    const { idx, ordem } = indicesItem[i]
+    const inicio = i === 0 ? 0 : indicesItem[i - 1].idx + 1
+    const fim = i === indicesItem.length - 1 ? linhas.length : indicesItem[i + 1].idx
+    const bloco = linhas.slice(inicio, fim)
+    const item = parsearBlocoItemLinhas(bloco, ordem)
     if (item) itens.push(item)
   }
 
@@ -194,167 +212,172 @@ function extrairItens(texto: string): ItemWvetro[] {
 }
 
 /**
- * Parseia um bloco de item (lista de linhas entre 2 marcadores DATA ENTREGA).
- * Usa state machine pra extrair os campos na ordem que aparecem no PDF do Wvetro.
+ * Parseia um bloco de item (linhas entre 2 marcadores DATA ENTREGA).
+ *
+ * REFATORADO 10/06/2026 pra busca anchorada (independente da ordem das linhas).
+ * Variações cobertas:
+ *   - TIPO vazio (LEMAM tem "TIPO: PA1", ELVIS CALHAS tem "TIPO:" vazio)
+ *   - *LOCAL/AMBIENTE vazio
+ *   - Layout 1-coluna (LEMAM) OU 2-colunas (ELVIS — vários campos lado-a-lado)
+ *   - Coluna M2 nova na tabela (ELVIS)
+ *   - "ITEM" + ordem em linhas separadas OU dentro da linha de dados
+ *
+ * Estratégia: junta TUDO do bloco numa string + lista de linhas, depois busca
+ * cada campo INDEPENDENTEMENTE com regex. Sem state machine sequencial.
  */
-function parsearBlocoItemLinhas(linhas: string[]): ItemWvetro | null {
+function parsearBlocoItemLinhas(linhas: string[], ordem: number): ItemWvetro | null {
+  // Normaliza linhas (espaços, trim)
+  const ls = linhas.map((l) => l.replace(/\s+/g, ' ').trim()).filter(Boolean)
+  const textoBloco = ls.join('\n')
+
+  // ============ TIPO (código PA1, JA1 ou VAZIO) ============
+  // Domínio (Thiago 10/06): No Wvetro, TIPO é OPCIONAL — vidraçarias como a
+  // WS VIDROS (Anderson) deixam vazio. A âncora real é ITEM, que já veio
+  // resolvida pelo extrairItens. Aqui captura TIPO se vier preenchido.
   let tipo = ''
-  let ordem: number | null = null
-  let vlrEncontrado = false
+  const mTipo = textoBloco.match(/TIPO:\s*([A-Z0-9]*)/i)
+  if (mTipo) tipo = mTipo[1].trim()
+
+  // ============ *LOCAL/AMBIENTE (pode ser vazio) ============
   let ambiente = ''
+  const mAmb = textoBloco.match(/\*LOCAL\/AMBIENTE:\s*([^\n*]*)/i)
+  if (mAmb) ambiente = mAmb[1].trim()
+
+  // ============ *COR PERFIL ============
   let corPerfil = ''
-  let vidroDesc = ''
+  const mCorP = textoBloco.match(/\*COR\s*PERFIL:\s*([A-ZÁÉÍÓÚÂÊÔÃÇ\s/\-]+?)(?=\s*\*|\s*\n|$)/i)
+  if (mCorP) corPerfil = mCorP[1].trim()
+
+  // ============ *COR ACESSÓRIO ============
   let corAcessorio = ''
-  let descricaoBuffer = ''
-  let descricaoCompleta = ''
+  const mCorA = textoBloco.match(/\*COR\s*ACESS[ÓO]RIO:\s*([A-ZÁÉÍÓÚÂÊÔÃÇ\s/\-]*?)(?=\s*\*|\s*\n|$)/i)
+  if (mCorA) corAcessorio = mCorA[1].trim()
+
+  // ============ LINHA do produto (ex: SUPREMA) ============
+  // Procura "L. SUPREMA" ou "LINHA: L. SUPREMA"
   let linhaProduto = ''
+  const mLinha = textoBloco.match(/L\.\s*([A-ZÁÉÍÓÚÂÊÔÃÇ]+)/i)
+  if (mLinha) linhaProduto = mLinha[1].toUpperCase()
+
+  // ============ VIDRO ============
+  // Busca padrões: "INCOLOR 06MM - TEMPERADO", "INCOLOR 6MM - TEMPERADO",
+  // "SEM VIDRO", "BRANCO X 04MM - LAMINADO", etc.
+  let vidroDesc = ''
+  // Primeiro tenta SEM VIDRO
+  if (/\bSEM\s+VIDRO\b/i.test(textoBloco)) {
+    vidroDesc = 'SEM VIDRO'
+  } else {
+    // Linha que tem "(palavra) (n)MM - (tipo)" — pega a linha inteira
+    for (const l of ls) {
+      if (/\d+\s*MM\s*-\s*(TEMPERADO|LAMINADO|COMUM|FLOAT)/i.test(l)) {
+        vidroDesc = l
+        break
+      }
+    }
+    // Fallback: qualquer linha com "MM" e tipo de vidro
+    if (!vidroDesc) {
+      for (const l of ls) {
+        if (/\d+\s*MM/i.test(l) && /(TEMPERADO|LAMINADO|COMUM|FLOAT|INCOLOR)/i.test(l)) {
+          vidroDesc = l
+          break
+        }
+      }
+    }
+  }
+
+  // ============ DESCRIÇÃO COMPLETA ============
+  // Linha com "|" que tem palavras-chave de tipologia. Pode quebrar em 2 linhas
+  // (a 2ª linha contém só o nome da linha SUPREMA/GOLD).
+  let descricaoCompleta = ''
+  for (let i = 0; i < ls.length; i++) {
+    const l = ls[i]
+    const ehDescr =
+      l.includes('|') &&
+      /(PORTA|JANELA|MAXIM|FIXO|BASCUL|CORRER|GIRO|TAMPA|CAIXIL|CALHA|VENTILA|LAMBRI)/i.test(l)
+    if (!ehDescr) continue
+
+    descricaoCompleta = l
+    // Se a linha termina com "|" sozinho, junta a próxima linha (continuação)
+    if (/\|\s*$/.test(descricaoCompleta) && i + 1 < ls.length) {
+      const proxima = ls[i + 1]
+      if (proxima && /^[A-ZÁÉÍÓÚÂÊÔÃÇ ]+$/i.test(proxima) && proxima.length < 30) {
+        descricaoCompleta += ' ' + proxima
+      }
+    }
+    // Limpa a parte depois do último "|" (que é o nome da linha SUPREMA)
+    const partes = descricaoCompleta.split('|').map((s) => s.trim())
+    if (partes.length > 1) {
+      // Junta tudo menos a última (que é a linha de produto, já capturada em linhaProduto)
+      descricaoCompleta = partes.slice(0, -1).join(' | ')
+    }
+    break
+  }
+
+  // ============ DIMENSÕES (qtde, largura, altura) ============
+  // Linhas comuns:
+  //   LEMAM:  "1 2600 2100"       (qtde larg alt)
+  //   ELVIS:  "1 1 1,500 1500 1000 INCOLOR 6MM - TEMPERADO 2.800,00 2.800,00"
+  //           (item qtde m2 larg alt cor_vidro vlr_un vlr_total)
+  // Estratégia: procura 3 números inteiros consecutivos onde 2º e 3º estão na
+  // faixa de dimensões (200-30000mm).
   let qtde: number | null = null
   let larguraMm: number | null = null
   let alturaMm: number | null = null
 
-  type Estado =
-    | 'tipo'
-    | 'ordem'
-    | 'item'
-    | 'valores'
-    | 'ambiente'
-    | 'corPerfil'
-    | 'vidro'
-    | 'corAcessorio'
-    | 'descricao'
-    | 'linhaProduto'
-    | 'qtdeLabel'
-    | 'dimensoes'
-    | 'fim'
+  for (const l of ls) {
+    // Skip linhas que são header da tabela
+    if (/QTDE|LARGURA|ALTURA|COR.*ESPESSURA|VLR/i.test(l)) continue
 
-  let estado: Estado = 'tipo'
-
-  for (const linha of linhas) {
-    // Normaliza espaços múltiplos pra um só
-    const l = linha.replace(/\s+/g, ' ').trim()
-
-    if (estado === 'tipo' && /^TIPO:/i.test(l)) {
-      tipo = l.replace(/^TIPO:/i, '').trim()
-      estado = 'ordem'
-      continue
-    }
-    if (estado === 'ordem' && /^\d+$/.test(l)) {
-      ordem = parseInt(l, 10)
-      estado = 'item'
-      continue
-    }
-    if (estado === 'item' && /^ITEM$/i.test(l)) {
-      estado = 'valores'
-      continue
-    }
-    if (estado === 'valores' && /[\d.]+,\d{2}.*[\d.]+,\d{2}/.test(l)) {
-      // Linha "4.245,74   4.245,74" — descarta valores, só marca passagem
-      vlrEncontrado = true
-      estado = 'ambiente'
-      continue
-    }
-    if (estado === 'ambiente' && /^\*LOCAL\/AMBIENTE:/i.test(l)) {
-      ambiente = l.replace(/^\*LOCAL\/AMBIENTE:/i, '').trim()
-      estado = 'corPerfil'
-      continue
-    }
-    if (estado === 'corPerfil' && /^\*COR PERFIL:/i.test(l)) {
-      corPerfil = l.replace(/^\*COR PERFIL:/i, '').trim()
-      estado = 'vidro'
-      continue
-    }
-    if (estado === 'vidro') {
-      // Linha solta — pode ser "INCOLOR 06MM - TEMPERADO", "SEM VIDRO", etc
-      vidroDesc = l
-      estado = 'corAcessorio'
-      continue
-    }
-    if (estado === 'corAcessorio') {
-      // Linha solta — geralmente "BRANCO"
-      corAcessorio = l
-      estado = 'descricao'
-      continue
-    }
-    if (estado === 'descricao') {
-      // Caso 1: linha "L. SUPREMA" — encerra descrição. Cravado 09/06 após
-      // bug em prod: state machine ficava preso em 'descricao' acumulando
-      // linhas indefinidamente porque o check de "L." estava fora do bloco.
-      const lMatch = l.match(/^L\.\s*([A-ZÁÉÍÓÚÂÊÔÃÇ]+)/i)
-      if (lMatch) {
-        if (!linhaProduto) linhaProduto = lMatch[1]
-        if (!descricaoCompleta && descricaoBuffer) {
-          descricaoCompleta = descricaoBuffer
-        }
-        estado = 'qtdeLabel'
-        continue
+    // Padrão LEMAM (3 inteiros separados): "1 2600 2100"
+    let m = l.match(/^(\d+)\s+(\d{2,5})\s+(\d{2,5})\b/)
+    if (m) {
+      const q = parseInt(m[1], 10)
+      const lg = parseInt(m[2], 10)
+      const al = parseInt(m[3], 10)
+      // Valida dimensões plausíveis: largura/altura em mm (200-30000)
+      if (lg >= 200 && lg <= 30000 && al >= 200 && al <= 30000 && q > 0 && q < 1000) {
+        qtde = q
+        larguraMm = lg
+        alturaMm = al
+        break
       }
-
-      // Caso 2: linha contém "|" — descrição + linha de produto na mesma linha
-      // ou descrição quebrada (termina com "|" sem linha de produto)
-      if (l.includes('|')) {
-        const [desc, lp] = l.split('|').map((s) => s.trim())
-        if (desc) descricaoCompleta = desc
-        if (lp) {
-          // "PORTA DE GIRO ... | SUPREMA" — tudo numa linha
-          linhaProduto = lp
-          estado = 'qtdeLabel'
-        } else {
-          // "PORTA DE GIRO ... |" sozinho — próxima linha é a linha do produto
-          estado = 'linhaProduto'
-        }
-        continue
-      }
-
-      // Caso 3: linha sem "|" e sem "L." — acumula no buffer (descrição longa
-      // que pode vir em múltiplas linhas antes do "|")
-      if (descricaoBuffer) {
-        descricaoBuffer += ' ' + l
-      } else {
-        descricaoBuffer = l
-      }
-      continue
     }
 
-    if (estado === 'linhaProduto') {
-      // Vem após "PORTA DE GIRO ... |" sozinho. Próxima linha (ex: "SUPREMA")
-      // é a linha de produto. Aí vem o "L. SUPREMA" que cai em qtdeLabel.
-      linhaProduto = l
-      estado = 'qtdeLabel'
-      continue
-    }
-
-    // Fora do estado 'descricao' — "L. SUPREMA" como fallback (caso raríssimo
-    // de chegar aqui sem ter passado pelo if interno acima)
-    if (/^L\.\s*([A-ZÁÉÍÓÚÂÊÔÃÇ]+)/i.test(l)) {
-      const m = l.match(/^L\.\s*([A-ZÁÉÍÓÚÂÊÔÃÇ]+)/i)
-      if (m && !linhaProduto) linhaProduto = m[1]
-      estado = 'qtdeLabel'
-      continue
-    }
-    if (estado === 'qtdeLabel' && /^QTDE\./i.test(l)) {
-      estado = 'dimensoes'
-      continue
-    }
-    if (estado === 'dimensoes') {
-      // Linha "1 2600 2100" — qtde, largura, altura
-      const m = l.match(/^(\d+)\s+(\d+)\s+(\d+)/)
-      if (m) {
-        qtde = parseInt(m[1], 10)
-        larguraMm = parseInt(m[2], 10)
-        alturaMm = parseInt(m[3], 10)
-        estado = 'fim'
-        continue
+    // Padrão ELVIS (linha completa da tabela com M2):
+    // "1 1 1,500 1500 1000 INCOLOR..."  ou  "1 1 1500 1000 ..."
+    m = l.match(/^\d+\s+(\d+)\s+[\d.,]+\s+(\d{2,5})\s+(\d{2,5})\b/)
+    if (m) {
+      const q = parseInt(m[1], 10)
+      const lg = parseInt(m[2], 10)
+      const al = parseInt(m[3], 10)
+      if (lg >= 200 && lg <= 30000 && al >= 200 && al <= 30000 && q > 0 && q < 1000) {
+        qtde = q
+        larguraMm = lg
+        alturaMm = al
+        break
       }
     }
   }
 
-  if (!vlrEncontrado || ordem === null || qtde === null || larguraMm === null || alturaMm === null) {
+  // ============ VALIDAÇÃO MÍNIMA ============
+  // Pra considerar um bloco válido, precisa pelo menos das dimensões e qtde.
+  // Tipo e ambiente podem vir vazios (ELVIS CALHAS). Ordem cai no fallback se
+  // não detectada.
+  if (qtde === null || larguraMm === null || alturaMm === null) {
     return null
   }
 
-  // Se descrição ficou no buffer mas não foi finalizada com "|", usa o buffer
-  if (!descricaoCompleta && descricaoBuffer) {
-    descricaoCompleta = descricaoBuffer
+  // Se descrição não foi encontrada, tenta usar a primeira linha "longa em
+  // maiúsculas" do bloco como fallback.
+  if (!descricaoCompleta) {
+    for (const l of ls) {
+      if (l.length > 15 && /^[A-ZÁÉÍÓÚÂÊÔÃÇ0-9\s|()/-]+$/i.test(l)) {
+        if (/(PORTA|JANELA|MAXIM|FIXO|BASCUL|CORRER|GIRO|CALHA|TAMPA)/i.test(l)) {
+          descricaoCompleta = l.replace(/\|.*$/, '').trim()
+          break
+        }
+      }
+    }
   }
 
   return {
