@@ -261,6 +261,20 @@ function itensDoOrcamento(orc: OrcamentoUnificado): ItemPreview[] {
       corPerfil: i.corPerfil,
     }))
   }
+  if (orc.detalhes.wvetroV2) {
+    return orc.detalhes.wvetroV2.itens.map((i) => ({
+      chave: String(i.ordem),
+      codigo: `IT${i.ordem}`,
+      descricao: i.descricaoCompleta,
+      qtde: i.qtde,
+      larguraMm: i.larguraMm,
+      alturaMm: i.alturaMm,
+      ambiente: i.ambiente,
+      tipologia: i.tipologia,
+      vidroDescricao: i.vidro.descricaoBruta || 'Sem vidro',
+      corPerfil: i.corPerfil,
+    }))
+  }
   if (orc.detalhes.smartcem) {
     return orc.detalhes.smartcem.itens.map((i) => ({
       chave: String(i.ordem),
