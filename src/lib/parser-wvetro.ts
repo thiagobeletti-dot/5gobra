@@ -533,7 +533,18 @@ function formatarTitulo(s: string): string {
 
 /**
  * Extrai texto bruto de um arquivo PDF usando pdfjs-dist no browser.
- * Reconstrói linhas baseado na posição Y do transform de cada item.
+ *
+ * Reconstrói linhas baseado na posição Y do transform de cada item, E ordena
+ * items DENTRO de cada linha por posição X.
+ *
+ * Por que a ordenação por X importa: o pdfjs entrega items na ordem do stream
+ * interno do PDF, que não é garantida visual esquerda→direita. Em PDFs com
+ * tabelas (ex: SmartCEM), o stream pode estar em ordem por coluna, embaralhando
+ * o texto reconstruído. Bug histórico cravado em 10/06: SmartCEM entregava
+ * "Tipo: Linha: L: H: Qtd:" em vez de "Tipo: Qtd: L: H: Linha:".
+ *
+ * Fix: agrupa items por linha (Y), depois ordena por X (transform[4]) antes
+ * de concatenar. Funciona pra qualquer PDF (não muda o output do Wvetro).
  */
 export async function extrairTextoDoPdf(arquivo: File): Promise<string> {
   // Import dinâmico pra split do bundle
@@ -549,21 +560,46 @@ export async function extrairTextoDoPdf(arquivo: File): Promise<string> {
   for (let i = 1; i <= pdf.numPages; i++) {
     const pagina = await pdf.getPage(i)
     const textContent = await pagina.getTextContent()
-    const linhas: string[] = []
-    let linhaAtual = ''
-    let yAnterior: number | null = null
 
-    // Reconstrói linhas: itens com mesma altura Y são da mesma linha visual.
-    for (const item of textContent.items as Array<{ str: string; transform: number[] }>) {
-      const y = item.transform[5]
-      if (yAnterior !== null && Math.abs(y - yAnterior) > 2) {
-        linhas.push(linhaAtual)
-        linhaAtual = ''
+    // Agrupa items por linha (mesmo Y, com tolerância de 2pt)
+    type Item = { str: string; x: number; y: number }
+    const items: Item[] = (textContent.items as Array<{ str: string; transform: number[] }>).map(
+      (it) => ({ str: it.str, x: it.transform[4], y: it.transform[5] }),
+    )
+
+    // Bucket por Y arredondado pra agrupar linhas visualmente similares
+    const linhasBuckets: Map<number, Item[]> = new Map()
+    for (const item of items) {
+      // Arredonda Y pra inteiro pra tolerar pequenas variações
+      const yKey = Math.round(item.y)
+      // Procura bucket existente com Y próximo (tolerância 2pt)
+      let bucketKey = yKey
+      for (const k of linhasBuckets.keys()) {
+        if (Math.abs(k - yKey) <= 2) {
+          bucketKey = k
+          break
+        }
       }
-      linhaAtual += (linhaAtual ? ' ' : '') + item.str
-      yAnterior = y
+      const arr = linhasBuckets.get(bucketKey) ?? []
+      arr.push(item)
+      linhasBuckets.set(bucketKey, arr)
     }
-    if (linhaAtual) linhas.push(linhaAtual)
+
+    // Ordena buckets por Y descrescente (PDF tem Y crescente de baixo pra cima)
+    const yOrdenados = Array.from(linhasBuckets.keys()).sort((a, b) => b - a)
+
+    const linhas: string[] = []
+    for (const y of yOrdenados) {
+      const itensLinha = linhasBuckets.get(y)!
+      // Ordena items DENTRO da linha por X crescente (esquerda → direita)
+      itensLinha.sort((a, b) => a.x - b.x)
+      const texto = itensLinha
+        .map((it) => it.str)
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+      if (texto) linhas.push(texto)
+    }
 
     partes.push(linhas.join('\n'))
   }
