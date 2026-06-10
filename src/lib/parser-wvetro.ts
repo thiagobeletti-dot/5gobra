@@ -137,74 +137,61 @@ function extrairCliente(texto: string): ClienteWvetro {
 
 function extrairItens(texto: string): ItemWvetro[] {
   // REFATORADO 10/06/2026 — domínio confirmado pelo Thiago:
-  //   "No Wvetro o ITEM é obrigatório, o TIPO é opcional.
-  //    No SmartCEM (CEM) o Tipo é obrigatório."
+  //   "No Wvetro o ITEM é obrigatório, o TIPO é opcional."
   //
-  // Por isso a âncora PRIMÁRIA do parser Wvetro é "ITEM <n>" — sempre presente.
-  // "DATA ENTREGA: / /" também serve, mas em PDFs com layout 2-colunas pode
-  // aparecer na mesma linha de outros campos (LINHA: L. SUPREMA / / DATA ENTREGA: / /).
+  // ANCORA PRIMÁRIA: "*COR PERFIL:". Por que essa e não "ITEM" ou "DATA ENTREGA":
+  //   - "ITEM" no PDF do LEMAM aparece sozinho (label vertical); no PDF do
+  //     Anderson (ELVIS CALHAS) aparece como header da tabela junto com QTDE,
+  //     M2, LARGURA — não é distinguível.
+  //   - "DATA ENTREGA: / /" no LEMAM aparece como "/ / DATA ENTREGA:" (ordem
+  //     "/" antes); no Anderson aparece como "DATA ENTREGA: / /" (ordem inversa)
+  //     porque está lado-a-lado com LINHA: na linha 2-colunas.
+  //   - "*COR PERFIL:" aparece exatamente 1x por item nos DOIS PDFs e nunca
+  //     em headers de tabela. É a âncora mais estável.
   //
-  // Estratégia de detecção de blocos:
-  //   1. Detecta TODAS as ocorrências de "ITEM" em linha solta + número de ordem
-  //   2. Cada bloco vai de uma ocorrência de ITEM até a próxima (ou até o fim)
-  //   3. Bloco é parseado por busca anchorada (parsearBlocoItemLinhas)
+  // Estratégia:
+  //   1. Detecta TODAS as ocorrências de "*COR PERFIL:" no texto
+  //   2. Cada ocorrência marca um item
+  //   3. Bloco do item N vai da ocorrência N-1 (ou início) até a N (exclusive)
+  //      OU da ocorrência N até N+1 — usamos meio-a-meio pra capturar contexto
+  //      tanto antes quanto depois do label.
   //
   // Variações de layout cobertas:
-  //   - LEMAM (Vitor): 1 coluna, TIPO preenchido, ITEM e número em linhas separadas
-  //   - ELVIS CALHAS (Anderson): 2 colunas, TIPO vazio, layout multi-coluna
+  //   - LEMAM (Vitor): 1 coluna, TIPO preenchido
+  //   - ELVIS CALHAS (Anderson): 2 colunas, TIPO vazio, coluna M2 nova
+  //   - Futuras vidraçarias com layouts customizados
 
   const linhas = texto
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter(Boolean)
 
-  // Acha índices de cada linha "ITEM" que tem número em sequência (ordem do item).
-  // Cuidado: header de tabela tem "ITEM | QTDE | ..." — descartamos esses casos.
-  const indicesItem: { idx: number; ordem: number }[] = []
+  // Acha índices de cada linha que contém "*COR PERFIL:"
+  const indicesAncora: number[] = []
   for (let i = 0; i < linhas.length; i++) {
-    const l = linhas[i]
-    // Linha que é EXATAMENTE "ITEM" (com possíveis variações de espaço)
-    if (/^ITEM\s*$/i.test(l)) {
-      // Procura próxima linha que seja um número puro (ordem do item)
-      // Pode estar 1-3 linhas adiante (pdfjs ordena por XY)
-      for (let j = i - 3; j <= i + 3; j++) {
-        if (j < 0 || j >= linhas.length || j === i) continue
-        if (/^\d+$/.test(linhas[j])) {
-          const n = parseInt(linhas[j], 10)
-          if (n >= 1 && n < 1000) {
-            indicesItem.push({ idx: i, ordem: n })
-            break
-          }
-        }
-      }
+    if (/\*COR\s*PERFIL:/i.test(linhas[i])) {
+      indicesAncora.push(i)
     }
   }
 
-  // Fallback: se NENHUM "ITEM" sozinho foi achado, usa "DATA ENTREGA" como âncora
-  // (cobre PDFs onde a estrutura é mais condensada).
-  if (indicesItem.length === 0) {
-    const reInicioItemFallback = /\/\s*\/\s*DATA\s*ENTREGA:/i
-    let ordemContador = 0
-    for (let i = 0; i < linhas.length; i++) {
-      if (reInicioItemFallback.test(linhas[i])) {
-        ordemContador += 1
-        indicesItem.push({ idx: i, ordem: ordemContador })
-      }
-    }
-  }
+  if (indicesAncora.length === 0) return []
 
-  if (indicesItem.length === 0) return []
-
-  // Pra cada âncora, monta bloco do item: das ~10 linhas antes até a próxima âncora.
-  // Inclui linhas anteriores porque o pdfjs com ordenação XY pode ter o cabeçalho
-  // do item (descrição, cor, vidro) ANTES do "ITEM" na ordem do texto.
+  // Pra cada âncora, monta um bloco que vai do meio do gap anterior até o
+  // meio do gap posterior. Isso captura linhas tanto antes quanto depois do
+  // "*COR PERFIL:" (descrição costuma vir antes, dimensões depois).
   const itens: ItemWvetro[] = []
-  for (let i = 0; i < indicesItem.length; i++) {
-    const { idx, ordem } = indicesItem[i]
-    const inicio = i === 0 ? 0 : indicesItem[i - 1].idx + 1
-    const fim = i === indicesItem.length - 1 ? linhas.length : indicesItem[i + 1].idx
+  for (let i = 0; i < indicesAncora.length; i++) {
+    const ancoraAtual = indicesAncora[i]
+    const ancoraAnterior = i > 0 ? indicesAncora[i - 1] : -1
+    const ancoraProxima = i < indicesAncora.length - 1 ? indicesAncora[i + 1] : linhas.length
+
+    // Início do bloco: ponto médio entre anterior e atual (ou 0)
+    const inicio = ancoraAnterior === -1 ? 0 : Math.floor((ancoraAnterior + ancoraAtual) / 2)
+    // Fim do bloco: ponto médio entre atual e próxima
+    const fim = Math.floor((ancoraAtual + ancoraProxima) / 2)
+
     const bloco = linhas.slice(inicio, fim)
-    const item = parsearBlocoItemLinhas(bloco, ordem)
+    const item = parsearBlocoItemLinhas(bloco, i + 1)
     if (item) itens.push(item)
   }
 

@@ -108,8 +108,11 @@ export async function parsearPdfOrcamentoCompleto(
     const orc = parsearTextoWvetro(texto)
     if (orc.itens.length === 0) {
       console.warn('[parser-orcamento] Wvetro detectado mas 0 itens parseados. Cliente:', orc.cliente)
+      console.info('[parser-orcamento] ============ TEXTO EXTRAÍDO ============')
+      console.info(texto)
+      console.info('[parser-orcamento] ============ FIM TEXTO (', texto.length, 'chars) ============')
       throw new Error(
-        'PDF reconhecido como W.Vetro, mas nenhum item foi identificado. Confere se é o PDF de orçamento completo (com tipo, dimensões e quantidades por item).',
+        'PDF reconhecido como W.Vetro, mas nenhum item foi identificado. Abre o console (F12 → Console) e copia o texto que aparece — me manda no chat pra eu calibrar.',
       )
     }
     const cardsWvetro = expandirCardsWvetro(orc.itens)
