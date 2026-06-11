@@ -355,6 +355,7 @@ export default function ObraTecnico() {
       {cardAberto && (
         <ModalCardTecnico
           card={cardAberto}
+          tecnicoNome={tecnico?.nome ?? 'Técnico'}
           onClose={() => setCardAbertoId(null)}
           onAbrirM1={() => setFormM1(cardAberto.id)}
           onAbrirM2={() => setFormM2(cardAberto.id)}
@@ -366,6 +367,21 @@ export default function ObraTecnico() {
           onRemoverFoto={async (fotoId) => {
             await removerFotoTecnico(cardAberto.id, fotoId)
             toast('Foto removida')
+          }}
+          onRegistrarObservacao={async (texto, interno) => {
+            if (!texto.trim() || !supabasePublico || !obraReal) return
+            await adicionarHistorico(
+              {
+                card_id: cardAberto.id,
+                autor: tecnico?.nome ?? 'Técnico',
+                autor_tipo: 'tecnico',
+                texto,
+                interno,
+              },
+              supabasePublico,
+            )
+            await recarregar(obraReal.id)
+            toast(interno ? 'Observação interna salva (cliente não vê)' : 'Observação registrada')
           }}
         />
       )}
@@ -483,15 +499,20 @@ function CardTecView({ card, onClick }: { card: Card; onClick: () => void }) {
   )
 }
 
-function ModalCardTecnico({ card, onClose, onAbrirM1, onAbrirM2, onAdicionarFotos, onRemoverFoto }: {
+function ModalCardTecnico({ card, tecnicoNome, onClose, onAbrirM1, onAbrirM2, onAdicionarFotos, onRemoverFoto, onRegistrarObservacao }: {
   card: Card
+  tecnicoNome: string
   onClose: () => void
   onAbrirM1: () => void
   onAbrirM2: () => void
   onAdicionarFotos: (arquivos: File[]) => Promise<void>
   onRemoverFoto: (fotoId: string) => Promise<void>
+  onRegistrarObservacao: (texto: string, interno: boolean) => Promise<void>
 }) {
   const tipoLabel = { peca: 'Item', acordo: 'Acordo', reclamacao: 'Apontamento' }[card.tipo]
+  const [obsTexto, setObsTexto] = useState('')
+  const [obsInterna, setObsInterna] = useState(true) // técnico costuma fazer nota interna (ex: levar escada)
+  const [obsSalvando, setObsSalvando] = useState(false)
   const m1 = card.checklists.find((c) => c.tipo === 'medicao1')
   const m2 = card.checklists.find((c) => c.tipo === 'medicao2')
   const dadosM1 = m1?.dados as DadosMedicao1 | undefined
@@ -580,6 +601,55 @@ function ModalCardTecnico({ card, onClose, onAbrirM1, onAbrirM2, onAdicionarFoto
             onAdicionar={onAdicionarFotos}
             onRemover={async (foto) => onRemoverFoto(foto.id)}
           />
+
+          {/* Observações do técnico — cravado por Anderson + Vilumi + Cristiano (3 confirmações).
+              Casos típicos: "vão alto, levar escada", "faltou guarnição", "ajuste pendente".
+              Default: nota interna (só empresa vê). Técnico pode marcar como visível pro cliente
+              se for um aviso direto (ex: "lavar o vidro antes da próxima visita"). */}
+          {!card.encerrado && (
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">
+                Registrar observação
+              </div>
+              <textarea
+                className={'input min-h-[90px] ' + (obsInterna ? 'bg-amber-50 border-amber-200' : '')}
+                value={obsTexto}
+                onChange={(e) => setObsTexto(e.target.value)}
+                placeholder={obsInterna
+                  ? `Ex: vão alto, próxima visita trazer escada · faltou guarnição · pintura ainda úmida · cliente pediu mudar puxador...`
+                  : `Observação visível pro cliente. Ex: ajuste pendente, dúvida sobre acabamento...`}
+              />
+              <label className="flex items-center gap-2 mt-2 cursor-pointer select-none text-xs text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={obsInterna}
+                  onChange={(e) => setObsInterna(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-laranja focus:ring-laranja"
+                />
+                <span>
+                  <strong>Anotação interna</strong> — só a empresa vê. Cliente não recebe.
+                </span>
+              </label>
+              <button
+                className="btn-primary mt-2.5 w-full md:w-auto"
+                disabled={obsSalvando || !obsTexto.trim()}
+                onClick={async () => {
+                  setObsSalvando(true)
+                  try {
+                    await onRegistrarObservacao(obsTexto, obsInterna)
+                    setObsTexto('')
+                  } finally {
+                    setObsSalvando(false)
+                  }
+                }}
+              >
+                {obsSalvando ? 'Salvando...' : (obsInterna ? 'Salvar nota interna' : 'Registrar observação')}
+              </button>
+              <p className="text-[10px] text-slate-400 mt-1.5">
+                Vai pro histórico do item assinado como <strong>{tecnicoNome}</strong> com data e hora.
+              </p>
+            </div>
+          )}
 
           {/* Histórico (técnico vê tudo, exceto interno por padrão; vê interno também por contexto) */}
           <div>

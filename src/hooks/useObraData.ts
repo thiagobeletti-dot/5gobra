@@ -50,7 +50,7 @@ interface UseObraDataResult {
   ocupado: boolean
   erro: string | null
   alterarStatus: (cardId: string, novoStatus: string) => Promise<void>
-  registrar: (cardId: string, texto: string, perfil: 'empresa' | 'cliente', moveAba: boolean) => Promise<void>
+  registrar: (cardId: string, texto: string, perfil: 'empresa' | 'cliente', moveAba: boolean, interno?: boolean) => Promise<void>
   confirmarItem: (cardId: string) => Promise<void>
   marcarContraMarcoEntregue: (cardId: string) => Promise<void>
   marcarVaoPronto: (cardId: string, perfil: 'empresa' | 'cliente') => Promise<void>
@@ -304,12 +304,14 @@ export function useObraData(
     return atual // sub-status já amigável, mantém
   }
 
-  const registrar = useCallback(async (cardId: string, texto: string, perfil: 'empresa' | 'cliente', moveAba: boolean) => {
+  const registrar = useCallback(async (cardId: string, texto: string, perfil: 'empresa' | 'cliente', moveAba: boolean, interno: boolean = false) => {
     if (!dados || !texto.trim()) return
     // Anti duplo-clique: se outra mutação está rodando, ignora.
     if (ocupadoRef.current) { console.warn('[registrar] ignorada — outra mutação em curso'); return }
     ocupadoRef.current = true
     setOcupado(true)
+    // Nota interna NUNCA move aba (é só registro empresa, cliente nem fica sabendo).
+    if (interno) moveAba = false
     const autor = perfil === 'empresa' ? 'Empresa' : 'Cliente'
     try {
       if (modo === 'demo') {
@@ -319,7 +321,7 @@ export function useObraData(
             ...d,
             cards: d.cards.map((c) => {
               if (c.id !== cardId) return c
-              const hist = [...c.historico, { autor, tipo: perfil as AutorTipo, data: agora(), texto, interno: false }]
+              const hist = [...c.historico, { autor, tipo: perfil as AutorTipo, data: agora(), texto, interno }]
               let novaAba = c.aba
               let novoSubStatus = c.subStatus
               if (moveAba) {
@@ -341,7 +343,7 @@ export function useObraData(
       if (!obraReal) return
       const card = dados.cards.find((c) => c.id === cardId)
       if (!card) return
-      await adicionarHistorico({ card_id: cardId, autor, autor_tipo: perfil, texto }, client)
+      await adicionarHistorico({ card_id: cardId, autor, autor_tipo: perfil, texto, interno }, client)
       if (moveAba) {
         let novaAba: AbaId = card.aba
         if (card.aba === 'emandamento') novaAba = perfil === 'empresa' ? 'cliente' : 'empresa'

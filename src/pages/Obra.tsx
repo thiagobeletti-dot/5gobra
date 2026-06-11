@@ -257,6 +257,52 @@ export default function Obra() {
               reabrisse cards atuando como cliente — comprometia a integridade do
               histórico (prova oficial). Pra ver o que o cliente vê, abrir o link
               do cliente em outra aba. State `perfil` ficou hardcoded 'empresa'. */}
+          {data.modo === 'banco' && data.obraReal && (
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {data.obraReal.encerrada ? (
+                <>
+                  <span className="bg-slate-200 text-slate-600 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded">
+                    Encerrada
+                  </span>
+                  <button
+                    onClick={async () => {
+                      const ok = await confirmar({
+                        titulo: 'Reabrir esta obra?',
+                        descricao: 'A obra volta pra lista de Ativas. Cards e histórico ficam intactos.',
+                        labelConfirmar: 'Reabrir',
+                      })
+                      if (ok === null || !data.obraReal) return
+                      const { atualizarObra } = await import('../lib/api')
+                      await atualizarObra(data.obraReal.id, { encerrada: false })
+                      window.location.reload()
+                    }}
+                    className="text-xs text-slate-500 hover:text-laranja-dark underline-offset-2 hover:underline transition"
+                  >
+                    Reabrir
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={async () => {
+                    const motivo = await confirmar({
+                      titulo: 'Encerrar esta obra?',
+                      descricao: 'A obra sai da lista de Ativas. Ela continua acessível em Encerradas e pode ser reaberta a qualquer momento. Recomendado quando a obra foi entregue completamente.',
+                      labelConfirmar: 'Encerrar obra',
+                      destrutivo: true,
+                    })
+                    if (motivo === null || !data.obraReal) return
+                    const { atualizarObra } = await import('../lib/api')
+                    await atualizarObra(data.obraReal.id, { encerrada: true })
+                    navigate('/app/obras')
+                  }}
+                  className="text-xs text-slate-400 hover:text-red-600 underline-offset-2 hover:underline transition"
+                  title="Após entregar a obra, encerre pra ela sair da lista de ativas"
+                >
+                  Encerrar obra
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Faixa de ações: fica acima das abas pra não competir com a descrição
@@ -333,11 +379,11 @@ export default function Obra() {
             if (s === 'Concluido' || s === 'Concluído') toast('Item concluído - aguardando aceite do cliente')
             else toast('Status atualizado')
           }}
-          onRegistrar={async (t, mover) => {
+          onRegistrar={async (t, mover, interno) => {
             if (!t.trim()) { toast('Escreva algo antes de registrar'); return }
-            await data.registrar(cardAberto.id, t, perfil, mover)
+            await data.registrar(cardAberto.id, t, perfil, mover, interno)
             setCardAbertoId(null)
-            toast('Registro salvo')
+            toast(interno ? 'Nota interna salva (cliente não vê)' : 'Registro salvo')
           }}
           onAceitar={async () => {
             await data.darAceite(cardAberto.id)
@@ -678,7 +724,7 @@ function ModalCard({
 }: {
   card: Card; perfil: Perfil; podeFotos: boolean; onClose: () => void
   onAlterarStatus: (s: string) => Promise<void>
-  onRegistrar: (texto: string, moveAba: boolean) => Promise<void>
+  onRegistrar: (texto: string, moveAba: boolean, interno?: boolean) => Promise<void>
   onAceitar: () => Promise<void>
   onReabrir: (texto: string) => Promise<void>
   onAdicionarFotos: (arquivos: File[]) => Promise<void>
@@ -695,6 +741,7 @@ function ModalCard({
   onEditarDados: () => void
 }) {
   const [texto, setTexto] = useState('')
+  const [notaInterna, setNotaInterna] = useState(false)
   useEscClose(true, onClose)
   const tipoLabel = { peca: 'Item', acordo: 'Acordo', reclamacao: 'Apontamento' }[card.tipo]
   const abaLabel = ABAS.find((a) => a.id === card.aba)?.rotulo
@@ -851,17 +898,38 @@ function ModalCard({
             <div>
               <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">Registrar novo movimento</div>
               <textarea
-                className="input min-h-[90px]"
+                className={'input min-h-[90px] ' + (notaInterna ? 'bg-amber-50 border-amber-200' : '')}
                 value={texto}
                 onChange={(e) => setTexto(e.target.value)}
-                placeholder="Descreva o que aconteceu, a confirmacao, pedido, combinado..."
+                placeholder={notaInterna
+                  ? 'Anote algo só pra empresa lembrar. Cliente NÃO vê isso. Ex: levar escada na próxima visita, faltou guarnição...'
+                  : 'Descreva o que aconteceu, a confirmacao, pedido, combinado...'}
               />
+              <label className="flex items-center gap-2 mt-2 cursor-pointer select-none text-xs text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={notaInterna}
+                  onChange={(e) => setNotaInterna(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-laranja focus:ring-laranja"
+                />
+                <span>
+                  <strong>Anotação interna</strong> — só a empresa vê. Não move o card e o cliente não recebe.
+                </span>
+              </label>
               <div className="flex gap-2 flex-wrap mt-2.5">
-                <button className="btn-primary" onClick={() => onRegistrar(texto, true)}>
-                  Registrar (joga pro cliente)
-                </button>
-                {card.aba === 'emandamento' && (
-                  <button className="btn-ghost" onClick={() => onRegistrar(texto, false)}>Registrar sem mover</button>
+                {notaInterna ? (
+                  <button className="btn-primary" onClick={() => { onRegistrar(texto, false, true); setNotaInterna(false) }}>
+                    Salvar nota interna
+                  </button>
+                ) : (
+                  <>
+                    <button className="btn-primary" onClick={() => onRegistrar(texto, true, false)}>
+                      Registrar (joga pro cliente)
+                    </button>
+                    {card.aba === 'emandamento' && (
+                      <button className="btn-ghost" onClick={() => onRegistrar(texto, false, false)}>Registrar sem mover</button>
+                    )}
+                  </>
                 )}
               </div>
             </div>

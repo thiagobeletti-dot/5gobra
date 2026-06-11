@@ -34,18 +34,23 @@ export default function Obras() {
     const v = window.localStorage.getItem('gobra:obras-ordenacao')
     return v === 'antiga' ? 'antiga' : 'recente'
   })
+  // Filtro "encerradas". Cravado 11/06 (Denilson + Thiago): após obra concluída,
+  // gestor quer que ela "saia da lista" pra não poluir. Default: só ativas.
+  const [mostrarEncerradas, setMostrarEncerradas] = useState(false)
 
-  // Aplica sort local (created_at). Sem refazer query — a lista vem ordenada
-  // descendente do banco e a gente inverte aqui se necessário.
+  // Aplica sort local (created_at) + filtro encerrada. Sem refazer query.
   const obrasOrdenadas = useMemo(() => {
-    const arr = [...obras]
+    const arr = obras.filter((o) => mostrarEncerradas ? o.encerrada : !o.encerrada)
     arr.sort((a, b) => {
       const ta = new Date(a.created_at ?? 0).getTime()
       const tb = new Date(b.created_at ?? 0).getTime()
       return ordenacao === 'antiga' ? ta - tb : tb - ta
     })
     return arr
-  }, [obras, ordenacao])
+  }, [obras, ordenacao, mostrarEncerradas])
+
+  const totalAtivas = useMemo(() => obras.filter((o) => !o.encerrada).length, [obras])
+  const totalEncerradas = useMemo(() => obras.filter((o) => o.encerrada).length, [obras])
 
   function trocarOrdenacao(nova: 'recente' | 'antiga') {
     setOrdenacao(nova)
@@ -208,25 +213,59 @@ export default function Obras() {
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-end mb-4">
-              <label className="text-xs text-slate-500 mr-2 font-medium" htmlFor="ordenar-obras">
-                Ordenar por:
-              </label>
-              <select
-                id="ordenar-obras"
-                value={ordenacao}
-                onChange={(e) => trocarOrdenacao(e.target.value as 'recente' | 'antiga')}
-                className="text-sm border border-slate-300 rounded-md px-2 py-1 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-laranja-dark"
-              >
-                <option value="recente">Mais recentes primeiro</option>
-                <option value="antiga">Mais antigas primeiro</option>
-              </select>
+            <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setMostrarEncerradas(false)}
+                  className={'px-3 py-1.5 rounded-md text-xs font-semibold transition ' + (
+                    !mostrarEncerradas
+                      ? 'bg-laranja-dark text-white'
+                      : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'
+                  )}
+                >
+                  Ativas ({totalAtivas})
+                </button>
+                <button
+                  onClick={() => setMostrarEncerradas(true)}
+                  disabled={totalEncerradas === 0}
+                  className={'px-3 py-1.5 rounded-md text-xs font-semibold transition ' + (
+                    mostrarEncerradas
+                      ? 'bg-slate-700 text-white'
+                      : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed'
+                  )}
+                >
+                  Encerradas ({totalEncerradas})
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-slate-500 font-medium" htmlFor="ordenar-obras">
+                  Ordenar por:
+                </label>
+                <select
+                  id="ordenar-obras"
+                  value={ordenacao}
+                  onChange={(e) => trocarOrdenacao(e.target.value as 'recente' | 'antiga')}
+                  className="text-sm border border-slate-300 rounded-md px-2 py-1 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-laranja-dark"
+                >
+                  <option value="recente">Mais recentes primeiro</option>
+                  <option value="antiga">Mais antigas primeiro</option>
+                </select>
+              </div>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               {obrasOrdenadas.map((o) => (
-              <div key={o.id} className="bg-white border border-slate-200 rounded-xl p-5 hover:border-slate-300 hover:shadow-md transition flex flex-col">
+              <div key={o.id} className={'bg-white border rounded-xl p-5 hover:shadow-md transition flex flex-col ' + (
+                o.encerrada ? 'border-slate-300 opacity-75' : 'border-slate-200 hover:border-slate-300'
+              )}>
                 <Link to={`/app/obra/${o.id}`} className="block flex-1">
-                  <div className="font-semibold text-base mb-1">{o.nome}</div>
+                  <div className="flex items-start gap-2 flex-wrap mb-1">
+                    <div className="font-semibold text-base">{o.nome}</div>
+                    {o.encerrada && (
+                      <span className="inline-block bg-slate-200 text-slate-600 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded">
+                        Encerrada
+                      </span>
+                    )}
+                  </div>
                   <div className="text-sm text-slate-500 mb-2">{o.endereco || 'Sem endereço'}</div>
                   <div className="text-xs text-slate-400">Cliente: {o.cliente_nome || '-'}</div>
                   <div className="text-xs text-slate-400 mt-2">Início: {o.inicio || '-'}</div>
