@@ -172,25 +172,70 @@ function extrairCliente(linhas: string[]): ClienteWvetroV2 {
 // ============================================================
 
 function extrairItens(linhas: string[]): ItemWvetroV2[] {
-  // Acha índices da linha-header da tabela "Tipo: Qtd: M2: L: H:"
-  const reHeader = /^Tipo:\s*Qtd:\s*M2:\s*L:\s*H:/i
-  const indicesHeader: number[] = []
+  // Acha índices da linha-header da tabela. O header tem "Tipo: Qtd: M2: L: H:"
+  // em qualquer posição da linha (não usar ^ — pode ter prefixo).
+  //
+  // Layout cravado (validado com PDF Herculis 3508 do Anderson 11/06):
+  //   [N+0] 'Tipo: Qtd: M2: L: H: Vlr Unt: Vlr Total:'   ← header
+  //   [N+1] '1'                                           ← ordem SOZINHA
+  //   [N+2] '1 2.608 1380 1890 435,65 435,65'             ← dados (qtd m2 L H vlr_un vlr_tot)
+  //
+  // Em alguns casos a ordem pode vir prefixada no header (Y muito próxima):
+  //   [N+0] '1 Tipo: Qtd: M2: L: H: ...'
+  //   [N+1] '1 2.608 1380 1890 ...'
+  //
+  // Tratamos os 2 casos:
+  //   - Se header tem prefixo numérico → ordem = prefixo, dados = N+1
+  //   - Se linha N+1 é só um número → ordem = N+1, dados = N+2
+  //   - Senão → ordem cai no fallback i+1, dados = N+1
+  const reHeader = /Tipo:\s*Qtd:\s*M2:\s*L:\s*H:/i
+  const reHeaderComOrdem = /^(\d+)\s+Tipo:\s*Qtd:\s*M2:\s*L:\s*H:/i
+
+  type IdxHeader = { idx: number; ordemDetectada: number | null; idxDados: number }
+  const indicesHeader: IdxHeader[] = []
   for (let i = 0; i < linhas.length; i++) {
-    if (reHeader.test(linhas[i])) indicesHeader.push(i)
+    if (!reHeader.test(linhas[i])) continue
+
+    const mComOrdem = linhas[i].match(reHeaderComOrdem)
+    if (mComOrdem) {
+      // Caso 1: ordem colada no header. Dados em i+1.
+      indicesHeader.push({
+        idx: i,
+        ordemDetectada: parseInt(mComOrdem[1], 10),
+        idxDados: i + 1,
+      })
+      continue
+    }
+
+    // Caso 2 ou 3: header limpo. Olha próxima linha.
+    const proxima = linhas[i + 1] ?? ''
+    if (/^\d+$/.test(proxima)) {
+      // Próxima linha é só um número → é a ordem; dados em i+2
+      indicesHeader.push({
+        idx: i,
+        ordemDetectada: parseInt(proxima, 10),
+        idxDados: i + 2,
+      })
+    } else {
+      // Sem ordem detectável; usa fallback. Dados em i+1.
+      indicesHeader.push({
+        idx: i,
+        ordemDetectada: null,
+        idxDados: i + 1,
+      })
+    }
   }
 
   if (indicesHeader.length === 0) return []
 
   const itens: ItemWvetroV2[] = []
   for (let i = 0; i < indicesHeader.length; i++) {
-    const idxHeader = indicesHeader[i]
-    // Bloco: do header ANTERIOR + 2 (pulando ele e seus dados) até o header atual
-    const inicio = i === 0 ? 0 : indicesHeader[i - 1] + 2
-    // Linha de dados é logo após o header atual
-    const idxDados = idxHeader + 1
+    const { idx: idxHeader, ordemDetectada, idxDados } = indicesHeader[i]
+    // Bloco de descrição: do FIM do item anterior até o header atual (exclusive)
+    const inicio = i === 0 ? 0 : indicesHeader[i - 1].idxDados + 1
     const blocoAntes = linhas.slice(inicio, idxHeader)
     const linhaDados = linhas[idxDados] ?? ''
-    const item = parsearItem(blocoAntes, linhaDados, i + 1)
+    const item = parsearItem(blocoAntes, linhaDados, ordemDetectada ?? i + 1)
     if (item) itens.push(item)
   }
 
@@ -221,32 +266,24 @@ function parsearItem(
   let larguraMm: number | null = null
   let alturaMm: number | null = null
 
-  // Tenta padrão 1: <qtd> <m2_decimal> <larg> <alt> <resto>
-  // m2 pode ser "1" ou "2.608" ou "13.25" ou "3"
-  let m = linhaDados.match(/^(\d+)\s+(\d+(?:\.\d+)?)\s+(\d{2,5})\s+(\d{2,5})\b/)
-  if (m) {
-    const q = parseInt(m[1], 10)
-    const lg = parseInt(m[3], 10)
-    const al = parseInt(m[4], 10)
+  // Procura padrão "qtd m2 larg alt" em QUALQUER posição da linha.
+  // m2 pode ser "1", "2.608", "13.25", "3" (inteiro ou decimal com . ou ,)
+  // larg/alt são inteiros 2-5 dígitos (200-30000mm).
+  //
+  // Estratégia: encontra TODAS as triplas (qtd, m2, larg, alt) plausíveis e
+  // pega a primeira que valida. Cobre variações onde a ordem do item vem
+  // prefixada na linha de dados (ex: "1 1 2.608 1380 1890 ...").
+  const reTuplaDimensoes = /(\d+)\s+(\d+(?:[.,]\d+)?)\s+(\d{2,5})\s+(\d{2,5})/g
+  let mDim: RegExpExecArray | null
+  while ((mDim = reTuplaDimensoes.exec(linhaDados)) !== null) {
+    const q = parseInt(mDim[1], 10)
+    const lg = parseInt(mDim[3], 10)
+    const al = parseInt(mDim[4], 10)
     if (lg >= 200 && lg <= 30000 && al >= 200 && al <= 30000 && q > 0 && q < 1000) {
       qtde = q
       larguraMm = lg
       alturaMm = al
-    }
-  }
-
-  // Padrão 2: com Tipo preenchido — começa com texto/código alfanumérico
-  if (qtde === null) {
-    m = linhaDados.match(/^(\S+)\s+(\d+)\s+(\d+(?:\.\d+)?)\s+(\d{2,5})\s+(\d{2,5})\b/)
-    if (m) {
-      const q = parseInt(m[2], 10)
-      const lg = parseInt(m[4], 10)
-      const al = parseInt(m[5], 10)
-      if (lg >= 200 && lg <= 30000 && al >= 200 && al <= 30000 && q > 0 && q < 1000) {
-        qtde = q
-        larguraMm = lg
-        alturaMm = al
-      }
+      break
     }
   }
 
@@ -260,7 +297,9 @@ function parsearItem(
     if (/^WS VIDROS|^Proposta\s+\d/i.test(l)) return false
     if (/vidracariawsna@|@gmail\.com/i.test(l)) return false
     if (/^\(\d{2}\)\d/.test(l)) return false // telefones
-    if (/^(Cliente|Endere[çc]o|Telefone|Email|CNPJ|IE\/RG|Obra|Contato|Vendedor|Cidade|Dt\.Proposta)\s*:/i.test(l)) return false
+    // Labels do cabeçalho da empresa/cliente — usar \b pra casar "CNPJ/CPF:",
+    // "IE/RG:", etc, que têm "/" antes do ":"
+    if (/^(Cliente|Endere[çc]o|Telefone|Email|CNPJ|IE\b|Obra|Contato|Vendedor|Cidade|Dt\.?\s*Proposta)\b/i.test(l)) return false
     if (/Lista de vari[áa]veis|POSI[ÇC][ÃA]O|V[ÃA]O SUPERIOR|CANTONEIRA|DOBRADI[ÇC]A|VIS[ÃA]O DA TIPOLOGIA/i.test(l)) return false
     return true
   })
