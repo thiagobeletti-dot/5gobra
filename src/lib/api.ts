@@ -247,6 +247,38 @@ export async function criarObra(dados: {
   return data as ObraRow
 }
 
+/**
+ * Atualiza dados básicos da obra (nome, cliente, endereço, contato).
+ *
+ * Cravado 11/06/2026 após Anderson (primeiro cliente) reportar que errou
+ * no nome ao criar a obra e não tinha como editar. CRUD sem U é dívida
+ * técnica clássica — corrigida aqui.
+ *
+ * Aceita só campos editáveis (nunca id, empresa_id, token_cliente,
+ * created_at, inicio — esses são imutáveis depois da criação).
+ */
+export async function atualizarObra(
+  id: string,
+  mudancas: Partial<{
+    nome: string
+    endereco: string | null
+    cliente_nome: string | null
+    cliente_telefone: string | null
+    cliente_email: string | null
+    encerrada: boolean
+  }>,
+) {
+  if (!supabase) throw new Error('Supabase não configurado')
+  const { data, error } = await supabase
+    .from('obras')
+    .update(mudancas)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data as ObraRow
+}
+
 // =============== Cards ===============
 
 export async function listarCardsDaObra(obraId: string, client: DbClient | null = supabase) {
