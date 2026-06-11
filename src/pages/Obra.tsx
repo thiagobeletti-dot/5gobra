@@ -8,6 +8,7 @@ import { useObraData } from '../hooks/useObraData'
 import { sair, useAuth } from '../lib/auth'
 import ImportarItens from '../components/ImportarItens'
 import ModalEditarObra from '../components/ModalEditarObra'
+import ModalEditarCard from '../components/ModalEditarCard'
 import GaleriaFotos from '../components/GaleriaFotos'
 import FormMedicao1 from '../components/FormMedicao1'
 import FormMedicao2 from '../components/FormMedicao2'
@@ -42,6 +43,7 @@ export default function Obra() {
   const [perfil] = useState<Perfil>('empresa')
   const [abaAtiva, setAbaAtiva] = useState<AbaId>('cliente')
   const [cardAbertoId, setCardAbertoId] = useState<string | null>(null)
+  const [cardEditandoId, setCardEditandoId] = useState<string | null>(null)
   const [formM1Aberto, setFormM1Aberto] = useState<string | null>(null)
   const [formM2Aberto, setFormM2Aberto] = useState<string | null>(null)
   // Modal "global" da página — só 1 desses 4 fica aberto por vez. useReducer
@@ -433,6 +435,7 @@ export default function Obra() {
             setCardAbertoId(null)
             toast('Item apagado')
           }}
+          onEditarDados={() => setCardEditandoId(cardAberto.id)}
         />
       )}
 
@@ -537,6 +540,22 @@ export default function Obra() {
           }}
         />
       )}
+
+      {cardEditandoId && (() => {
+        const cardParaEditar = data.dados?.cards.find((c) => c.id === cardEditandoId)
+        if (!cardParaEditar) return null
+        return (
+          <ModalEditarCard
+            card={cardParaEditar}
+            onClose={() => setCardEditandoId(null)}
+            onSalvo={() => {
+              setCardEditandoId(null)
+              setCardAbertoId(null)
+              window.location.reload()
+            }}
+          />
+        )
+      })()}
 
       <ModalDocumentos
         obra={dados}
@@ -655,7 +674,7 @@ function CardView({ card, perfil, onClick }: { card: Card; perfil: Perfil; onCli
 }
 
 function ModalCard({
-  card, perfil, podeFotos, onClose, onAlterarStatus, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto, podeChecklist, onAbrirMedicao1, onAbrirMedicao2, onMarcarContraMarcoEntregue, onMarcarVaoPronto, onEncerrar, onResolverApontamento, onMarcarCorrigido, onApagar,
+  card, perfil, podeFotos, onClose, onAlterarStatus, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto, podeChecklist, onAbrirMedicao1, onAbrirMedicao2, onMarcarContraMarcoEntregue, onMarcarVaoPronto, onEncerrar, onResolverApontamento, onMarcarCorrigido, onApagar, onEditarDados,
 }: {
   card: Card; perfil: Perfil; podeFotos: boolean; onClose: () => void
   onAlterarStatus: (s: string) => Promise<void>
@@ -673,6 +692,7 @@ function ModalCard({
   onResolverApontamento: () => Promise<void>
   onMarcarCorrigido: () => Promise<void>
   onApagar: () => Promise<void>
+  onEditarDados: () => void
 }) {
   const [texto, setTexto] = useState('')
   useEscClose(true, onClose)
@@ -688,7 +708,22 @@ function ModalCard({
         <div className="px-6 py-5 border-b border-slate-200 flex items-start gap-4">
           <div className="flex-1 min-w-0">
             <span className={'inline-block px-2.5 py-1 rounded-md text-xs font-bold border mb-2 ' + siglaCls}>{card.sigla} | {tipoLabel}</span>
-            <div className="text-lg font-bold mb-1">{card.nome}</div>
+            <div className="text-lg font-bold mb-1 flex items-center gap-2">
+              <span>{card.nome}</span>
+              {!card.encerrado && (
+                <button
+                  onClick={onEditarDados}
+                  title="Editar sigla, nome e descrição"
+                  aria-label="Editar dados do item"
+                  className="w-7 h-7 rounded-md grid place-items-center text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition flex-shrink-0"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                </button>
+              )}
+            </div>
             <div className="text-sm text-slate-500">{card.descricao}</div>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-md bg-slate-100 text-slate-500 grid place-items-center hover:bg-slate-200 hover:text-slate-900 transition" aria-label="Fechar">×</button>
