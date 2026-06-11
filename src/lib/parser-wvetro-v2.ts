@@ -340,7 +340,12 @@ function parsearItem(
     // Localização: SUÍTE
     const mLoc = l.match(/^Localiza[çc][ãa]o\s*:\s*(.+)$/i)
     if (mLoc) {
-      ambiente = mLoc[1].trim()
+      // Mesma defesa do parser V1: se "TIPO:" ou outro label vier lado-a-lado
+      // na mesma linha (layout 2-colunas), corta antes.
+      ambiente = mLoc[1]
+        .replace(/\s+TIPO:.*$/i, '')
+        .replace(/\s+\*.*$/, '')
+        .trim()
       continue
     }
     // Número solo (ordem do item) — ignora pra descrição

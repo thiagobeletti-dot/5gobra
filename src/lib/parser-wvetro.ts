@@ -226,9 +226,18 @@ function parsearBlocoItemLinhas(linhas: string[], ordem: number): ItemWvetro | n
   if (mTipo) tipo = mTipo[1].trim()
 
   // ============ *LOCAL/AMBIENTE (pode ser vazio) ============
+  // BUG cravado por Anderson 11/06: em PDFs com layout 2-colunas, "LOCAL" e
+  // "TIPO" ficam lado-a-lado na mesma linha visual. Com fix XY do pdfjs viram
+  // uma string só ("LOCAL/AMBIENTE: ESCRITÓRIO TIPO: J05"). Regex precisa
+  // CORTAR antes de "TIPO:" (e outros labels que possam vir lado-a-lado).
   let ambiente = ''
   const mAmb = textoBloco.match(/\*LOCAL\/AMBIENTE:\s*([^\n*]*)/i)
-  if (mAmb) ambiente = mAmb[1].trim()
+  if (mAmb) {
+    ambiente = mAmb[1]
+      .replace(/\s+TIPO:.*$/i, '') // corta "TIPO: J05" que vaza da coluna ao lado
+      .replace(/\s+\*.*$/, '')      // corta qualquer outro "*CAMPO:" que vaze
+      .trim()
+  }
 
   // ============ *COR PERFIL ============
   let corPerfil = ''

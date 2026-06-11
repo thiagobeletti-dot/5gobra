@@ -34,8 +34,16 @@ import {
   type ClienteSmartCEM,
   type OrcamentoSmartCEM,
 } from './parser-smartcem'
+import {
+  parsearTextoInvictos,
+  expandirItensInvictosEmCards,
+  ehPdfInvictos,
+  type CardImportadoInvictos,
+  type ClienteInvictos,
+  type OrcamentoInvictos,
+} from './parser-invictos'
 
-export type SistemaOrcamento = 'smartcem' | 'wvetro' | 'wvetro-v2'
+export type SistemaOrcamento = 'smartcem' | 'wvetro' | 'wvetro-v2' | 'invictos'
 
 /** Card normalizado pra consumo das telas. Não vaza diferenças entre sistemas. */
 export interface CardImportadoUnificado {
@@ -64,6 +72,7 @@ export interface OrcamentoUnificado {
     smartcem?: OrcamentoSmartCEM
     wvetro?: OrcamentoWvetro
     wvetroV2?: OrcamentoWvetroV2
+    invictos?: OrcamentoInvictos
   }
 }
 
@@ -80,6 +89,7 @@ export interface OrcamentoUnificado {
  */
 export function detectarSistema(texto: string): SistemaOrcamento | null {
   if (ehPdfSmartCEM(texto)) return 'smartcem'
+  if (ehPdfInvictos(texto)) return 'invictos'
   // Wvetro V2 (novo): assinatura única "© Wvetro" + header "Tipo: Qtd: M2: L: H:"
   if (ehPdfWvetroV2(texto)) return 'wvetro-v2'
   // Wvetro V1 (antigo): marcadores típicos do impresso tradicional
@@ -161,6 +171,27 @@ export async function parsearPdfOrcamentoCompleto(
     }
   }
 
+  if (sistema === 'invictos') {
+    const orc = parsearTextoInvictos(texto)
+    if (orc.itens.length === 0) {
+      console.warn('[parser-orcamento] Invictos detectado mas 0 itens parseados. Cliente:', orc.cliente, 'Proposta:', orc.propostaNumero)
+      console.info('[parser-orcamento] ============ TEXTO EXTRAÍDO ============')
+      console.info(texto)
+      console.info('[parser-orcamento] ============ FIM TEXTO (', texto.length, 'chars) ============')
+      throw new Error(
+        'PDF reconhecido como Invictos Vidros, mas nenhum item foi identificado. Abre o console (F12 → Console) e copia o texto — me manda pra calibrar.',
+      )
+    }
+    const cardsInv = expandirItensInvictosEmCards(orc.itens)
+    return {
+      sistema,
+      cliente: clienteInvictosParaUnificado(orc.cliente),
+      numeroItens: orc.itens.length,
+      cards: cardsInv.map(cardInvictosParaUnificado),
+      detalhes: { invictos: orc },
+    }
+  }
+
   if (sistema === 'smartcem') {
     const orc = parsearTextoSmartCEM(texto)
     if (orc.itens.length === 0) {
@@ -187,6 +218,7 @@ export function nomeSistema(sistema: SistemaOrcamento): string {
   if (sistema === 'smartcem') return 'SmartCEM / Alumisoft'
   if (sistema === 'wvetro') return 'W.Vetro (clássico)'
   if (sistema === 'wvetro-v2') return 'W.Vetro'
+  if (sistema === 'invictos') return 'Invictos Vidros'
   return sistema
 }
 
@@ -233,6 +265,22 @@ function clienteWvetroV2ParaUnificado(c: ClienteWvetroV2): ClienteUnificado {
 }
 
 function cardWvetroV2ParaUnificado(c: CardImportadoWvetroV2): CardImportadoUnificado {
+  return {
+    sigla: c.sigla,
+    nome: c.nome,
+    descricao: c.descricao,
+    ambiente: c.ambiente,
+    larguraMm: c.larguraMm,
+    alturaMm: c.alturaMm,
+  }
+}
+
+function clienteInvictosParaUnificado(c: ClienteInvictos): ClienteUnificado {
+  const endereco = [c.obra, c.cidade].filter(Boolean).join(' — ')
+  return { nome: c.nome, endereco: endereco || null }
+}
+
+function cardInvictosParaUnificado(c: CardImportadoInvictos): CardImportadoUnificado {
   return {
     sigla: c.sigla,
     nome: c.nome,
