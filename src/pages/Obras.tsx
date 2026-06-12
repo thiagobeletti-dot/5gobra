@@ -37,17 +37,30 @@ export default function Obras() {
   // Filtro "encerradas". Cravado 11/06 (Denilson + Thiago): após obra concluída,
   // gestor quer que ela "saia da lista" pra não poluir. Default: só ativas.
   const [mostrarEncerradas, setMostrarEncerradas] = useState(false)
+  // Busca por nome da obra ou cliente. Cravado 12/06 (Thiago): com 30+ obras na
+  // lista (cenário Anderson/Vilumi/Denilson), bater olho não basta — precisa lupa.
+  // Filtro local (in-memory), case-insensitive, sem persistir.
+  const [busca, setBusca] = useState('')
 
-  // Aplica sort local (created_at) + filtro encerrada. Sem refazer query.
+  // Aplica sort local (created_at) + filtro encerrada + busca. Sem refazer query.
   const obrasOrdenadas = useMemo(() => {
-    const arr = obras.filter((o) => mostrarEncerradas ? o.encerrada : !o.encerrada)
+    const q = busca.trim().toLowerCase()
+    const arr = obras
+      .filter((o) => mostrarEncerradas ? o.encerrada : !o.encerrada)
+      .filter((o) => {
+        if (!q) return true
+        return (
+          o.nome.toLowerCase().includes(q) ||
+          (o.cliente_nome ?? '').toLowerCase().includes(q)
+        )
+      })
     arr.sort((a, b) => {
       const ta = new Date(a.created_at ?? 0).getTime()
       const tb = new Date(b.created_at ?? 0).getTime()
       return ordenacao === 'antiga' ? ta - tb : tb - ta
     })
     return arr
-  }, [obras, ordenacao, mostrarEncerradas])
+  }, [obras, ordenacao, mostrarEncerradas, busca])
 
   const totalAtivas = useMemo(() => obras.filter((o) => !o.encerrada).length, [obras])
   const totalEncerradas = useMemo(() => obras.filter((o) => o.encerrada).length, [obras])
@@ -252,6 +265,58 @@ export default function Obras() {
                 </select>
               </div>
             </div>
+            <div className="mb-4">
+              <div className="relative">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                  aria-hidden="true"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input
+                  type="search"
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  placeholder="Buscar por nome da obra ou cliente..."
+                  className="w-full pl-9 pr-9 py-2 text-sm border border-slate-300 rounded-md bg-white text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-laranja-dark"
+                  aria-label="Buscar obras"
+                />
+                {busca && (
+                  <button
+                    type="button"
+                    onClick={() => setBusca('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 w-6 h-6 inline-flex items-center justify-center rounded-full hover:bg-slate-100 transition"
+                    aria-label="Limpar busca"
+                    title="Limpar busca"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              {busca && (
+                <div className="mt-1.5 text-xs text-slate-500">
+                  {obrasOrdenadas.length === 0
+                    ? 'Nenhuma obra encontrada pra essa busca.'
+                    : `${obrasOrdenadas.length} ${obrasOrdenadas.length === 1 ? 'obra encontrada' : 'obras encontradas'}`}
+                </div>
+              )}
+            </div>
+            {obrasOrdenadas.length === 0 && !busca ? (
+              <div className="bg-white border border-slate-200 rounded-xl p-8 text-center text-sm text-slate-500">
+                {mostrarEncerradas ? 'Nenhuma obra encerrada ainda.' : 'Nenhuma obra ativa no momento.'}
+              </div>
+            ) : (
             <div className="grid gap-3 md:grid-cols-2">
               {obrasOrdenadas.map((o) => (
               <div key={o.id} className={'bg-white border rounded-xl p-5 hover:shadow-md transition flex flex-col ' + (
@@ -291,6 +356,7 @@ export default function Obras() {
               </div>
               ))}
             </div>
+            )}
           </>
         )}
 
