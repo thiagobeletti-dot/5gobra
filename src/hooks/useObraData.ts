@@ -513,10 +513,9 @@ export function useObraData(
     setDados(novo)
 
     // Auto-iniciar prazo nos cards "Em Andamento" sem prazo ativo quando esta foi
-    // a ÚLTIMA liberação de vão (cravado 12/06 por Thiago). Regra: enquanto há
+    // a ULTIMA liberação de vão (cravado 12/06 por Thiago). Regra: enquanto há
     // qualquer card na aba Cliente, prazo da obra não conta. Quando o último card
-    // sai dali (todos em técnica/em andamento/conclusão), o prazo dispara pra todos
-    // os cards de peça em Em Andamento que ainda não tinham o prazo iniciado via popup.
+    // sai dali, o prazo dispara pra todos os cards em Em Andamento sem prazo.
     if (novo) {
       const cardsDePecaAtivos = novo.cards.filter((c) => c.tipo === 'peca' && !c.encerrado)
       const todosLiberados =
@@ -527,13 +526,12 @@ export function useObraData(
       if (todosLiberados) {
         const hojeISO = new Date().toISOString().slice(0, 10)
         const aAtivar = cardsDePecaAtivos.filter(
-          (c) => c.aba === 'emandamento' && !c.prazoIniciadoEm && !!c.prazoContrato,
+          (c) => c.aba === 'emandamento' && !(c as any).prazoIniciadoEm && !!c.prazoContrato,
         )
         for (const c of aAtivar) {
-          await atualizarCard(c.id, { prazo_iniciado_em: hojeISO }, client)
+          await atualizarCard(c.id, { prazo_iniciado_em: hojeISO } as any, client)
         }
         if (aAtivar.length > 0) {
-          // Recarrega pra refletir os prazos ativados no estado local
           const novo2 = await carregarDoBanco(obraReal, client)
           setDados(novo2)
         }
@@ -806,6 +804,7 @@ export function useObraData(
         statusEmAndamento: input.destino === 'emandamento' ? 'Aguardando lote' : null,
         subStatus: null,
         prazoContrato: input.destino === 'emandamento' ? input.prazoContrato : null,
+        prazoIniciadoEm: null,
         encerrado: false,
         aceiteFinal: null,
         historico: [{ autor, tipo: perfil as AutorTipo, data: agora(), texto: 'Registro criado.', interno: false }],
@@ -848,6 +847,7 @@ export function useObraData(
           statusEmAndamento: null,
           subStatus: null,
           prazoContrato: null,
+          prazoIniciadoEm: null,
           encerrado: false,
           aceiteFinal: null,
           historico: [{ autor, tipo: perfil as AutorTipo, data: agora(), texto: 'Item importado do Alumisoft (origem: ' + it.origemTipologia + ').', interno: false }],

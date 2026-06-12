@@ -19,6 +19,7 @@ export const SEED: DadosObra = {
       statusEmAndamento: null,
       subStatus: null,
       prazoContrato: null,
+      prazoIniciadoEm: null,
       encerrado: false,
       aceiteFinal: null,
       historico: [
@@ -37,6 +38,7 @@ export const SEED: DadosObra = {
       statusEmAndamento: 'Fabricando',
       subStatus: null,
       prazoContrato: '2026-05-10',
+      prazoIniciadoEm: null,
       encerrado: false,
       aceiteFinal: null,
       historico: [
@@ -56,6 +58,7 @@ export const SEED: DadosObra = {
       statusEmAndamento: 'Concluido',
       subStatus: null,
       prazoContrato: '2026-04-20',
+      prazoIniciadoEm: null,
       encerrado: false,
       aceiteFinal: null,
       historico: [
@@ -75,6 +78,7 @@ export const SEED: DadosObra = {
       statusEmAndamento: null,
       subStatus: null,
       prazoContrato: null,
+      prazoIniciadoEm: null,
       encerrado: false,
       aceiteFinal: null,
       historico: [
