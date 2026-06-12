@@ -169,13 +169,14 @@ export default function Dashboard() {
               tom="laranja"
             />
 
-            {/* LISTA — AGUARDANDO CLIENTE */}
+            {/* LISTA — AGUARDANDO CLIENTE (obras pausadas, prazo suprimido) */}
             <SecaoLista
               id="aguardando"
               titulo="🟡 Aguardando cliente"
               vazia="Nenhuma obra aguardando ação do cliente."
               obras={data.aguardandoCliente}
               tom="amarelo"
+              pausada
             />
 
             {/* LISTA — NO PRAZO (cravada 12/06) */}
@@ -236,12 +237,15 @@ function SecaoLista({
   vazia,
   obras,
   tom,
+  pausada,
 }: {
   id: string
   titulo: string
   vazia: string
   obras: ObraDashboard[]
   tom: Tom
+  /** Quando true, oculta prazo/dias da fase (obras pausadas — cards em aba Cliente). */
+  pausada?: boolean
 }) {
   return (
     <section id={id} className="mb-8 scroll-mt-20">
@@ -253,7 +257,7 @@ function SecaoLista({
       ) : (
         <ul className="space-y-2">
           {obras.map((o) => (
-            <ItemObra key={o.obra.id} item={o} tom={tom} />
+            <ItemObra key={o.obra.id} item={o} tom={tom} pausada={pausada} />
           ))}
         </ul>
       )}
@@ -261,7 +265,7 @@ function SecaoLista({
   )
 }
 
-function ItemObra({ item, tom }: { item: ObraDashboard; tom: Tom }) {
+function ItemObra({ item, tom, pausada }: { item: ObraDashboard; tom: Tom; pausada?: boolean }) {
   const cls = TOM_CLASSES[tom]
   const dias = item.diasRestantes
   const atrasada = item.atrasada
@@ -281,7 +285,9 @@ function ItemObra({ item, tom }: { item: ObraDashboard; tom: Tom }) {
             {item.faseAtiva && (
               <div className={`text-sm mt-2 ${cls.texto}`}>
                 Fase: <strong>{item.faseAtiva.nome}</strong>
-                {dias !== null && (
+                {pausada ? (
+                  <> · <span className="italic">aguardando ação do cliente</span></>
+                ) : dias !== null && (
                   <>
                     {atrasada ? (
                       <> · Vencida há {Math.abs(dias)} dia{Math.abs(dias) !== 1 ? 's' : ''}</>

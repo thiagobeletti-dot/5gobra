@@ -120,14 +120,18 @@ export async function pegarDashboard(): Promise<DashboardData> {
       const atrasada = faseAtual ? estaFaseAtrasada(faseAtual) : false
 
       // Flags do kanban (verdade primária da obra — cravado 12/06 por Thiago).
-      // Considera apenas cards de peça ativos (não encerrados) — cards do tipo
-      // 'item' / 'acordo' / 'apontamento' não entram no cálculo de estado.
-      const cardsDePecaAtivos = cardsCompletos.filter((c) => c.tipo === 'peca' && !c.encerrado)
+      // Cards do tipo 'item' / 'acordo' / 'apontamento' não entram no cálculo de estado.
+      const cardsDePeca = cardsCompletos.filter((c) => c.tipo === 'peca')
+      const cardsDePecaAtivos = cardsDePeca.filter((c) => !c.encerrado)
       const temCardsCliente = cardsDePecaAtivos.some((c) => c.aba === 'cliente')
       const temCardsEmAndamento = cardsDePecaAtivos.some((c) => c.aba === 'emandamento')
+      // "Obra finalizada" considera TODOS os cards de peça (incluindo encerrados):
+      // bug 12/06 Vidrobras tinha 1 card com encerrado=true + aba=conclusao + aceite_final
+      // que era ignorado pelo filtro de ativos, fazendo a obra continuar em "Em atraso".
+      // Cada card pode estar "finalizado" de 2 jeitos: em conclusão com aceite OU encerrado.
       const todosCardsConcluidos =
-        cardsDePecaAtivos.length > 0 &&
-        cardsDePecaAtivos.every((c) => c.aba === 'conclusao' && !!c.aceiteFinal)
+        cardsDePeca.length > 0 &&
+        cardsDePeca.every((c) => (c.aba === 'conclusao' && !!c.aceiteFinal) || c.encerrado)
 
       const cardsConcluidos = cardsCompletos.filter(
         (c) => c.aba === 'conclusao' && !!c.aceiteFinal,
