@@ -564,10 +564,14 @@ export function inferirStatusFases(cronograma: Cronograma, cards: Card[]): Crono
         podePropagar = proximaAtiva === 0 || fasesAtualizadas[proximaAtiva - 1].status === 'concluida'
       } else if (fase.gatilhoTipo === 'data_fixa' && fase.gatilhoData) {
         podePropagar = fase.gatilhoData <= hojeData
+      } else if (fase.gatilhoTipo === 'liberacao_vao') {
+        // Cravado 12/06 por Thiago: liberacao_vao propaga quando vao_liberado_em
+        // setado OU todos os cards saíram da aba cliente/empresa (sinal real do
+        // kanban). Antes ficava preso esperando marcarVaoLiberado() que não é
+        // chamado quando o cliente libera card-a-card via marcarVaoPronto.
+        podePropagar = !!cronograma.vaoLiberadoEm || todosLiberaramVao
       }
-      // assinatura_contrato e liberacao_vao são disparados pelas funções
-      // dedicadas (aceitarCronograma / marcarVaoLiberado / inferência de cards) —
-      // não devem ser promovidos cegamente aqui.
+      // assinatura_contrato fica de fora (disparado por aceitarCronograma)
       if (podePropagar) {
         fasesAtualizadas[proximaAtiva] = { ...fase, status: 'em_andamento' }
       }
