@@ -437,6 +437,35 @@ export function inferirStatusFases(cronograma: Cronograma, cards: Card[]): Crono
     // Não rebaixa fase já concluída no banco
     if (fase.status === 'concluida') return fase
 
+    // Defensive fix (cravado 12/06/2026 — bug Esquadsystem):
+    // Detecta fase em_andamento PERSISTIDA NO BANCO cujo gatilho real
+    // ainda não disparou. Acontece com dados antigos do bug pré-fix
+    // (propagação cega ignorava gatilho_tipo). Rebaixa pra aguardando_gatilho
+    // limpando iniciada_em/previsao_fim em runtime.
+    //
+    // Importante: NÃO toca no banco — só corrige a percepção da UI.
+    // Limpeza física do banco roda por SQL em paralelo.
+    if (fase.status === 'em_andamento') {
+      let gatilhoCumprido = true
+      if (fase.gatilhoTipo === 'liberacao_vao') {
+        gatilhoCumprido = !!cronograma.vaoLiberadoEm || todosLiberaramVao
+      } else if (fase.gatilhoTipo === 'assinatura_contrato') {
+        gatilhoCumprido = !!cronograma.aceitoEm
+      } else if (fase.gatilhoTipo === 'data_fixa' && fase.gatilhoData) {
+        gatilhoCumprido = fase.gatilhoData <= new Date().toISOString().slice(0, 10)
+      }
+      // fim_fase_anterior é checado depois (precisa do array atualizado)
+      if (!gatilhoCumprido) {
+        return {
+          ...fase,
+          status: 'aguardando_gatilho' as CronogramaFase['status'],
+          iniciadaEm: null,
+          previsaoInicio: null,
+          previsaoFim: null,
+        }
+      }
+    }
+
     let novoStatus: CronogramaFase['status'] = fase.status
     let novaConcluidaEm: string | null = fase.concluidaEm
 
