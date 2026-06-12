@@ -107,7 +107,7 @@ export default function Dashboard() {
         ) : (
           <>
             {/* CARDS DE MÉTRICAS */}
-            <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+            <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-8">
               <CardMetrica
                 titulo="Obras ativas"
                 valor={data.metricas.totalAtivas}
@@ -131,6 +131,12 @@ export default function Dashboard() {
                 valor={data.metricas.aguardandoCliente}
                 cor="amarelo"
                 href="#aguardando"
+              />
+              <CardMetrica
+                titulo="No prazo"
+                valor={data.metricas.noPrazo}
+                cor="verde"
+                href="#noprazo"
               />
             </section>
 
@@ -171,6 +177,15 @@ export default function Dashboard() {
               obras={data.aguardandoCliente}
               tom="amarelo"
             />
+
+            {/* LISTA — NO PRAZO (cravada 12/06) */}
+            <SecaoLista
+              id="noprazo"
+              titulo="🟢 No prazo"
+              vazia="Nenhuma obra em produção no momento."
+              obras={data.noPrazo}
+              tom="verde"
+            />
           </>
         )}
       </main>
@@ -182,13 +197,14 @@ export default function Dashboard() {
 // COMPONENTES INTERNOS
 // ============================================================
 
-type Tom = 'neutro' | 'vermelho' | 'laranja' | 'amarelo'
+type Tom = 'neutro' | 'vermelho' | 'laranja' | 'amarelo' | 'verde'
 
 const TOM_CLASSES: Record<Tom, { bg: string; texto: string; borda: string }> = {
   neutro: { bg: 'bg-white', texto: 'text-slate-900', borda: 'border-slate-200' },
   vermelho: { bg: 'bg-red-50', texto: 'text-red-700', borda: 'border-red-200' },
   laranja: { bg: 'bg-orange-50', texto: 'text-orange-700', borda: 'border-orange-200' },
   amarelo: { bg: 'bg-yellow-50', texto: 'text-yellow-800', borda: 'border-yellow-200' },
+  verde: { bg: 'bg-green-50', texto: 'text-green-700', borda: 'border-green-200' },
 }
 
 function CardMetrica({

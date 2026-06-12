@@ -33,13 +33,21 @@ export interface ObraDashboard {
   atrasada: boolean
   totalCards: number
   cardsConcluidos: number
+  // Flags cravadas 12/06 (regra Thiago):
+  // - kanban é a verdade primária do estado da obra, não o cronograma
+  // - obras com cards na aba Cliente estão PAUSADAS (não atrasam, não vencem)
+  // - obras com todos os cards concluídos somem do Dashboard atual
+  temCardsCliente: boolean         // tem ao menos 1 card de peça na aba Cliente
+  temCardsEmAndamento: boolean     // tem ao menos 1 card de peça na aba Em Andamento
+  todosCardsConcluidos: boolean    // todos os cards de peça em Conclusão com aceite final
 }
 
 export interface MetricasDashboard {
-  totalAtivas: number              // obras com cronograma aceito + não encerradas
-  emAtraso: number                 // com pelo menos 1 fase atrasada
-  atencaoHoje: number              // fases vencendo nos próximos 3 dias
-  aguardandoCliente: number        // demanda = 'cliente'
+  totalAtivas: number              // obras não encerradas e não finalizadas (todos cards concluídos)
+  emAtraso: number                 // com pelo menos 1 fase atrasada (excluindo aguardando cliente)
+  atencaoHoje: number              // fases vencendo nos próximos 3 dias (excluindo aguardando cliente)
+  aguardandoCliente: number        // tem cards na aba Cliente
+  noPrazo: number                  // tem cards em Em Andamento + prazo > 7 dias + saudável
   semCronograma: number            // obras sem cronograma ainda
 }
 
@@ -47,7 +55,8 @@ export interface DashboardData {
   metricas: MetricasDashboard
   atrasadas: ObraDashboard[]       // top 5 ordenadas por dias de atraso (desc)
   proximas: ObraDashboard[]        // top 5 com fase vencendo em até 7 dias
-  aguardandoCliente: ObraDashboard[] // top 5 com demanda = cliente
+  aguardandoCliente: ObraDashboard[] // top 5 com cards na aba Cliente
+  noPrazo: ObraDashboard[]         // top 5 saudáveis (em produção, prazo > 7d)
   totalObras: number               // total geral (pra UI saber se tem mais)
 }
 
@@ -110,6 +119,16 @@ export async function pegarDashboard(): Promise<DashboardData> {
       const diasRestantes = faseAtual ? calcularDiasRestantes(faseAtual) : null
       const atrasada = faseAtual ? estaFaseAtrasada(faseAtual) : false
 
+      // Flags do kanban (verdade primária da obra — cravado 12/06 por Thiago).
+      // Considera apenas cards de peça ativos (não encerrados) — cards do tipo
+      // 'item' / 'acordo' / 'apontamento' não entram no cálculo de estado.
+      const cardsDePecaAtivos = cardsCompletos.filter((c) => c.tipo === 'peca' && !c.encerrado)
+      const temCardsCliente = cardsDePecaAtivos.some((c) => c.aba === 'cliente')
+      const temCardsEmAndamento = cardsDePecaAtivos.some((c) => c.aba === 'emandamento')
+      const todosCardsConcluidos =
+        cardsDePecaAtivos.length > 0 &&
+        cardsDePecaAtivos.every((c) => c.aba === 'conclusao' && !!c.aceiteFinal)
+
       const cardsConcluidos = cardsCompletos.filter(
         (c) => c.aba === 'conclusao' && !!c.aceiteFinal,
       ).length
@@ -123,31 +142,47 @@ export async function pegarDashboard(): Promise<DashboardData> {
         atrasada,
         totalCards: cardsCompletos.length,
         cardsConcluidos,
+        temCardsCliente,
+        temCardsEmAndamento,
+        todosCardsConcluidos,
       }
     }),
   )
 
-  // Filtra encerradas pras métricas (mas mantém na lista total)
-  const ativas = obrasDashboard.filter((o) => !o.obra.encerrada)
+  // Filtra encerradas E finalizadas (todos cards concluídos somem do Dashboard
+  // atual — decisão Thiago 12/06: dashboard atual é só pra obras abertas em
+  // produção. Obras finalizadas terão painéis dedicados no avião-cabine V2).
+  const ativas = obrasDashboard.filter(
+    (o) => !o.obra.encerrada && !o.todosCardsConcluidos,
+  )
 
   // ============== Métricas ==============
+  // Regra: obras com cards na aba Cliente estão PAUSADAS — não entram em
+  // "Em atraso" nem "Atenção 3 dias" mesmo que a fase tenha vencido no banco.
+  const naoPausadas = ativas.filter((o) => !o.temCardsCliente)
   const metricas: MetricasDashboard = {
     totalAtivas: ativas.length,
-    emAtraso: ativas.filter((o) => o.atrasada).length,
-    atencaoHoje: ativas.filter(
+    emAtraso: naoPausadas.filter((o) => o.atrasada).length,
+    atencaoHoje: naoPausadas.filter(
       (o) => o.diasRestantes !== null && o.diasRestantes >= 0 && o.diasRestantes <= 3,
     ).length,
-    aguardandoCliente: ativas.filter((o) => o.demanda === 'cliente').length,
+    aguardandoCliente: ativas.filter((o) => o.temCardsCliente).length,
+    noPrazo: naoPausadas.filter(
+      (o) =>
+        o.temCardsEmAndamento &&
+        !o.atrasada &&
+        (o.diasRestantes === null || o.diasRestantes > 7),
+    ).length,
     semCronograma: ativas.filter((o) => !o.cronograma).length,
   }
 
   // ============== Listas ranqueadas (top 5) ==============
-  const atrasadas = ativas
+  const atrasadas = naoPausadas
     .filter((o) => o.atrasada && o.diasRestantes !== null)
     .sort((a, b) => (a.diasRestantes ?? 0) - (b.diasRestantes ?? 0)) // mais negativo (mais atrasado) primeiro
     .slice(0, 5)
 
-  const proximas = ativas
+  const proximas = naoPausadas
     .filter(
       (o) => !o.atrasada && o.diasRestantes !== null && o.diasRestantes >= 0 && o.diasRestantes <= 7,
     )
@@ -155,7 +190,17 @@ export async function pegarDashboard(): Promise<DashboardData> {
     .slice(0, 5)
 
   const aguardandoCliente = ativas
-    .filter((o) => o.demanda === 'cliente')
+    .filter((o) => o.temCardsCliente)
+    .slice(0, 5)
+
+  const noPrazo = naoPausadas
+    .filter(
+      (o) =>
+        o.temCardsEmAndamento &&
+        !o.atrasada &&
+        (o.diasRestantes === null || o.diasRestantes > 7),
+    )
+    .sort((a, b) => (b.diasRestantes ?? 0) - (a.diasRestantes ?? 0)) // mais folga primeiro
     .slice(0, 5)
 
   return {
@@ -163,6 +208,7 @@ export async function pegarDashboard(): Promise<DashboardData> {
     atrasadas,
     proximas,
     aguardandoCliente,
+    noPrazo,
     totalObras: ativas.length,
   }
 }
