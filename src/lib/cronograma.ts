@@ -500,7 +500,20 @@ export function inferirStatusFases(cronograma: Cronograma, cards: Card[]): Crono
     }
   }
 
-  // Propaga "em_andamento" pra primeira fase não-concluída
+  // Propaga "em_andamento" pra primeira fase não-concluída — RESPEITANDO O GATILHO.
+  //
+  // Bug cravado pela Thiago 12/06/2026 (obra Esquadsystem): M2 estava marcada
+  // como "vencida há 14 dias" no Dashboard mesmo com cards ainda na aba Cliente
+  // esperando contramarco. Causa: propagação cega ignorava gatilho_tipo. Fase com
+  // gatilho `liberacao_vao` (M2) era promovida em_andamento assim que a fase
+  // anterior concluía → ganhava previsão_fim → "vencia" sem que o evento real
+  // tivesse acontecido.
+  //
+  // Regra correta por gatilho:
+  //   - fim_fase_anterior  → propaga SE fase anterior concluiu (cascata natural)
+  //   - data_fixa          → propaga SE a data já passou ou é hoje
+  //   - assinatura_contrato → NÃO propaga (disparado por aceitarCronograma)
+  //   - liberacao_vao      → NÃO propaga (disparado por marcarVaoLiberado ou todos cards saírem de cliente/empresa)
   let proximaAtiva = -1
   for (let i = 0; i < fasesAtualizadas.length; i++) {
     if (fasesAtualizadas[i].status !== 'concluida') {
@@ -508,8 +521,23 @@ export function inferirStatusFases(cronograma: Cronograma, cards: Card[]): Crono
       break
     }
   }
-  if (proximaAtiva !== -1 && fasesAtualizadas[proximaAtiva].status === 'aguardando_gatilho') {
-    fasesAtualizadas[proximaAtiva] = { ...fasesAtualizadas[proximaAtiva], status: 'em_andamento' }
+  const hojeData = new Date().toISOString().slice(0, 10)
+  if (proximaAtiva !== -1) {
+    const fase = fasesAtualizadas[proximaAtiva]
+    if (fase.status === 'aguardando_gatilho') {
+      let podePropagar = false
+      if (fase.gatilhoTipo === 'fim_fase_anterior') {
+        podePropagar = proximaAtiva === 0 || fasesAtualizadas[proximaAtiva - 1].status === 'concluida'
+      } else if (fase.gatilhoTipo === 'data_fixa' && fase.gatilhoData) {
+        podePropagar = fase.gatilhoData <= hojeData
+      }
+      // assinatura_contrato e liberacao_vao são disparados pelas funções
+      // dedicadas (aceitarCronograma / marcarVaoLiberado / inferência de cards) —
+      // não devem ser promovidos cegamente aqui.
+      if (podePropagar) {
+        fasesAtualizadas[proximaAtiva] = { ...fase, status: 'em_andamento' }
+      }
+    }
   }
 
   // ============================================================
@@ -602,9 +630,15 @@ function somarDiasCorridos(dataISO: string, dias: number): string {
 /**
  * Quem tem a DEMANDA atual do cronograma?
  *   - 'cliente': precisa aceitar OU tem fase em andamento com responsavel=cliente
+ *                OU tem fase aguardando_gatilho que depende de ação do cliente
  *   - 'empresa': tem fase em andamento com responsavel=empresa
  *   - 'concluido': todas fases concluídas
  *   - 'aguardando_inicio': cronograma criado mas não tem fase ativa ainda
+ *
+ * Após o fix do bug Esquadsystem (12/06/2026), fases aguardando_gatilho são
+ * tratadas como fase ATUAL da obra (sem prazo, mas a obra ESTÁ nessa fase).
+ * Isso garante que obra parada esperando cliente instalar contramarco apareça
+ * em "Aguardando cliente" no Dashboard — não em "Em atraso".
  */
 export function calcularDemandaAtual(cronograma: Cronograma | null): {
   demanda: DemandaAtual
@@ -613,18 +647,33 @@ export function calcularDemandaAtual(cronograma: Cronograma | null): {
   if (!cronograma) return { demanda: 'aguardando_inicio', faseAtual: null }
   if (!cronograma.aceitoEm) return { demanda: 'cliente', faseAtual: null }
 
+  // Prioridade 1: fase em andamento explícita
   const faseEmAndamento = cronograma.fases.find((f) => f.status === 'em_andamento')
   if (faseEmAndamento) {
     return { demanda: faseEmAndamento.responsavel, faseAtual: faseEmAndamento }
   }
 
+  // Prioridade 2: todas concluídas?
   const todasConcluidas =
     cronograma.fases.length > 0 && cronograma.fases.every((f) => f.status === 'concluida')
+  if (todasConcluidas) return { demanda: 'concluido', faseAtual: null }
 
-  return {
-    demanda: todasConcluidas ? 'concluido' : 'aguardando_inicio',
-    faseAtual: null,
+  // Prioridade 3: próxima fase aguardando gatilho — a obra está PARADA nela.
+  // Determina a demanda pelo tipo do gatilho:
+  //   - liberacao_vao → cliente (cliente que precisa liberar)
+  //   - data_fixa → empresa (aguardando uma data, não ação do cliente)
+  //   - fim_fase_anterior → não deveria estar aqui (anterior deveria ter concluído)
+  //   - assinatura_contrato → cliente (mas isso já foi tratado pelo aceitoEm null)
+  const proximaPendente = cronograma.fases.find((f) => f.status === 'aguardando_gatilho')
+  if (proximaPendente) {
+    if (proximaPendente.gatilhoTipo === 'liberacao_vao') {
+      return { demanda: 'cliente', faseAtual: proximaPendente }
+    }
+    // Default: usa o responsável declarado da fase
+    return { demanda: proximaPendente.responsavel, faseAtual: proximaPendente }
   }
+
+  return { demanda: 'aguardando_inicio', faseAtual: null }
 }
 
 export function calcularDiasRestantes(fase: CronogramaFase): number | null {
