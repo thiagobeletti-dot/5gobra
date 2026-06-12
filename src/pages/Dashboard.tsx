@@ -286,17 +286,28 @@ function ItemObra({ item, tom, pausada }: { item: ObraDashboard; tom: Tom; pausa
               <div className={`text-sm mt-2 ${cls.texto} italic`}>
                 Aguardando ação do cliente
               </div>
-            ) : dias !== null && (
+            ) : item.faseAtiva ? (
               <div className={`text-sm mt-2 ${cls.texto}`}>
-                {atrasada ? (
-                  <>Vencida há {Math.abs(dias)} dia{Math.abs(dias) !== 1 ? 's' : ''}</>
-                ) : dias === 0 ? (
-                  <>Vence hoje</>
-                ) : (
-                  <>Restam {dias} dia{dias !== 1 ? 's' : ''}</>
+                Fase: <strong>{item.faseAtiva.nome}</strong>
+                {dias !== null && (
+                  <>
+                    {' · '}
+                    {atrasada ? (
+                      <span className="font-semibold">Vencida há {Math.abs(dias)} dia{Math.abs(dias) !== 1 ? 's' : ''}</span>
+                    ) : dias === 0 ? (
+                      <span className="font-semibold">Vence hoje</span>
+                    ) : (
+                      <span className="font-semibold">Restam {dias} dia{dias !== 1 ? 's' : ''}</span>
+                    )}
+                  </>
+                )}
+                {item.faseAtiva.previsaoFim && (
+                  <div className="text-xs text-slate-500 mt-0.5">
+                    Previsão de fim: {new Date(item.faseAtiva.previsaoFim + 'T00:00:00').toLocaleDateString('pt-BR')}
+                  </div>
                 )}
               </div>
-            )}
+            ) : null}
             {!item.faseAtiva && item.demanda === 'cliente' && (
               <div className="text-sm mt-2 text-yellow-800">
                 Aguardando aceite do cronograma pelo cliente

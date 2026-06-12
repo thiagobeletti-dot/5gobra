@@ -139,7 +139,6 @@ export default function FormMedicao2({ inicial, m1, onSalvar, onCancelar }: Prop
       if (!d.giro_fechadura_lado) return 'Preencha o lado da fechadura (Giro).'
     }
 
-    if (!d.soleira) return 'Preencha se a peça tem soleira.'
 
     if (d.tem_motor) {
       if (!d.motor_lado) return 'Preencha o lado do motor.'
@@ -337,12 +336,6 @@ export default function FormMedicao2({ inicial, m1, onSalvar, onCancelar }: Prop
             )}
 
             <div className="space-y-3 pt-2 border-t border-slate-200">
-              <GrupoRadio
-                label="Soleira"
-                valor={d.soleira}
-                opcoes={[{ v: 'sim', l: 'Sim' }, { v: 'nao', l: 'Não' }]}
-                onChange={(v) => up('soleira', v)}
-              />
               <Check label="Esquadria motorizada" valor={d.tem_motor} onChange={(v) => up('tem_motor', v)} />
               {d.tem_motor && (
                 <div className="grid md:grid-cols-2 gap-3 pl-3 border-l-2 border-laranja-soft">
