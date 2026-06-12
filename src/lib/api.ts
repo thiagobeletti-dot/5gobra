@@ -29,6 +29,10 @@ export interface CardRow {
   status_em_andamento: string | null
   sub_status: string | null
   prazo_contrato: string | null
+  /** Data em que o prazo da peça foi ativado. NULL = inativo (não conta atraso).
+   * Cravado 12/06 por Thiago: prazo de cada peça só "começa a correr" via popup
+   * SIM ao mudar pra Em Produção OU automaticamente na última liberação de vão. */
+  prazo_iniciado_em: string | null
   encerrado: boolean
   aceite_final_at: string | null
   aceite_final_ip: string | null
@@ -408,6 +412,7 @@ export function rowsParaDadosObra(
     statusEmAndamento: r.status_em_andamento,
     subStatus: r.sub_status ?? null,
     prazoContrato: r.prazo_contrato,
+    prazoIniciadoEm: r.prazo_iniciado_em ?? null,
     encerrado: r.encerrado,
     aceiteFinal: r.aceite_final_at,
     historico: (historicoPorCard[r.id] ?? []).map<RegistroHistorico>((h) => ({

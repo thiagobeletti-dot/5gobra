@@ -511,6 +511,34 @@ export function useObraData(
       ? await recarregarCard(obraReal, cardId, dados, client)
       : await carregarDoBanco(obraReal, client)
     setDados(novo)
+
+    // Auto-iniciar prazo nos cards "Em Andamento" sem prazo ativo quando esta foi
+    // a ÚLTIMA liberação de vão (cravado 12/06 por Thiago). Regra: enquanto há
+    // qualquer card na aba Cliente, prazo da obra não conta. Quando o último card
+    // sai dali (todos em técnica/em andamento/conclusão), o prazo dispara pra todos
+    // os cards de peça em Em Andamento que ainda não tinham o prazo iniciado via popup.
+    if (novo) {
+      const cardsDePecaAtivos = novo.cards.filter((c) => c.tipo === 'peca' && !c.encerrado)
+      const todosLiberados =
+        cardsDePecaAtivos.length > 0 &&
+        cardsDePecaAtivos.every(
+          (c) => c.aba === 'tecnica' || c.aba === 'emandamento' || c.aba === 'conclusao',
+        )
+      if (todosLiberados) {
+        const hojeISO = new Date().toISOString().slice(0, 10)
+        const aAtivar = cardsDePecaAtivos.filter(
+          (c) => c.aba === 'emandamento' && !c.prazoIniciadoEm && !!c.prazoContrato,
+        )
+        for (const c of aAtivar) {
+          await atualizarCard(c.id, { prazo_iniciado_em: hojeISO }, client)
+        }
+        if (aAtivar.length > 0) {
+          // Recarrega pra refletir os prazos ativados no estado local
+          const novo2 = await carregarDoBanco(obraReal, client)
+          setDados(novo2)
+        }
+      }
+    }
   }, [dados, modo, obraReal])
 
   // Empresa marca apontamento como resolvido — vai pra Conclusão encerrado.

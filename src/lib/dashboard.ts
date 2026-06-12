@@ -13,8 +13,6 @@ import { listarChecklistsDeVariosCards } from './checklist'
 import {
   pegarCronogramaPorObra,
   inferirStatusFases,
-  calcularDiasRestantes,
-  estaFaseAtrasada,
   calcularDemandaAtual,
 } from './cronograma'
 import type { Card } from '../types/obra'
@@ -117,29 +115,47 @@ export async function pegarDashboard(): Promise<DashboardData> {
 
       const { demanda, faseAtual } = calcularDemandaAtual(cronograma)
 
-      const diasRestantes = faseAtual ? calcularDiasRestantes(faseAtual) : null
-      const atrasada = faseAtual ? estaFaseAtrasada(faseAtual) : false
-
       // Flags do kanban (verdade primária da obra — cravado 12/06 por Thiago).
       // Cards do tipo 'item' / 'acordo' / 'apontamento' não entram no cálculo de estado.
       const cardsDePeca = cardsCompletos.filter((c) => c.tipo === 'peca')
       const cardsDePecaAtivos = cardsDePeca.filter((c) => !c.encerrado)
 
-      const totalAtivos = cardsDePecaAtivos.length
-      const totalEmCliente = cardsDePecaAtivos.filter((c) => c.aba === 'cliente').length
       const totalEmAndamento = cardsDePecaAtivos.filter((c) => c.aba === 'emandamento').length
 
-      // Refinamento cravado em 12/06 por Thiago após teste com "Criando a Primeira Obra":
-      // a regra anterior "qualquer card em Cliente = obra pausada" era agressiva demais.
-      // Cenário: 1 card aguardando contramarco + 3 cards em produção → obra NÃO está
-      // pausada como um todo, está em produção com 1 pendência específica.
-      //
-      // Nova regra: obra está pausada (Aguardando Cliente) só se MAIORIA dos cards
-      // ativos está em aba Cliente (> 50%). Senão, obra reflete fase predominante.
-      const temCardsCliente = totalEmCliente > 0
-      const obraPausadaPorCliente =
-        totalAtivos > 0 && totalEmCliente / totalAtivos > 0.5
+      // Regra cravada por Thiago 12/06 (após teste real + refinamento):
+      // OBRA PAUSADA = qualquer card de peça na aba Cliente. Não importa quantidade.
+      // A regra ">50%" tentada antes foi REVERTIDA — qualquer ação pendente do
+      // cliente (confirmar item / instalar contramarco / regularizar vão) pausa
+      // o prazo da obra inteira. Cards podem rodar em paralelo SEM contar prazo
+      // enquanto há pendência do cliente em alguma peça.
+      const temCardsCliente = cardsDePecaAtivos.some((c) => c.aba === 'cliente')
+      const obraPausadaPorCliente = temCardsCliente
       const temCardsEmAndamento = totalEmAndamento > 0
+
+      // Classifica obra pelos prazos INDIVIDUAIS dos cards (cravado 12/06):
+      // só conta atraso de cards com prazo_iniciado_em preenchido (popup SIM ou
+      // última liberação). Cards sem prazo ativo são ignorados na classificação.
+      const hojeISO = new Date().toISOString().slice(0, 10)
+      const cardsComPrazoAtivo = cardsDePecaAtivos.filter(
+        (c) => !!c.prazoIniciadoEm && !!c.prazoContrato,
+      )
+      const diasAteFim = (dataISO: string) => {
+        const fim = new Date(dataISO + 'T00:00:00').getTime()
+        const hoje = new Date(hojeISO + 'T00:00:00').getTime()
+        return Math.ceil((fim - hoje) / (1000 * 60 * 60 * 24))
+      }
+      const cardsAtrasados = cardsComPrazoAtivo.filter(
+        (c) => diasAteFim(c.prazoContrato!) < 0,
+      )
+      const cardsAVencer = cardsComPrazoAtivo.filter((c) => {
+        const d = diasAteFim(c.prazoContrato!)
+        return d >= 0 && d <= 7
+      })
+      // Pior card com prazo ativo determina a classificação da obra
+      const piorPrazoDias =
+        cardsComPrazoAtivo.length > 0
+          ? Math.min(...cardsComPrazoAtivo.map((c) => diasAteFim(c.prazoContrato!)))
+          : null
 
       // "Obra finalizada" considera TODOS os cards de peça (incluindo encerrados):
       // bug 12/06 Vidrobras tinha 1 card com encerrado=true + aba=conclusao + aceite_final
@@ -152,6 +168,11 @@ export async function pegarDashboard(): Promise<DashboardData> {
       const cardsConcluidos = cardsCompletos.filter(
         (c) => c.aba === 'conclusao' && !!c.aceiteFinal,
       ).length
+
+      // atrasada/diasRestantes derivados dos prazos individuais dos cards
+      // (cravado 12/06). Obra pausada por cliente NÃO atrasa.
+      const diasRestantes = piorPrazoDias
+      const atrasada = !obraPausadaPorCliente && cardsAtrasados.length > 0
 
       return {
         obra,

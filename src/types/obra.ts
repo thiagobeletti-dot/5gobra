@@ -34,6 +34,11 @@ export interface Card {
   statusEmAndamento: string | null
   subStatus: string | null
   prazoContrato: string | null
+  /** Data em que o prazo da peça foi ativado (cravado 12/06 por Thiago).
+   * NULL = prazo inativo (não conta atraso no Dashboard). Ativado de 2 jeitos:
+   * (a) popup SIM ao mudar status pra "Em Produção", ou (b) automaticamente
+   * quando a última liberação de vão acontece (todos cards saem de cliente/empresa). */
+  prazoIniciadoEm: string | null
   encerrado: boolean
   aceiteFinal: string | null
   historico: RegistroHistorico[]
