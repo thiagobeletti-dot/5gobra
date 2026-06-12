@@ -282,21 +282,18 @@ function ItemObra({ item, tom, pausada }: { item: ObraDashboard; tom: Tom; pausa
               {item.obra.cliente_nome || 'Sem cliente'}
               {item.obra.endereco ? ` · ${item.obra.endereco}` : ''}
             </div>
-            {item.faseAtiva && (
+            {pausada ? (
+              <div className={`text-sm mt-2 ${cls.texto} italic`}>
+                Aguardando ação do cliente
+              </div>
+            ) : dias !== null && (
               <div className={`text-sm mt-2 ${cls.texto}`}>
-                Fase: <strong>{item.faseAtiva.nome}</strong>
-                {pausada ? (
-                  <> · <span className="italic">aguardando ação do cliente</span></>
-                ) : dias !== null && (
-                  <>
-                    {atrasada ? (
-                      <> · Vencida há {Math.abs(dias)} dia{Math.abs(dias) !== 1 ? 's' : ''}</>
-                    ) : dias === 0 ? (
-                      <> · Vence hoje</>
-                    ) : (
-                      <> · Restam {dias} dia{dias !== 1 ? 's' : ''}</>
-                    )}
-                  </>
+                {atrasada ? (
+                  <>Vencida há {Math.abs(dias)} dia{Math.abs(dias) !== 1 ? 's' : ''}</>
+                ) : dias === 0 ? (
+                  <>Vence hoje</>
+                ) : (
+                  <>Restam {dias} dia{dias !== 1 ? 's' : ''}</>
                 )}
               </div>
             )}
