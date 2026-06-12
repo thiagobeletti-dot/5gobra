@@ -159,22 +159,47 @@ function extrairItens(linhas: string[]): ItemInvictos[] {
   // BASCULANTE, etc) que precedem uma linha com "PROJETO:" — essas são as
   // descrições de itens.
 
-  const reTipologia = /^(PORTA|JANELA|MAXIM[-\s]?AR|BASCULANTE|VIDRO|BOX|KIT)\s/i
+  // Estratégia cravada 12/06: usa PROJETO: como âncora primária (presente em
+  // 100% dos itens). O marker @@PPIMAGE é instável — pdfplumber extrai bagunçado
+  // (intercala chars com o nome do item, ou fica em linha separada).
+  //
+  // Lógica:
+  //   1. Acha todas linhas com PROJETO:
+  //   2. Pra cada uma, volta até 5 linhas procurando o nome do item (linha
+  //      descritiva, não-cabeçalho, não-vazia)
+  //   3. Esse é o início do bloco do item
+  //
+  // Bug reportado por Cristiano (MS VIDROS) 12/06 — antes do fix perdia
+  // ESPELHO, PAINEL, QUADRO, FIXO e variações com layout quebrado.
+  function ehLinhaCabecalho(linha: string): boolean {
+    const l = linha.trim()
+    if (!l) return true
+    if (/^Emitido pelo Sistema/i.test(l)) return true
+    if (/^P[áa]gina\s+\d+/i.test(l)) return true
+    // Linha que é só o placeholder do marker
+    if (/^[@\s]+(PPIMAGE|NOMEIMAGEM|R)[@\s]*$/i.test(l)) return true
+    // Linha com cabeçalho contábil (PEND VENCTO etc)
+    if (/^PEND\s+VENCTO\s+VALOR/i.test(l)) return true
+    if (/^\d{4}\s+\d{2}\/\d{2}\/\d{4}\s+R\$/.test(l)) return true
+    return false
+  }
 
-  // Encontra índices das linhas de descrição de item
   const indicesItem: number[] = []
   for (let i = 0; i < linhas.length; i++) {
-    const l = linhas[i]
-    if (!reTipologia.test(l)) continue
-    // Confirma que é início de item: PROJETO: deve aparecer nas próximas 3 linhas
-    let achouProjeto = false
-    for (let j = i + 1; j <= Math.min(i + 3, linhas.length - 1); j++) {
-      if (/PROJETO:/i.test(linhas[j])) {
-        achouProjeto = true
+    if (!/PROJETO:/i.test(linhas[i])) continue
+    // Volta até 5 linhas procurando o nome do item
+    let idxNome = -1
+    for (let k = i - 1; k >= Math.max(0, i - 5); k--) {
+      const lin = linhas[k]
+      if (ehLinhaCabecalho(lin)) continue
+      // Limpa placeholder bagunçado pra avaliar conteúdo real
+      const limpa = lin.replace(/@+P+I*M*A*G*E*\d*/gi, '').replace(/@+/g, '').replace(/NOMEIMAGEM/gi, '').replace(/\s+/g, ' ').trim()
+      if (limpa.length >= 4) {
+        idxNome = k
         break
       }
     }
-    if (achouProjeto) indicesItem.push(i)
+    if (idxNome >= 0) indicesItem.push(idxNome)
   }
 
   if (indicesItem.length === 0) return []
@@ -235,10 +260,20 @@ function parsearBloco(bloco: string[], ordem: number): ItemInvictos | null {
   const mPer = textoBloco.match(/PERFIL:\s*([A-ZÁÉÍÓÚÂÊÔÃÇ\s]+?)[,\n]/i)
   if (mPer) corPerfil = mPer[1].trim()
 
-  // AMBIENTE: <texto>
+  // AMBIENTE: <texto>  (campo principal cadastrado no Invictos)
   let ambiente = ''
   const mAmb = textoBloco.match(/AMBIENTE:\s*(.*?)(?=\s+QUANTIDADE:|\s*$|\n)/i)
   if (mAmb) ambiente = mAmb[1].trim()
+
+  // OBSERVAÇÃO: <texto livre>  (cravado 12/06 — Cristiano pediu, identifica local real)
+  // Quando AMBIENTE está vazio, usar OBSERVAÇÃO como fallback. Quando os 2 estão
+  // preenchidos, combinar com separador.
+  const mObs = textoBloco.match(/OBSERVA[ÇC][AÃ]O:\s*([^\n]*?)(?=\s*TRATAMENTO|\s*$|\n)/i)
+  const observacao = mObs ? mObs[1].trim() : ''
+  if (observacao) {
+    if (!ambiente) ambiente = observacao
+    else ambiente = ambiente + ' — ' + observacao
+  }
 
   // QUANTIDADE: <n>
   let qtde = 1
