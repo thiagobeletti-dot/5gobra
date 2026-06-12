@@ -37,9 +37,10 @@ export interface ObraDashboard {
   // - kanban é a verdade primária do estado da obra, não o cronograma
   // - obras com cards na aba Cliente estão PAUSADAS (não atrasam, não vencem)
   // - obras com todos os cards concluídos somem do Dashboard atual
-  temCardsCliente: boolean         // tem ao menos 1 card de peça na aba Cliente
-  temCardsEmAndamento: boolean     // tem ao menos 1 card de peça na aba Em Andamento
-  todosCardsConcluidos: boolean    // todos os cards de peça em Conclusão com aceite final
+  temCardsCliente: boolean              // tem ao menos 1 card de peça na aba Cliente
+  obraPausadaPorCliente: boolean        // MAIORIA dos cards está em aba Cliente (>50%) — obra pausada
+  temCardsEmAndamento: boolean          // tem ao menos 1 card de peça na aba Em Andamento
+  todosCardsConcluidos: boolean         // todos os cards de peça em Conclusão com aceite final OU encerrados
 }
 
 export interface MetricasDashboard {
@@ -123,8 +124,23 @@ export async function pegarDashboard(): Promise<DashboardData> {
       // Cards do tipo 'item' / 'acordo' / 'apontamento' não entram no cálculo de estado.
       const cardsDePeca = cardsCompletos.filter((c) => c.tipo === 'peca')
       const cardsDePecaAtivos = cardsDePeca.filter((c) => !c.encerrado)
-      const temCardsCliente = cardsDePecaAtivos.some((c) => c.aba === 'cliente')
-      const temCardsEmAndamento = cardsDePecaAtivos.some((c) => c.aba === 'emandamento')
+
+      const totalAtivos = cardsDePecaAtivos.length
+      const totalEmCliente = cardsDePecaAtivos.filter((c) => c.aba === 'cliente').length
+      const totalEmAndamento = cardsDePecaAtivos.filter((c) => c.aba === 'emandamento').length
+
+      // Refinamento cravado em 12/06 por Thiago após teste com "Criando a Primeira Obra":
+      // a regra anterior "qualquer card em Cliente = obra pausada" era agressiva demais.
+      // Cenário: 1 card aguardando contramarco + 3 cards em produção → obra NÃO está
+      // pausada como um todo, está em produção com 1 pendência específica.
+      //
+      // Nova regra: obra está pausada (Aguardando Cliente) só se MAIORIA dos cards
+      // ativos está em aba Cliente (> 50%). Senão, obra reflete fase predominante.
+      const temCardsCliente = totalEmCliente > 0
+      const obraPausadaPorCliente =
+        totalAtivos > 0 && totalEmCliente / totalAtivos > 0.5
+      const temCardsEmAndamento = totalEmAndamento > 0
+
       // "Obra finalizada" considera TODOS os cards de peça (incluindo encerrados):
       // bug 12/06 Vidrobras tinha 1 card com encerrado=true + aba=conclusao + aceite_final
       // que era ignorado pelo filtro de ativos, fazendo a obra continuar em "Em atraso".
@@ -147,6 +163,7 @@ export async function pegarDashboard(): Promise<DashboardData> {
         totalCards: cardsCompletos.length,
         cardsConcluidos,
         temCardsCliente,
+        obraPausadaPorCliente,
         temCardsEmAndamento,
         todosCardsConcluidos,
       }
@@ -161,16 +178,17 @@ export async function pegarDashboard(): Promise<DashboardData> {
   )
 
   // ============== Métricas ==============
-  // Regra: obras com cards na aba Cliente estão PAUSADAS — não entram em
-  // "Em atraso" nem "Atenção 3 dias" mesmo que a fase tenha vencido no banco.
-  const naoPausadas = ativas.filter((o) => !o.temCardsCliente)
+  // Regra refinada 12/06: obra está pausada (Aguardando Cliente) só se >50% dos
+  // cards de peça estão em aba Cliente. Senão, obra reflete fase predominante e
+  // entra normalmente em "Em atraso" / "Próximos" / "No prazo".
+  const naoPausadas = ativas.filter((o) => !o.obraPausadaPorCliente)
   const metricas: MetricasDashboard = {
     totalAtivas: ativas.length,
     emAtraso: naoPausadas.filter((o) => o.atrasada).length,
     atencaoHoje: naoPausadas.filter(
       (o) => o.diasRestantes !== null && o.diasRestantes >= 0 && o.diasRestantes <= 3,
     ).length,
-    aguardandoCliente: ativas.filter((o) => o.temCardsCliente).length,
+    aguardandoCliente: ativas.filter((o) => o.obraPausadaPorCliente).length,
     noPrazo: naoPausadas.filter(
       (o) =>
         o.temCardsEmAndamento &&
@@ -194,7 +212,7 @@ export async function pegarDashboard(): Promise<DashboardData> {
     .slice(0, 5)
 
   const aguardandoCliente = ativas
-    .filter((o) => o.temCardsCliente)
+    .filter((o) => o.obraPausadaPorCliente)
     .slice(0, 5)
 
   const noPrazo = naoPausadas

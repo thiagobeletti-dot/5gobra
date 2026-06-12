@@ -9,6 +9,7 @@ import {
   criarCard,
   criarVariosCards,
   atualizarCard,
+  atualizarObra,
   adicionarHistorico,
   rowsParaDadosObra,
   type HistoricoRow,
@@ -675,6 +676,23 @@ export function useObraData(
       ? await recarregarCard(obraReal, cardId, dados, client)
       : await carregarDoBanco(obraReal, client)
     setDados(novo)
+
+    // Auto-encerra obra se todos os cards de peça estiverem finalizados
+    // (cravado 12/06 por Thiago após teste com Vidrobras: 1 card encerrado
+    // + obra continuava aparecendo como ativa). Cada card é "finalizado" se
+    // (aba=conclusao + aceiteFinal) OU encerrado=true.
+    if (novo && !obraReal.encerrada) {
+      const cardsDePeca = novo.cards.filter((c) => c.tipo === 'peca')
+      const todosFinalizados =
+        cardsDePeca.length > 0 &&
+        cardsDePeca.every(
+          (c) => (c.aba === 'conclusao' && !!c.aceiteFinal) || c.encerrado,
+        )
+      if (todosFinalizados) {
+        await atualizarObra(obraReal.id, { encerrada: true })
+        setObraReal({ ...obraReal, encerrada: true })
+      }
+    }
   }, [dados, modo, obraReal])
 
   const reabrir = useCallback(async (cardId: string, texto: string, perfil: 'empresa' | 'cliente') => {
