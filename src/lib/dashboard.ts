@@ -14,6 +14,8 @@ import {
   pegarCronogramaPorObra,
   inferirStatusFases,
   calcularDemandaAtual,
+  calcularDiasRestantes,
+  estaFaseAtrasada,
 } from './cronograma'
 import type { Card } from '../types/obra'
 import type { Cronograma, CronogramaFase, DemandaAtual } from '../types/cronograma'
@@ -128,8 +130,14 @@ export async function pegarDashboard(): Promise<DashboardData> {
         (c) => c.aba === 'conclusao' && !!c.aceiteFinal,
       ).length
 
-      const diasRestantes = piorPrazoDias
-      const atrasada = !obraPausadaPorCliente && cardsAtrasados.length > 0
+      // Cravado 12/06 por Thiago: prazo da FASE do cronograma é a verdade base.
+      // Se há cards com prazo individual ativo (popup SIM), usa o pior deles
+      // como override (cards atrasados levam a obra pra Em Atraso).
+      const diasFase = faseAtual ? calcularDiasRestantes(faseAtual) : null
+      const faseAtrasada = faseAtual ? estaFaseAtrasada(faseAtual) : false
+      const diasRestantes = piorPrazoDias !== null ? piorPrazoDias : diasFase
+      const atrasada =
+        !obraPausadaPorCliente && (cardsAtrasados.length > 0 || faseAtrasada)
 
       return {
         obra,
