@@ -419,11 +419,16 @@ export function inferirStatusFases(cronograma: Cronograma, cards: Card[]): Crono
   const cardsDePeca = cards.filter((c) => c.tipo === 'peca' && !c.encerrado)
   const temCards = cardsDePeca.length > 0
 
+  // Cravado 12/06 por Thiago: aceita aba avançada como sinal de medição cumprida.
+  // Casos reais (Criando a Primeira Obra) onde cards foram movidos pra Em Andamento
+  // sem checklist M2 explícito — antes a inferência ficava presa em M2.
   const todosComChecklistM1 = temCards && cardsDePeca.every((c) =>
-    (c.checklists ?? []).some((ck) => ck.tipo === 'medicao1'),
+    (c.checklists ?? []).some((ck) => ck.tipo === 'medicao1')
+    || c.aba === 'tecnica' || c.aba === 'emandamento' || c.aba === 'conclusao',
   )
   const todosComChecklistM2 = temCards && cardsDePeca.every((c) =>
-    (c.checklists ?? []).some((ck) => ck.tipo === 'medicao2'),
+    (c.checklists ?? []).some((ck) => ck.tipo === 'medicao2')
+    || c.aba === 'emandamento' || c.aba === 'conclusao',
   )
   // "Liberação do vão": todos os cards saíram de cliente/empresa (já estão em
   // técnica, em andamento ou conclusão). Cliente clicou "vão pronto" / "contramarco
