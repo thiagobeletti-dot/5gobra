@@ -82,6 +82,12 @@ export default function Login() {
               />
             </div>
 
+            {supabaseConfigurado && (
+              <div className="text-right -mt-1">
+                <Link to="/recuperar-senha" className="text-xs text-slate-500 hover:text-laranja-dark">Esqueci minha senha</Link>
+              </div>
+            )}
+
             {erro && <div className="text-sm text-red-600">{erro}</div>}
 
             <button type="submit" className="btn-primary w-full" disabled={carregando}>

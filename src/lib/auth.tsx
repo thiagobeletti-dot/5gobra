@@ -84,3 +84,22 @@ export async function sair() {
   if (!supabase) return
   await supabase.auth.signOut()
 }
+
+// Dispara o e-mail de redefinição de senha. O link do e-mail leva pra
+// /redefinir-senha (no mesmo domínio em que o app está rodando — por isso
+// window.location.origin, sem hardcode de URL).
+export async function solicitarResetSenha(email: string) {
+  if (!supabase) throw new Error('Supabase não configurado')
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/redefinir-senha`,
+  })
+  if (error) throw error
+}
+
+// Define a nova senha. Só funciona com a sessão de recuperação ativa (criada
+// pelo Supabase quando o usuário abre o link do e-mail).
+export async function definirNovaSenha(novaSenha: string) {
+  if (!supabase) throw new Error('Supabase não configurado')
+  const { error } = await supabase.auth.updateUser({ password: novaSenha })
+  if (error) throw error
+}

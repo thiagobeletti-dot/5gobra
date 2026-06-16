@@ -3,6 +3,8 @@ import { AuthProvider } from './lib/auth'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Cadastro from './pages/Cadastro'
+import RecuperarSenha from './pages/RecuperarSenha'
+import RedefinirSenha from './pages/RedefinirSenha'
 import Dashboard from './pages/Dashboard'
 import Obras from './pages/Obras'
 import ImportarOrcamento from './pages/ImportarOrcamento'
@@ -25,6 +27,8 @@ function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/cadastro" element={<Cadastro />} />
+          <Route path="/recuperar-senha" element={<RecuperarSenha />} />
+          <Route path="/redefinir-senha" element={<RedefinirSenha />} />
           <Route path="/termos" element={<Termos />} />
           <Route path="/privacidade" element={<Privacidade />} />
           {/* Login default vai pra /app/obras (decidido por Thiago em 09/06). Dashboard
