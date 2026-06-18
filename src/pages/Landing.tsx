@@ -1,6 +1,7 @@
 import { useEffect, useState, type MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { LogoFull } from '../lib/logo'
+import { trackCustom } from '../lib/meta-pixel'
 import CarrosselSistema from '../components/CarrosselSistema'
 import PopupSaida from '../components/PopupSaida'
 import ModalComprar from '../components/ModalComprar'
@@ -32,6 +33,23 @@ function abrirCalendlyPopup(e: MouseEvent<HTMLAnchorElement>) {
 export default function Landing() {
   const [comprarAberto, setComprarAberto] = useState(false)
 
+  // A/B test da headline do hero — cravado 17/06/2026 (briefing Pixel, Campanha 3).
+  // 50/50 entre A (atual, categorial) e B (agitação de dor "WhatsApp"). A variante
+  // é sorteada uma vez e persistida em localStorage, então a mesma sessão vê sempre
+  // a mesma headline. Dispara `headline_variant_shown` no Pixel pra medir por
+  // variante. Roda 14 dias.
+  const [headlineVariant] = useState<'A' | 'B'>(() => {
+    try {
+      const salvo = localStorage.getItem('ab_headline')
+      if (salvo === 'A' || salvo === 'B') return salvo
+      const sorteada: 'A' | 'B' = Math.random() < 0.5 ? 'A' : 'B'
+      localStorage.setItem('ab_headline', sorteada)
+      return sorteada
+    } catch {
+      return 'A' // localStorage bloqueado → cai no controle
+    }
+  })
+
   // URL param `?comprar=1` abre o modal de contratação automaticamente.
   // Permite mandar link direto pós-reunião: "5gobra.com.br?comprar=1".
   // Cravado em 09/06/2026 após Thiago não achar o botão na reunião do Carlos.
@@ -41,6 +59,11 @@ export default function Landing() {
       setComprarAberto(true)
     }
   }, [])
+
+  // Registra qual variante da headline foi exibida (1x por render de sessão).
+  useEffect(() => {
+    trackCustom('headline_variant_shown', { variant: headlineVariant })
+  }, [headlineVariant])
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -84,7 +107,11 @@ export default function Landing() {
                 sabe que precisa e quer entender RAPIDAMENTE o que é o produto.
                 Ganho de dobra mobile: era 6 linhas no celular, agora cabe em 2-3. */}
             <h1 className="text-4xl md:text-5xl font-extrabold leading-[1.1] tracking-tight mb-5">
-              Diário de obra digital pra <span className="text-laranja">fábricas de esquadria</span>.
+              {headlineVariant === 'B' ? (
+                <>Pare de gerir sua fábrica no <span className="text-laranja">WhatsApp</span>.</>
+              ) : (
+                <>Diário de obra digital pra <span className="text-laranja">fábricas de esquadria</span>.</>
+              )}
             </h1>
             <p className="text-base md:text-lg text-slate-600 mb-7 max-w-lg leading-relaxed">
               Cada combinado registrado, cada aprovação preservada. Comunicação clara entre

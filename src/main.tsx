@@ -28,8 +28,20 @@ if (typeof window !== 'undefined') {
         ? (e.data as { event: string }).event
         : null
     if (origemValida && eventoCalendly === 'calendly.event_scheduled') {
-      trackLead()
-      console.info('[meta-pixel] Lead disparado (Calendly: demo agendada)')
+      // Extrai o UUID do invitee do payload do Calendly pra usar como event_id.
+      // Esse MESMO id é usado pelo CAPI server-side (T4) → o Meta deduplica os
+      // eventos client e server num só. // dedup com CAPI server-side (T4)
+      let eventId: string | undefined
+      try {
+        const payload = (e.data as { payload?: { invitee?: { uri?: string } } }).payload
+        const inviteeUri = payload?.invitee?.uri
+        const uuid = inviteeUri?.split('/').filter(Boolean).pop()
+        if (uuid) eventId = `calendly_${uuid}`
+      } catch {
+        // payload fora do formato esperado → dispara sem dedup (como antes)
+      }
+      trackLead(eventId)
+      console.info('[meta-pixel] Lead disparado (Calendly: demo agendada)', { eventId })
     }
   })
 }

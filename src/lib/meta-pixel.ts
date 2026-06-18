@@ -162,9 +162,42 @@ export function trackCompleteRegistration(): void {
 }
 
 /**
- * Dispara evento Lead. Chamar quando o lead deixa contato (pop-up de saida,
- * formulario "tirar duvida no WhatsApp").
+ * Dispara evento Lead. Chamar quando o lead deixa contato (agenda demo no
+ * Calendly, pop-up de saida, etc).
+ *
+ * `eventId` (opcional): ID de deduplicacao compartilhado com o CAPI
+ * server-side (T4). Quando o Lead vem do Calendly, passamos
+ * `calendly_<invitee_uuid>` — o webhook server-side usa o MESMO id e o Meta
+ * deduplica os dois eventos (client + server) num so.
  */
-export function trackLead(): void {
-  trackEvent('Lead')
+export function trackLead(eventId?: string): void {
+  if (!ENABLED) {
+    console.info('[meta-pixel] track Lead (dry-run)', { eventId })
+    return
+  }
+  if (window.fbq) {
+    // dedup com CAPI server-side (T4)
+    if (eventId) {
+      window.fbq('track', 'Lead', {}, { eventID: eventId })
+    } else {
+      window.fbq('track', 'Lead')
+    }
+  }
+}
+
+/**
+ * Dispara um evento CUSTOM (nao-padrao) via trackCustom. Usado pra eventos
+ * proprios como `headline_variant_shown` (A/B test da headline do hero).
+ */
+export function trackCustom(
+  event: string,
+  params?: Record<string, string | number | boolean>,
+): void {
+  if (!ENABLED) {
+    console.info('[meta-pixel] trackCustom (dry-run)', event, params ?? {})
+    return
+  }
+  if (window.fbq) {
+    window.fbq('trackCustom', event, params)
+  }
 }
