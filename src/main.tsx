@@ -19,6 +19,36 @@ initMetaPixel()
 //
 // Validação de origem é crítica pra não disparar Lead em qualquer
 // postMessage que algum script de terceiro mande (XSS-style defense).
+// Lê um cookie do browser pelo nome (ex: _fbp, _fbc).
+function lerCookie(nome: string): string | undefined {
+  const esc = nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const m = document.cookie.match(new RegExp('(?:^|; )' + esc + '=([^;]*)'))
+  return m ? decodeURIComponent(m[1]) : undefined
+}
+
+// Envia os cookies do Pixel (_fbp/_fbc) pra Edge Function, associados ao
+// invitee do Calendly. O CAPI server-side (T4) busca esses cookies pelo
+// invitee_uuid pra elevar o Event Match Quality. Best-effort, não bloqueia.
+function salvarPixelCookies(inviteeUuid: string): void {
+  const url = import.meta.env.VITE_SUPABASE_URL
+  const anon = import.meta.env.VITE_SUPABASE_ANON_KEY
+  if (!url || !anon) return
+  fetch(`${url}/functions/v1/salvar-pixel-cookies`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: anon,
+      Authorization: `Bearer ${anon}`,
+    },
+    body: JSON.stringify({
+      invitee_uuid: inviteeUuid,
+      fbp: lerCookie('_fbp') ?? null,
+      fbc: lerCookie('_fbc') ?? null,
+    }),
+    keepalive: true,
+  }).catch(() => {})
+}
+
 if (typeof window !== 'undefined') {
   window.addEventListener('message', (e: MessageEvent) => {
     const origemValida =
@@ -31,17 +61,19 @@ if (typeof window !== 'undefined') {
       // Extrai o UUID do invitee do payload do Calendly pra usar como event_id.
       // Esse MESMO id é usado pelo CAPI server-side (T4) → o Meta deduplica os
       // eventos client e server num só. // dedup com CAPI server-side (T4)
-      let eventId: string | undefined
+      let inviteeUuid: string | undefined
       try {
         const payload = (e.data as { payload?: { invitee?: { uri?: string } } }).payload
-        const inviteeUri = payload?.invitee?.uri
-        const uuid = inviteeUri?.split('/').filter(Boolean).pop()
-        if (uuid) eventId = `calendly_${uuid}`
+        inviteeUuid = payload?.invitee?.uri?.split('/').filter(Boolean).pop()
       } catch {
         // payload fora do formato esperado → dispara sem dedup (como antes)
       }
+      const eventId = inviteeUuid ? `calendly_${inviteeUuid}` : undefined
       trackLead(eventId)
       console.info('[meta-pixel] Lead disparado (Calendly: demo agendada)', { eventId })
+
+      // Grava _fbp/_fbc associados ao invitee pro CAPI server-side (T4) usar.
+      if (inviteeUuid) salvarPixelCookies(inviteeUuid)
     }
   })
 }
