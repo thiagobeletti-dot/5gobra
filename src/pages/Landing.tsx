@@ -53,30 +53,14 @@ export default function Landing() {
             <a href="#como-funciona" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition">Como funciona</a>
             <a href="#faq" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition">FAQ</a>
           </nav>
-          <div className="flex items-center gap-2.5">
-            {/* WhatsApp como link discreto — só em telas largas */}
-            <a
-              href={WA_DUVIDA}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden lg:inline text-sm font-medium text-slate-600 hover:text-slate-900 transition"
-            >
-              WhatsApp
-            </a>
-            <Link to="/login" className="btn-ghost text-sm">Entrar</Link>
-            <Link to="/app/demo" className="hidden md:inline-flex btn-ghost text-sm">
-              Ver sistema
-            </Link>
-            {/* Botão "Contratar" cravado em 09/06/2026 após Thiago não achar o
-                link discreto na reunião do Carlos. Estilo destacado (borda laranja)
-                mas secundário ao "Agendar demo" — não compete pela ação primária. */}
-            <button
-              type="button"
-              onClick={() => setComprarAberto(true)}
-              className="hidden sm:inline-flex items-center text-sm font-semibold text-laranja-dark border-2 border-laranja-dark px-3 py-1.5 rounded-md hover:bg-laranja-dark hover:text-white transition"
-            >
-              Contratar
-            </button>
+          {/* CTAs do header reduzidos a 2 — cravado 17/06/2026 (briefing Pixel,
+              Campanha 3). Antes eram 5 (WhatsApp / Entrar / Ver sistema / Contratar
+              / Agendar demo) competindo e causando paralisia de escolha. Agora:
+                1. Primário: Agendar demo (laranja)
+                2. Discreto: Entrar (clientes existentes)
+              Os outros 3 (Ver sistema, WhatsApp, Contratar) foram pro rodapé. */}
+          <div className="flex items-center gap-4">
+            <Link to="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition">Entrar</Link>
             <a
               href={CALENDLY_URL}
               target="_blank"
@@ -315,7 +299,11 @@ export default function Landing() {
           <p className="text-sm text-slate-500 mb-8 max-w-xl mx-auto">
             Quando decidir contratar: R$ 349/mês, sem fidelidade, 14 dias de garantia.
           </p>
-          <div className="flex gap-3 flex-wrap justify-center">
+          {/* CTAs do bloco final reduzidos a 2 — cravado 17/06/2026 (briefing Pixel).
+              Antes eram 4 (Agendar demo / Ver sistema sozinho / Contratar agora /
+              WhatsApp). Agora: Agendar demonstração (primário) + Tirar dúvidas no
+              WhatsApp (secundário). Ver sistema e Contratar migraram pro rodapé. */}
+          <div className="flex gap-3 flex-wrap justify-center items-center">
             <a
               href={CALENDLY_URL}
               target="_blank"
@@ -325,31 +313,13 @@ export default function Landing() {
             >
               Agendar demonstração →
             </a>
-            <Link
-              to="/app/demo"
-              className="btn-ghost text-base px-8 py-3.5"
-            >
-              Ver o sistema sozinho
-            </Link>
-          </div>
-          {/* Botão "Contratar agora" cravado em 09/06/2026 — antes era link
-              discreto que ninguém achava (incl. próprio Thiago). Agora é botão
-              destacado, mesma proeminência dos CTAs primários acima. */}
-          <div className="flex flex-col sm:flex-row gap-3 sm:items-center mt-6">
-            <button
-              type="button"
-              onClick={() => setComprarAberto(true)}
-              className="inline-flex items-center justify-center text-base font-semibold text-white bg-laranja-dark hover:bg-laranja px-8 py-3.5 rounded-md transition shadow-sm"
-            >
-              Contratar agora · R$ 349/mês
-            </button>
             <a
               href={WA_DUVIDA}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-slate-500 hover:text-laranja-dark transition"
+              className="btn-ghost text-base px-8 py-3.5"
             >
-              ou dúvida rápida via WhatsApp →
+              Tirar dúvidas no WhatsApp
             </a>
           </div>
         </section>
@@ -359,7 +329,11 @@ export default function Landing() {
       <footer className="border-t border-slate-200 bg-white">
         <div className="max-w-6xl mx-auto px-6 py-6 flex flex-col md:flex-row items-center justify-between gap-3 text-sm text-slate-500">
           <span>Diário de Obra · um módulo do 5G Gerenciamento</span>
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-5 flex-wrap justify-center">
+            {/* Caminhos secundários movidos do header pro rodapé (17/06/2026) */}
+            <Link to="/app/demo" className="hover:text-slate-900 transition">Ver sistema</Link>
+            <a href={WA_DUVIDA} target="_blank" rel="noopener noreferrer" className="hover:text-slate-900 transition">WhatsApp</a>
+            <button type="button" onClick={() => setComprarAberto(true)} className="hover:text-slate-900 transition">Contratar</button>
             <Link to="/termos" className="hover:text-slate-900 transition">Termos de Uso</Link>
             <Link to="/privacidade" className="hover:text-slate-900 transition">Privacidade</Link>
             <span>© 2026 5G Gerenciamento</span>
