@@ -150,15 +150,6 @@ function extrairVendedor(linhas: string[]): string | null {
 // ============================================================
 
 function extrairItens(linhas: string[]): ItemInvictos[] {
-  // Junta os itens estruturados (com PROJETO:/medidas/vidro) com os itens
-  // "INSERIDOS MANUALMENTE" (tabela simples, sem medidas). Cravado 22/06/2026
-  // após o orçamento do Cristiano (Roan Vinicius) ter SÓ item manual → 0 itens.
-  const estruturados = extrairItensEstruturados(linhas)
-  const manuais = extrairItensManuais(linhas)
-  return [...estruturados, ...manuais].map((it, i) => ({ ...it, ordem: i + 1 }))
-}
-
-function extrairItensEstruturados(linhas: string[]): ItemInvictos[] {
   // Cada item tem o marcador "@@PPIMAGE1@@NOMEIMAGEM@@R@@" no fim da linha do nome
   // (placeholder do template que sobra na exportação). Usamos isso como âncora.
   //
@@ -223,63 +214,6 @@ function extrairItensEstruturados(linhas: string[]): ItemInvictos[] {
   }
 
   return itens
-}
-
-// Itens "INSERIDOS MANUALMENTE": tabela simples REFERÊNCIA | COR | DESCRIÇÃO |
-// QUANTIDADE | VALOR — sem PROJETO, sem medidas, sem vidro. Acessórios/avulsos
-// (ex: "CONTRA MARCO ALVENARIA ... 1 und."). Âncora = a quantidade no FIM da
-// linha de detalhe ("N und./un/pç/m..."). A referência (código curto) costuma
-// vir na linha anterior — mas o parser também funciona se vier junta.
-function extrairItensManuais(linhas: string[]): ItemInvictos[] {
-  const out: ItemInvictos[] = []
-  const iSec = linhas.findIndex((l) => /ITENS\s+INSERIDOS\s+MANUALMENTE/i.test(l))
-  if (iSec < 0) return out
-
-  // Fim da seção (rodapé do orçamento)
-  const reFim = /^(CADERNO:|MEDIDAS\s+INFORMADAS|PRAZO\s+DE\s+ENTREGA|VALOR\s+TOTAL|VENDEDOR:)/i
-  // Quantidade + unidade ANCORADA NO FIM da linha (evita falso-positivo tipo
-  // "200 6M" no meio da descrição).
-  const reQtdFim = /(\d+(?:[.,]\d+)?)\s*(und|un|p[çc]|pe[çc]as?|cj|conj|m2|m|kg)\.?\s*$/i
-
-  let ref = ''
-  for (let i = iSec + 1; i < linhas.length; i++) {
-    const l = linhas[i]
-    if (reFim.test(l)) break
-    if (/^REFER[ÊE]NCIA\b/i.test(l)) continue        // cabeçalho de coluna
-    if (/^OBSERVA[ÇC][AÃ]O:/i.test(l)) continue        // label, não item
-    if (/^Valor\b/i.test(l)) continue                  // coluna de valores (direita)
-    // placeholder de imagem do template
-    const semPlaceholder = l.replace(/@+P+I*M*A*G*E*\d*/gi, '').replace(/@+/g, '').replace(/NOMEIMAGEM/gi, '').replace(/\bR\b/g, '').trim()
-    if (/@/.test(l) && semPlaceholder.length < 4) continue
-
-    const m = l.match(reQtdFim)
-    if (m && m.index !== undefined) {
-      const qtde = Math.max(1, Math.round(parseFloat(m[1].replace(',', '.'))) || 1)
-      const desc = l.slice(0, m.index).replace(/\bXXX\b/g, ' ').replace(/\s+/g, ' ').trim()
-      const descricaoCompleta = [ref, desc].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim()
-      if (descricaoCompleta.length >= 3) {
-        out.push({
-          ordem: 0,
-          descricaoCompleta,
-          tipologia: inferirTipologia(descricaoCompleta),
-          projeto: ref,
-          codigo: '',
-          corPerfil: '',
-          corFerragem: '',
-          ambiente: '',
-          qtde,
-          larguraMm: 0,
-          alturaMm: 0,
-          vidro: parsearVidro('SEM VIDRO'),
-        })
-      }
-      ref = ''
-    } else if (l.length > 0 && l.length <= 40) {
-      // provável linha de referência (código curto) — guarda pra próxima linha
-      ref = l
-    }
-  }
-  return out
 }
 
 function parsearBloco(bloco: string[], ordem: number): ItemInvictos | null {
@@ -457,7 +391,7 @@ export function expandirItensInvictosEmCards(itens: ItemInvictos[]): CardImporta
           item.descricaoCompleta,
           item.projeto ? `Projeto: ${item.projeto}` : '',
           item.ambiente ? `Local: ${item.ambiente}` : '',
-          item.larguraMm && item.alturaMm ? `Dimensões: ${item.larguraMm}×${item.alturaMm}mm` : '',
+          `Dimensões: ${item.larguraMm}×${item.alturaMm}mm`,
           item.vidro.semVidro ? 'Sem vidro' : item.vidro.descricaoBruta,
           item.corPerfil ? `Cor perfil: ${item.corPerfil}` : '',
         ]

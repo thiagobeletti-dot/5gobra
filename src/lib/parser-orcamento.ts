@@ -137,7 +137,7 @@ export async function parsearPdfOrcamentoCompleto(
       console.info(texto)
       console.info('[parser-orcamento] ============ FIM TEXTO (', texto.length, 'chars) ============')
       throw new Error(
-        'PDF reconhecido como W.Vetro (versão antiga), mas nenhum item foi identificado. Abre o console (F12 → Console) e copia o texto que aparece — me manda no chat pra eu calibrar.',
+        'O formato deste orçamento não confere para importação: não encontramos itens com tipo, dimensões e quantidade por peça. Confira se é o orçamento completo com as peças medidas, ou cadastre os itens manualmente na obra.',
       )
     }
     const cardsWvetro = expandirCardsWvetro(orc.itens)
@@ -158,7 +158,7 @@ export async function parsearPdfOrcamentoCompleto(
       console.info(texto)
       console.info('[parser-orcamento] ============ FIM TEXTO (', texto.length, 'chars) ============')
       throw new Error(
-        'PDF reconhecido como W.Vetro (versão nova), mas nenhum item foi identificado. Abre o console (F12 → Console) e copia o texto — me manda pra calibrar.',
+        'O formato deste orçamento não confere para importação: não encontramos itens com tipo, dimensões e quantidade por peça. Confira se é o orçamento completo com as peças medidas, ou cadastre os itens manualmente na obra.',
       )
     }
     const cardsV2 = expandirItensWvetroV2EmCards(orc.itens)
@@ -179,7 +179,7 @@ export async function parsearPdfOrcamentoCompleto(
       console.info(texto)
       console.info('[parser-orcamento] ============ FIM TEXTO (', texto.length, 'chars) ============')
       throw new Error(
-        'PDF reconhecido como Invictos Vidros, mas nenhum item foi identificado. Abre o console (F12 → Console) e copia o texto — me manda pra calibrar.',
+        'O formato deste orçamento não confere para importação: não encontramos itens com tipo, dimensões e quantidade por peça. Confira se é o orçamento completo com as peças medidas, ou cadastre os itens manualmente na obra.',
       )
     }
     const cardsInv = expandirItensInvictosEmCards(orc.itens)
