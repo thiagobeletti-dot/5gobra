@@ -387,7 +387,7 @@ function Preview({
                 </span>
                 <span>{item.descricao}</span>
                 <span className="text-xs text-slate-500">
-                  · {item.qtde}× {item.larguraMm}×{item.alturaMm}mm
+                  · {item.qtde}{(item.larguraMm && item.alturaMm) ? ` × ${item.larguraMm}×${item.alturaMm}mm` : ' un.'}
                 </span>
               </div>
               <div className="text-xs text-slate-500 mt-1">
