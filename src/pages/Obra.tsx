@@ -904,7 +904,7 @@ function ModalCard({
 
           {podeFotos && (
             <GaleriaFotos
-              fotos={card.fotos}
+              fotos={(card.fotos ?? []).filter((f) => !f.historicoId)}
               podeEditar={!card.encerrado}
               onAdicionar={onAdicionarFotos}
               onRemover={async (foto) => onRemoverFoto(foto.id)}
@@ -941,6 +941,19 @@ function ModalCard({
                     </div>
                   </div>
                   <div className="text-slate-700 leading-relaxed">{h.texto}</div>
+                  {(() => {
+                    const fotosReg = (card.fotos ?? []).filter((f) => f.historicoId === h.id)
+                    if (fotosReg.length === 0) return null
+                    return (
+                      <div className="flex gap-2 flex-wrap mt-2">
+                        {fotosReg.map((f) => (
+                          <a key={f.id} href={f.url} target="_blank" rel="noreferrer" className="block" title={f.nome ?? 'foto'}>
+                            <img src={f.url} alt={f.nome ?? 'foto do registro'} loading="lazy" className="h-16 w-16 object-cover rounded border border-slate-200 hover:opacity-90 transition" />
+                          </a>
+                        ))}
+                      </div>
+                    )
+                  })()}
                 </div>
               ))}
               {(card.historico ?? []).length === 0 && (

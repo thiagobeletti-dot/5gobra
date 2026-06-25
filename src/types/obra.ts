@@ -10,6 +10,7 @@ export type TipoCard = 'peca' | 'acordo' | 'reclamacao'
 export type AutorTipo = 'empresa' | 'cliente' | 'sistema' | 'tecnico'
 
 export interface RegistroHistorico {
+  id?: string
   autor: string
   tipo: AutorTipo
   data: string
@@ -22,6 +23,7 @@ export interface FotoCard {
   url: string
   nome: string | null
   createdAt: string
+  historicoId: string | null
 }
 
 export interface Card {

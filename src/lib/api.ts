@@ -416,6 +416,7 @@ export function rowsParaDadosObra(
     encerrado: r.encerrado,
     aceiteFinal: r.aceite_final_at,
     historico: (historicoPorCard[r.id] ?? []).map<RegistroHistorico>((h) => ({
+      id: h.id,
       autor: h.autor,
       tipo: h.autor_tipo,
       data: new Date(h.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }),
@@ -427,6 +428,7 @@ export function rowsParaDadosObra(
       url: a.url,
       nome: a.nome_arquivo,
       createdAt: a.created_at,
+      historicoId: a.historico_id,
     })),
     checklists: checklistsPorCard[r.id] ?? [],
   }))
