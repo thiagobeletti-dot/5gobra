@@ -783,12 +783,15 @@ function ModalCard({
             </div>
           )}
 
-          {/* Status do processo (empresa) — logo abaixo do item */}
+          {/* Status do processo (empresa) — logo abaixo do item, com destaque */}
           {card.aba === 'emandamento' && !card.encerrado && (
-            <div>
-              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">Status do processo (empresa)</div>
+            <div className="bg-laranja-soft border border-laranja-border rounded-lg px-4 py-3.5">
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className="text-sm" aria-hidden>⚙️</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-laranja-dark">Status do processo (empresa)</span>
+              </div>
               <select
-                className="input"
+                className="input bg-white font-semibold"
                 value={card.statusEmAndamento ?? ''}
                 onChange={(e) => onAlterarStatus(e.target.value)}
               >
