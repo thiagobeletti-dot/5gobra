@@ -744,7 +744,6 @@ function ModalCard({
   const [notaInterna, setNotaInterna] = useState(false)
   useEscClose(true, onClose)
   const tipoLabel = { peca: 'Item', acordo: 'Acordo', reclamacao: 'Apontamento' }[card.tipo]
-  const abaLabel = ABAS.find((a) => a.id === card.aba)?.rotulo
   const siglaCls = card.tipo === 'peca'
     ? 'bg-peca-soft text-peca-dark border-peca-border'
     : 'bg-acordo-soft text-acordo-dark border-acordo-border'
@@ -777,39 +776,57 @@ function ModalCard({
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
-          <div className="grid grid-cols-2 gap-2.5">
-            <Info label="Aba atual" valor={abaLabel ?? '-'} />
-            <Info label="Tipo" valor={tipoLabel} />
-            {card.aba === 'emandamento' && (
-              <>
-                <Info label="Prazo contratual" valor={formataData(card.prazoContrato)} />
-                <Info label="Status" valor={card.statusEmAndamento ?? '-'} />
-              </>
-            )}
-          </div>
+          {card.prazoContrato && (
+            <div className="flex items-baseline gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Prazo contratual</span>
+              <span className="text-sm font-semibold text-slate-700">{formataData(card.prazoContrato)}</span>
+            </div>
+          )}
 
-          {/* DESTAQUE: última mensagem do cliente no topo da modal.
-              Mostra sempre que o ÚLTIMO movimento real do card foi do cliente —
-              independente da aba atual. Assim sobrevive aos rounds de ida e volta.
-              NÃO duplica o destaque do "Reaberto pelo cliente" (que já tem seu próprio bloco vermelho). */}
+          {/* Status do processo (empresa) — logo abaixo do item */}
+          {card.aba === 'emandamento' && !card.encerrado && (
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">Status do processo (empresa)</div>
+              <select
+                className="input"
+                value={card.statusEmAndamento ?? ''}
+                onChange={(e) => onAlterarStatus(e.target.value)}
+              >
+                {STATUS_EM_ANDAMENTO.map((s) => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+          )}
+
+          {/* DESTAQUE: o evento mais recente que importa.
+              Problema aberto (ex: reportado na instalação, mesmo "só empresa") → vermelho.
+              Senão, o último movimento real (cliente/empresa/técnico). Enxerga eventos
+              internos; ignora só os automáticos do sistema. NÃO duplica os blocos
+              dedicados de "Reaberto pelo cliente" e "Apontamento" (reclamacao). */}
           {!card.encerrado &&
             card.subStatus !== 'Reaberto pelo cliente — aguardando correção' &&
+            card.tipo !== 'reclamacao' &&
             (() => {
-              const ultimaReal = (card.historico ?? [])
-                .filter((h) => !h.interno && h.tipo !== 'sistema')
+              const ultimo = (card.historico ?? [])
+                .filter((h) => h.tipo !== 'sistema')
                 .slice(-1)[0]
-              if (!ultimaReal) return null
-              if (ultimaReal.tipo !== 'cliente') return null // última fala foi da empresa/técnico — sem destaque
+              if (!ultimo) return null
+              const ehProblema = /problema/i.test(ultimo.texto)
+              const rotulo = ehProblema ? '⚠ Problema aberto'
+                : ultimo.tipo === 'cliente' ? '🔔 O cliente registrou'
+                : ultimo.tipo === 'tecnico' ? 'Registro do técnico'
+                : 'Último registro (empresa)'
+              const boxCls = ehProblema ? 'bg-red-50 border-2 border-red-300'
+                : ultimo.tipo === 'cliente' ? 'bg-peca-soft border-2 border-peca-border'
+                : 'bg-slate-50 border-2 border-slate-200'
+              const rotuloCls = ehProblema ? 'text-red-800'
+                : ultimo.tipo === 'cliente' ? 'text-peca-dark' : 'text-slate-600'
               return (
-                <div className="bg-peca-soft border-2 border-peca-border rounded-lg px-4 py-3.5">
+                <div className={'rounded-lg px-4 py-3.5 ' + boxCls}>
                   <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                    <span className="text-base" aria-hidden>🔔</span>
-                    <span className="font-bold text-[11px] uppercase tracking-wider text-peca-dark">
-                      O cliente registrou
-                    </span>
-                    <span className="text-[11px] text-slate-500 ml-auto">{ultimaReal.data}</span>
+                    <span className={'font-bold text-[11px] uppercase tracking-wider ' + rotuloCls}>{rotulo}</span>
+                    <span className="text-[11px] text-slate-500 ml-auto">{ultimo.data}</span>
                   </div>
-                  <div className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{ultimaReal.texto}</div>
+                  <div className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{ultimo.texto}</div>
                 </div>
               )
             })()}
@@ -881,60 +898,6 @@ function ModalCard({
             </div>
           )}
 
-          {card.aba === 'emandamento' && !card.encerrado && (
-            <div>
-              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">Status do processo (empresa)</div>
-              <select
-                className="input"
-                value={card.statusEmAndamento ?? ''}
-                onChange={(e) => onAlterarStatus(e.target.value)}
-              >
-                {STATUS_EM_ANDAMENTO.map((s) => <option key={s}>{s}</option>)}
-              </select>
-            </div>
-          )}
-
-          {!card.encerrado && (
-            <div>
-              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">Registrar novo movimento</div>
-              <textarea
-                className={'input min-h-[90px] ' + (notaInterna ? 'bg-amber-50 border-amber-200' : '')}
-                value={texto}
-                onChange={(e) => setTexto(e.target.value)}
-                placeholder={notaInterna
-                  ? 'Anote algo só pra empresa lembrar. Cliente NÃO vê isso. Ex: levar escada na próxima visita, faltou guarnição...'
-                  : 'Descreva o que aconteceu, a confirmacao, pedido, combinado...'}
-              />
-              <label className="flex items-center gap-2 mt-2 cursor-pointer select-none text-xs text-slate-600">
-                <input
-                  type="checkbox"
-                  checked={notaInterna}
-                  onChange={(e) => setNotaInterna(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-300 text-laranja focus:ring-laranja"
-                />
-                <span>
-                  <strong>Anotação interna</strong> — só a empresa vê. Não move o card e o cliente não recebe.
-                </span>
-              </label>
-              <div className="flex gap-2 flex-wrap mt-2.5">
-                {notaInterna ? (
-                  <button className="btn-primary" onClick={() => { onRegistrar(texto, false, true); setNotaInterna(false) }}>
-                    Salvar nota interna
-                  </button>
-                ) : (
-                  <>
-                    <button className="btn-primary" onClick={() => onRegistrar(texto, true, false)}>
-                      Registrar (joga pro cliente)
-                    </button>
-                    {card.aba === 'emandamento' && (
-                      <button className="btn-ghost" onClick={() => onRegistrar(texto, false, false)}>Registrar sem mover</button>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-
           {podeChecklist && card.tipo === 'peca' && !card.encerrado && (
             <ChecklistTecnico card={card} onAbrirMedicao1={onAbrirMedicao1} onAbrirMedicao2={onAbrirMedicao2} />
           )}
@@ -985,6 +948,47 @@ function ModalCard({
               )}
             </div>
           </div>
+
+          {!card.encerrado && (
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">Registrar novo movimento</div>
+              <textarea
+                className={'input min-h-[90px] ' + (notaInterna ? 'bg-amber-50 border-amber-200' : '')}
+                value={texto}
+                onChange={(e) => setTexto(e.target.value)}
+                placeholder={notaInterna
+                  ? 'Anote algo só pra empresa lembrar. Cliente NÃO vê isso. Ex: levar escada na próxima visita, faltou guarnição...'
+                  : 'Descreva o que aconteceu, a confirmacao, pedido, combinado...'}
+              />
+              <label className="flex items-center gap-2 mt-2 cursor-pointer select-none text-xs text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={notaInterna}
+                  onChange={(e) => setNotaInterna(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-laranja focus:ring-laranja"
+                />
+                <span>
+                  <strong>Anotação interna</strong> — só a empresa vê. Não move o card e o cliente não recebe.
+                </span>
+              </label>
+              <div className="flex gap-2 flex-wrap mt-2.5">
+                {notaInterna ? (
+                  <button className="btn-primary" onClick={() => { onRegistrar(texto, false, true); setNotaInterna(false) }}>
+                    Salvar nota interna
+                  </button>
+                ) : (
+                  <>
+                    <button className="btn-primary" onClick={() => onRegistrar(texto, true, false)}>
+                      Registrar (joga pro cliente)
+                    </button>
+                    {card.aba === 'emandamento' && (
+                      <button className="btn-ghost" onClick={() => onRegistrar(texto, false, false)}>Registrar sem mover</button>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
 
           {(
             <div className="pt-3 border-t border-slate-200 flex justify-end gap-3">
@@ -1088,15 +1092,6 @@ function ChecklistTecnico({ card, onAbrirMedicao1, onAbrirMedicao2 }: { card: Ca
           </button>
         )
       )}
-    </div>
-  )
-}
-
-function Info({ label, valor }: { label: string; valor: string }) {
-  return (
-    <div className="bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-md">
-      <div className="text-[10px] text-slate-400 uppercase tracking-wide font-semibold mb-0.5">{label}</div>
-      <div className="text-sm text-slate-900 font-medium">{valor}</div>
     </div>
   )
 }
