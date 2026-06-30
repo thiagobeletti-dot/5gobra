@@ -67,7 +67,9 @@ export interface DadosObra {
 // só não aparecem no dropdown novo.)
 export const STATUS_EM_ANDAMENTO = [
   'Aguardando lote',
+  'Aguardando vidro',
   'Em Produção',
+  'Pronto pra instalação',
   'Entregue',
   'Em Instalação',
   'Concluído',
