@@ -381,7 +381,9 @@ export function expandirItensInvictosEmCards(itens: ItemInvictos[]): CardImporta
   for (const item of itens) {
     for (let i = 0; i < item.qtde; i++) {
       const sufixo = item.qtde > 1 ? ` (${i + 1}/${item.qtde})` : ''
-      const baseSigla = `IT${item.ordem}`
+      // Sigla = CÓDIGO do Invictos (referência do cliente, ex: 14395).
+      // Fallback pro IT{ordem} se o item vier sem código. (Cristiano/MS Vidros — 30/06)
+      const baseSigla = item.codigo ? item.codigo : `IT${item.ordem}`
       const sigla = item.qtde > 1 ? `${baseSigla}-${i + 1}` : baseSigla
       const nome = nomeCurtoDoItem(item)
       cards.push({
