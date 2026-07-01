@@ -17,7 +17,12 @@ import Configuracoes from './pages/Configuracoes'
 import Termos from './pages/Termos'
 import Privacidade from './pages/Privacidade'
 import RotaProtegida from './components/RotaProtegida'
+import RotaAdmin from './components/RotaAdmin'
 import ErrorBoundary from './components/ErrorBoundary'
+import AdminDashboard from './pages/admin/AdminDashboard'
+import AdminClientes from './pages/admin/AdminClientes'
+import AdminCliente from './pages/admin/AdminCliente'
+import AdminAlertasPage from './pages/admin/AdminAlertas'
 
 function App() {
   return (
@@ -109,6 +114,39 @@ function App() {
               <ObraTecnico />
             </ErrorBoundary>
           } />
+          {/* Admin Console — acesso restrito por <RotaAdmin> (checa super_admins). */}
+          <Route
+            path="/admin"
+            element={
+              <RotaAdmin>
+                <AdminDashboard />
+              </RotaAdmin>
+            }
+          />
+          <Route
+            path="/admin/clientes"
+            element={
+              <RotaAdmin>
+                <AdminClientes />
+              </RotaAdmin>
+            }
+          />
+          <Route
+            path="/admin/clientes/:empresaId"
+            element={
+              <RotaAdmin>
+                <AdminCliente />
+              </RotaAdmin>
+            }
+          />
+          <Route
+            path="/admin/alertas"
+            element={
+              <RotaAdmin>
+                <AdminAlertasPage />
+              </RotaAdmin>
+            }
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

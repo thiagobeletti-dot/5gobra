@@ -200,13 +200,9 @@ async function criarEmpresaEAssinatura(
     empresaId = novaEmp.id as string
   }
 
-  // ========== Cria/atualiza linha em assinaturas ==========
-  const { data: assinaturaExistente } = await admin
-    .from('assinaturas')
-    .select('id')
-    .eq('empresa_id', empresaId)
-    .maybeSingle()
-
+  // ========== Cria/atualiza linha em assinaturas (upsert idempotente) ==========
+  // empresa_id tem unique constraint, então o upsert com onConflict resolve
+  // tanto a primeira ativação quanto reativação/retry sem duplicar linha.
   const assinaturaPayload = {
     empresa_id: empresaId,
     asaas_customer_id: args.asaasCustomerId,
@@ -216,20 +212,28 @@ async function criarEmpresaEAssinatura(
     ultimo_pagamento_em: new Date().toISOString(),
   }
 
-  if (assinaturaExistente) {
-    await admin
-      .from('assinaturas')
-      .update(assinaturaPayload)
-      .eq('id', assinaturaExistente.id as string)
-  } else {
-    const { error: errAss } = await admin.from('assinaturas').insert(assinaturaPayload)
-    if (errAss) {
-      console.error('[ativar-pre-cadastro] erro criando assinatura:', errAss)
-      // Não é fatal — empresa já existe, cliente entra e admin resolve depois
-    }
+  const { error: errAss } = await admin
+    .from('assinaturas')
+    .upsert(assinaturaPayload, { onConflict: 'empresa_id' })
+
+  if (errAss) {
+    // FATAL de propósito: sem linha em assinaturas o cliente ficaria em 'trial'
+    // (bloqueado no fim do trial, invisível no admin) — o limbo do Anderson/Cristiano.
+    // Melhor falhar alto aqui do que criar estado quebrado em silêncio.
+    // NÃO marcamos 'convertido': o pre_cadastro segue 'pago' e o cliente pode
+    // reclicar o link do email — o fluxo é idempotente (user e empresa são
+    // reusados, a assinatura é re-upsertada).
+    console.error('[ativar-pre-cadastro] FALHA ao gravar assinatura:', errAss)
+    return jsonError(
+      500,
+      'Sua conta foi criada, mas houve uma falha ao ativar a assinatura. ' +
+        'Clique no link do email novamente em alguns instantes. Se o problema ' +
+        'persistir, fale com a gente no WhatsApp da 5G.',
+    )
   }
 
   // ========== Marca pre_cadastro como convertido ==========
+  // Só chega aqui se a assinatura foi gravada com sucesso.
   await admin
     .from('pre_cadastros')
     .update({
