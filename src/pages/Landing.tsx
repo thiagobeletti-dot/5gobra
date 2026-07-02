@@ -75,6 +75,7 @@ export default function Landing() {
             <a href="#problemas" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition">Problemas</a>
             <a href="#como-funciona" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition">Como funciona</a>
             <a href="#faq" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition">FAQ</a>
+            <a href={WA_DUVIDA} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition">Entre em Contato</a>
           </nav>
           {/* CTAs do header reduzidos a 2 — cravado 17/06/2026 (briefing Pixel,
               Campanha 3). Antes eram 5 (WhatsApp / Entrar / Ver sistema / Contratar
@@ -88,16 +89,7 @@ export default function Landing() {
               + Contratar (secundário, abre o modal de compra) sempre visíveis;
               Entrar + Entre em Contato discretos, escondidos no mobile pra não
               competir (o WhatsApp no mobile fica no botão flutuante). */}
-          <div className="flex items-center gap-3">
-            <Link to="/login" className="hidden sm:inline text-sm font-medium text-slate-600 hover:text-slate-900 transition">Entrar</Link>
-            <a
-              href={WA_DUVIDA}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden sm:inline text-sm font-medium text-slate-600 hover:text-slate-900 transition"
-            >
-              Entre em Contato
-            </a>
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               type="button"
               onClick={() => setComprarAberto(true)}
@@ -114,6 +106,12 @@ export default function Landing() {
             >
               Agendar demo →
             </a>
+            <Link
+              to="/login"
+              className="btn bg-slate-900 text-white hover:bg-slate-700"
+            >
+              Entrar
+            </Link>
           </div>
         </div>
       </header>
