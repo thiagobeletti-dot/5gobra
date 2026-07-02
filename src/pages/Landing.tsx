@@ -82,8 +82,29 @@ export default function Landing() {
                 1. Primário: Agendar demo (laranja)
                 2. Discreto: Entrar (clientes existentes)
               Os outros 3 (Ver sistema, WhatsApp, Contratar) foram pro rodapé. */}
-          <div className="flex items-center gap-4">
-            <Link to="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition">Entrar</Link>
+          {/* CTAs do header — 05/07/2026: reintroduzidos "Contratar" e "Entre em
+              Contato" a pedido do Thiago. O caminho de compra não estava visível
+              (só existia escondido no rodapé). Hierarquia: Agendar demo (primário)
+              + Contratar (secundário, abre o modal de compra) sempre visíveis;
+              Entrar + Entre em Contato discretos, escondidos no mobile pra não
+              competir (o WhatsApp no mobile fica no botão flutuante). */}
+          <div className="flex items-center gap-3">
+            <Link to="/login" className="hidden sm:inline text-sm font-medium text-slate-600 hover:text-slate-900 transition">Entrar</Link>
+            <a
+              href={WA_DUVIDA}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden sm:inline text-sm font-medium text-slate-600 hover:text-slate-900 transition"
+            >
+              Entre em Contato
+            </a>
+            <button
+              type="button"
+              onClick={() => setComprarAberto(true)}
+              className="btn-ghost text-sm"
+            >
+              Contratar
+            </button>
             <a
               href={CALENDLY_URL}
               target="_blank"
@@ -140,14 +161,13 @@ export default function Landing() {
               >
                 Agendar demonstração · 30min →
               </a>
-              <a
-                href={WA_DUVIDA}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm font-medium text-slate-600 hover:text-slate-900 hover:underline"
+              <button
+                type="button"
+                onClick={() => setComprarAberto(true)}
+                className="btn-ghost text-base px-6 py-3"
               >
-                Falar direto com o fundador
-              </a>
+                Contratar AGORA · R$ 349/mês
+              </button>
             </div>
 
             {/* Selo de garantia VISUAL (era texto fino antes) */}
@@ -376,6 +396,20 @@ export default function Landing() {
 
       {/* Pop-up de saída: captura WhatsApp de quem tava saindo sem comprar */}
       <PopupSaida />
+
+      {/* Botão flutuante de WhatsApp — canto inferior esquerdo (05/07/2026).
+          Substitui o "Falar direto com o fundador" que saiu do hero. */}
+      <a
+        href={WA_DUVIDA}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Falar no WhatsApp"
+        className="fixed left-5 bottom-[calc(1.25rem+env(safe-area-inset-bottom))] z-50 flex items-center justify-center w-14 h-14 rounded-full bg-[#25D366] shadow-lg hover:scale-105 active:scale-95 transition-transform"
+      >
+        <svg viewBox="0 0 32 32" className="w-7 h-7 fill-white" aria-hidden>
+          <path d="M16.004 5.333c-5.891 0-10.667 4.776-10.667 10.667 0 1.88.492 3.71 1.427 5.33L5.333 26.667l5.46-1.43a10.62 10.62 0 0 0 5.211 1.363h.004c5.891 0 10.667-4.776 10.667-10.667S21.895 5.333 16.004 5.333zm0 19.2h-.003a8.83 8.83 0 0 1-4.5-1.232l-.323-.192-3.24.85.865-3.157-.21-.324a8.8 8.8 0 0 1-1.35-4.678c0-4.885 3.975-8.86 8.864-8.86 2.367 0 4.592.923 6.265 2.598a8.79 8.79 0 0 1 2.596 6.267c0 4.885-3.975 8.86-8.864 8.86zm4.86-6.633c-.267-.133-1.576-.777-1.82-.866-.244-.089-.422-.133-.6.134-.177.266-.688.865-.844 1.043-.155.178-.31.2-.577.067-.267-.134-1.125-.415-2.143-1.322-.792-.706-1.327-1.578-1.482-1.845-.155-.266-.017-.41.117-.543.12-.12.267-.311.4-.467.134-.155.178-.266.267-.444.089-.178.045-.334-.022-.467-.067-.134-.6-1.445-.822-1.978-.216-.52-.437-.45-.6-.458l-.511-.009c-.178 0-.467.067-.711.334-.244.266-.933.911-.933 2.222s.955 2.578 1.088 2.756c.133.178 1.878 2.867 4.55 4.021.636.275 1.132.439 1.518.562.638.203 1.219.174 1.678.106.512-.076 1.576-.644 1.798-1.266.222-.622.222-1.156.155-1.267-.066-.111-.244-.178-.511-.311z"/>
+        </svg>
+      </a>
     </div>
   )
 }
