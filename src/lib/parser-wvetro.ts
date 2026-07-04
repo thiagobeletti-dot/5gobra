@@ -107,7 +107,19 @@ function extrairCliente(texto: string): ClienteWvetro {
   const linhas = texto.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
   let nomeCandidato: string | null = null
 
+  // Tentativa direta (layout WINDOOR/ORÇAMENTO): linha "CLIENTE: <nome> TEL. FIXO:..."
   for (const linha of linhas) {
+    const m = linha.match(/CLIENTE\s*:\s*(.+?)(?:\s+TEL\b|\s+CELULAR\b|\s+EMAIL\b|\s+CNPJ\b|$)/i)
+    if (m) {
+      const cand = m[1].trim()
+      if (cand.length > 2 && !/^(CELULAR|TEL|EMAIL|CNPJ|FIXO|RG)\b/i.test(cand)) {
+        nomeCandidato = cand
+        break
+      }
+    }
+  }
+
+  if (!nomeCandidato) for (const linha of linhas) {
     // Pula linhas que claramente NÃO são nome de cliente
     if (/^(CEP|EMAIL|TEL|CLIENTE|CNPJ|ENDEREÇO|TIPO|ITEM|VLR|QTDE|LINHA|L\.|RUA|AV|\*)/i.test(linha)) continue
     // Pula linhas que começam com pontuação, ano, hora
@@ -166,32 +178,48 @@ function extrairItens(texto: string): ItemWvetro[] {
     .map((l) => l.trim())
     .filter(Boolean)
 
-  // Acha índices de cada linha que contém "*COR PERFIL:"
-  const indicesAncora: number[] = []
+  // ANCORA PRIMÁRIA (adicionada 04/07/2026, demo Windoor/Patrick): "*LOCAL/AMBIENTE:"
+  // marca o INÍCIO de cada item e aparece 1x por item em todos os layouts Wvetro
+  // (LEMAM, ELVIS, WINDOOR), mesmo com valor vazio (o label continua). Bloco = de
+  // um marcador ao próximo (exclusive) → bloco COMPLETO e sem sobreposição
+  // (descrição + cor + linha + a linha de dados do MESMO item).
+  //
+  // Motivo: o layout "ORÇAMENTO" do Windoor punha a linha de dados exatamente no
+  // ponto-médio entre âncoras "*COR PERFIL:", que a estratégia antiga cortava fora
+  // → 0 itens. Split por "*LOCAL/AMBIENTE:" resolve pra todos os layouts.
+  const indicesLocal: number[] = []
   for (let i = 0; i < linhas.length; i++) {
-    if (/\*COR\s*PERFIL:/i.test(linhas[i])) {
-      indicesAncora.push(i)
-    }
+    if (/\*LOCAL\/AMBIENTE:/i.test(linhas[i])) indicesLocal.push(i)
   }
 
+  if (indicesLocal.length > 0) {
+    const itensLocal: ItemWvetro[] = []
+    for (let i = 0; i < indicesLocal.length; i++) {
+      const inicio = indicesLocal[i]
+      const fim = i < indicesLocal.length - 1 ? indicesLocal[i + 1] : linhas.length
+      const item = parsearBlocoItemLinhas(linhas.slice(inicio, fim), i + 1)
+      if (item) itensLocal.push(item)
+    }
+    if (itensLocal.length > 0) return itensLocal
+    // se não achou item nenhum, cai no fallback (âncora *COR PERFIL) abaixo
+  }
+
+  // FALLBACK (layouts sem "*LOCAL/AMBIENTE:"): âncora "*COR PERFIL:" + blocos por
+  // ponto-médio (estratégia original cravada 10/06 pra LEMAM/ELVIS).
+  const indicesAncora: number[] = []
+  for (let i = 0; i < linhas.length; i++) {
+    if (/\*COR\s*PERFIL:/i.test(linhas[i])) indicesAncora.push(i)
+  }
   if (indicesAncora.length === 0) return []
 
-  // Pra cada âncora, monta um bloco que vai do meio do gap anterior até o
-  // meio do gap posterior. Isso captura linhas tanto antes quanto depois do
-  // "*COR PERFIL:" (descrição costuma vir antes, dimensões depois).
   const itens: ItemWvetro[] = []
   for (let i = 0; i < indicesAncora.length; i++) {
     const ancoraAtual = indicesAncora[i]
     const ancoraAnterior = i > 0 ? indicesAncora[i - 1] : -1
     const ancoraProxima = i < indicesAncora.length - 1 ? indicesAncora[i + 1] : linhas.length
-
-    // Início do bloco: ponto médio entre anterior e atual (ou 0)
     const inicio = ancoraAnterior === -1 ? 0 : Math.floor((ancoraAnterior + ancoraAtual) / 2)
-    // Fim do bloco: ponto médio entre atual e próxima
     const fim = Math.floor((ancoraAtual + ancoraProxima) / 2)
-
-    const bloco = linhas.slice(inicio, fim)
-    const item = parsearBlocoItemLinhas(bloco, i + 1)
+    const item = parsearBlocoItemLinhas(linhas.slice(inicio, fim), i + 1)
     if (item) itens.push(item)
   }
 
@@ -222,7 +250,7 @@ function parsearBlocoItemLinhas(linhas: string[], ordem: number): ItemWvetro | n
   // WS VIDROS (Anderson) deixam vazio. A âncora real é ITEM, que já veio
   // resolvida pelo extrairItens. Aqui captura TIPO se vier preenchido.
   let tipo = ''
-  const mTipo = textoBloco.match(/TIPO:\s*([A-Z0-9]*)/i)
+  const mTipo = textoBloco.match(/TIPO:[ \t]*([A-Z0-9]*)/i)
   if (mTipo) tipo = mTipo[1].trim()
 
   // ============ *LOCAL/AMBIENTE (pode ser vazio) ============
@@ -289,7 +317,7 @@ function parsearBlocoItemLinhas(linhas: string[], ordem: number): ItemWvetro | n
     const l = ls[i]
     const ehDescr =
       l.includes('|') &&
-      /(PORTA|JANELA|MAXIM|FIXO|BASCUL|CORRER|GIRO|TAMPA|CAIXIL|CALHA|VENTILA|LAMBRI)/i.test(l)
+      /(PORTA|JANELA|MAXIM|FIXO|BASCUL|CORRER|GIRO|ABRIR|PIVOT|BOX|TAMPA|CAIXIL|CALHA|VENTILA|LAMBRI)/i.test(l)
     if (!ehDescr) continue
 
     descricaoCompleta = l
@@ -353,6 +381,23 @@ function parsearBlocoItemLinhas(linhas: string[], ordem: number): ItemWvetro | n
         break
       }
     }
+
+    // Padrão WINDOOR (Wvetro layout "ORÇAMENTO"): "ITEM QTDE LARGURA ALTURA ..."
+    // 4 inteiros, SEM coluna M2. Ex: "1 1 1489 1447 INCOLOR 06MM - TEMPERADO ..."
+    // (1º número = ITEM, 2º = QTDE, 3º = largura, 4º = altura). Vem depois dos
+    // padrões LEMAM/ELVIS pra só capturar linhas que eles não pegaram.
+    m = l.match(/^(\d+)\s+(\d+)\s+(\d{2,5})\s+(\d{2,5})\b/)
+    if (m) {
+      const q = parseInt(m[2], 10)
+      const lg = parseInt(m[3], 10)
+      const al = parseInt(m[4], 10)
+      if (lg >= 200 && lg <= 30000 && al >= 200 && al <= 30000 && q > 0 && q < 1000) {
+        qtde = q
+        larguraMm = lg
+        alturaMm = al
+        break
+      }
+    }
   }
 
   // ============ VALIDAÇÃO MÍNIMA ============
@@ -368,7 +413,7 @@ function parsearBlocoItemLinhas(linhas: string[], ordem: number): ItemWvetro | n
   if (!descricaoCompleta) {
     for (const l of ls) {
       if (l.length > 15 && /^[A-ZÁÉÍÓÚÂÊÔÃÇ0-9\s|()/-]+$/i.test(l)) {
-        if (/(PORTA|JANELA|MAXIM|FIXO|BASCUL|CORRER|GIRO|CALHA|TAMPA)/i.test(l)) {
+        if (/(PORTA|JANELA|MAXIM|FIXO|BASCUL|CORRER|GIRO|ABRIR|PIVOT|BOX|CALHA|TAMPA)/i.test(l)) {
           descricaoCompleta = l.replace(/\|.*$/, '').trim()
           break
         }
