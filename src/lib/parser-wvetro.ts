@@ -291,18 +291,24 @@ function parsearBlocoItemLinhas(linhas: string[], ordem: number): ItemWvetro | n
   if (/\bSEM\s+VIDRO\b/i.test(textoBloco)) {
     vidroDesc = 'SEM VIDRO'
   } else {
-    // Linha que tem "(palavra) (n)MM - (tipo)" — pega a linha inteira
+    // Extrai SÓ a parte do vidro ("INCOLOR 06MM - TEMPERADO"), ignorando os
+    // números de dimensão (WINDOOR: "1 1 1489 1447 INCOLOR 06MM...") e os valores
+    // monetários que vêm depois na mesma linha.
+    const reVidro = /[A-ZÁÉÍÓÚÂÊÔÃÇ]+(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÇ]+)*\s+\d+\s*MM\s*-\s*(?:TEMPERADO|LAMINADO|COMUM|FLOAT)/i
     for (const l of ls) {
-      if (/\d+\s*MM\s*-\s*(TEMPERADO|LAMINADO|COMUM|FLOAT)/i.test(l)) {
-        vidroDesc = l
+      const mV = l.match(reVidro)
+      if (mV) {
+        vidroDesc = mV[0].replace(/\s+/g, ' ').trim()
         break
       }
     }
-    // Fallback: qualquer linha com "MM" e tipo de vidro
+    // Fallback: qualquer linha com "MM" + cor/tipo (também só a parte do vidro)
     if (!vidroDesc) {
+      const reVidro2 = /[A-ZÁÉÍÓÚÂÊÔÃÇ]+(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÇ]+)*\s+\d+\s*MM(?:\s*-\s*[A-ZÁÉÍÓÚÂÊÔÃÇ]+)?/i
       for (const l of ls) {
         if (/\d+\s*MM/i.test(l) && /(TEMPERADO|LAMINADO|COMUM|FLOAT|INCOLOR)/i.test(l)) {
-          vidroDesc = l
+          const mV = l.match(reVidro2)
+          vidroDesc = mV ? mV[0].replace(/\s+/g, ' ').trim() : l
           break
         }
       }
