@@ -372,11 +372,12 @@ export default function Obra() {
         <ModalCard
           card={cardAberto}
           perfil={perfil}
+          interacaoCliente={data.obraReal?.interacao_cliente !== false}
           podeFotos={data.modo === 'banco'}
           onClose={() => setCardAbertoId(null)}
           onAlterarStatus={async (s) => {
             await data.alterarStatus(cardAberto.id, s)
-            if (s === 'Concluido' || s === 'Concluído') toast('Item concluído - aguardando aceite do cliente')
+            if (s === 'Concluido' || s === 'Concluído') toast(data.obraReal?.interacao_cliente === false ? 'Item concluído e finalizado' : 'Item concluído - aguardando aceite do cliente')
             else toast('Status atualizado')
           }}
           onRegistrar={async (t, mover, interno) => {
@@ -542,6 +543,7 @@ export default function Obra() {
       {novoAberto && (
         <ModalNovo
           abaAtiva={abaAtiva}
+          interacaoCliente={data.obraReal?.interacao_cliente !== false}
           onClose={() => setModalGlobal('nenhum')}
           onCriar={async (input) => {
             if (!input.sigla.trim() || !input.nome.trim()) { toast('Preencha sigla e nome'); return }
@@ -720,9 +722,9 @@ function CardView({ card, perfil, onClick }: { card: Card; perfil: Perfil; onCli
 }
 
 function ModalCard({
-  card, perfil, podeFotos, onClose, onAlterarStatus, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto, podeChecklist, onAbrirMedicao1, onAbrirMedicao2, onMarcarContraMarcoEntregue, onMarcarVaoPronto, onEncerrar, onResolverApontamento, onMarcarCorrigido, onApagar, onEditarDados,
+  card, perfil, interacaoCliente, podeFotos, onClose, onAlterarStatus, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto, podeChecklist, onAbrirMedicao1, onAbrirMedicao2, onMarcarContraMarcoEntregue, onMarcarVaoPronto, onEncerrar, onResolverApontamento, onMarcarCorrigido, onApagar, onEditarDados,
 }: {
-  card: Card; perfil: Perfil; podeFotos: boolean; onClose: () => void
+  card: Card; perfil: Perfil; interacaoCliente: boolean; podeFotos: boolean; onClose: () => void
   onAlterarStatus: (s: string) => Promise<void>
   onRegistrar: (texto: string, moveAba: boolean, interno?: boolean) => Promise<void>
   onAceitar: () => Promise<void>
@@ -992,6 +994,10 @@ function ModalCard({
                   <button className="btn-primary" onClick={() => { onRegistrar(texto, false, true); setNotaInterna(false) }}>
                     Salvar nota interna
                   </button>
+                ) : interacaoCliente === false ? (
+                  <button className="btn-primary" onClick={() => onRegistrar(texto, false, false)}>
+                    Registrar
+                  </button>
                 ) : (
                   <>
                     <button className="btn-primary" onClick={() => onRegistrar(texto, true, false)}>
@@ -1113,9 +1119,10 @@ function ChecklistTecnico({ card, onAbrirMedicao1, onAbrirMedicao2 }: { card: Ca
 }
 
 function ModalNovo({
-  abaAtiva, onClose, onCriar,
+  abaAtiva, interacaoCliente, onClose, onCriar,
 }: {
   abaAtiva: AbaId
+  interacaoCliente: boolean
   onClose: () => void
   onCriar: (input: { tipo: TipoCard; sigla: string; nome: string; descricao: string; destino: AbaId; prazoContrato: string }) => Promise<void>
 }) {
@@ -1123,7 +1130,11 @@ function ModalNovo({
   const [sigla, setSigla] = useState('')
   const [nome, setNome] = useState('')
   const [descricao, setDescricao] = useState('')
-  const [destino, setDestino] = useState<AbaId>(abaAtiva === 'conclusao' ? 'cliente' : abaAtiva)
+  const [destino, setDestino] = useState<AbaId>(
+    interacaoCliente
+      ? (abaAtiva === 'conclusao' ? 'cliente' : abaAtiva)
+      : (abaAtiva === 'cliente' || abaAtiva === 'conclusao' ? 'tecnica' : abaAtiva),
+  )
   const [prazoContrato, setPrazoContrato] = useState('')
   const [salvando, setSalvando] = useState(false)
   useEscClose(true, onClose)
@@ -1183,7 +1194,9 @@ function ModalNovo({
             <div className="flex-1">
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Destino inicial</label>
               <select className="input" value={destino} onChange={(e) => setDestino(e.target.value as AbaId)}>
-                <option value="cliente">Cliente (espera algo do cliente)</option>
+                {interacaoCliente
+                  ? <option value="cliente">Cliente (espera algo do cliente)</option>
+                  : <option value="tecnica">Técnica (visita técnica / medição)</option>}
                 <option value="empresa">Empresa (espera algo da empresa)</option>
                 {tipo === 'peca' && <option value="emandamento">Em andamento (já com prazo)</option>}
               </select>

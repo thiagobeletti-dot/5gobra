@@ -336,6 +336,8 @@ export function useObraData(
     // Nota interna NUNCA move aba (é só registro empresa, cliente nem fica sabendo).
     if (interno) moveAba = false
     const autor = perfil === 'empresa' ? 'Empresa' : 'Cliente'
+    // Modo gerencial (obra sem interação do cliente): nunca joga a bola pro cliente.
+    const semCliente = obraReal?.interacao_cliente === false
     try {
       if (modo === 'demo') {
         setDados((d) => {
@@ -372,6 +374,8 @@ export function useObraData(
         if (card.aba === 'emandamento') novaAba = perfil === 'empresa' ? 'cliente' : 'empresa'
         else if (card.aba === 'cliente') novaAba = 'empresa'
         else if (card.aba === 'empresa') novaAba = 'cliente'
+        // Modo gerencial: nunca move pro cliente (não há portal). Fica onde está.
+        if (semCliente && novaAba === 'cliente') novaAba = card.aba
         if (novaAba !== card.aba) {
           const updates: any = { aba: novaAba }
           // Quando empresa empurra pro cliente, traduz sub-status interno em algo amigável
@@ -816,9 +820,9 @@ export function useObraData(
   const criarNovo = useCallback(async (input: NovoCardInput, perfil: 'empresa' | 'cliente'): Promise<AbaId> => {
     const autor = perfil === 'empresa' ? 'Empresa' : 'Cliente'
     // Modo gerencial (obra sem interação do cliente): não existe lane do cliente —
-    // qualquer item destinado ao cliente vai pra empresa.
+    // item destinado ao cliente pula o aceite inicial e já entra em Técnica.
     const semCliente = obraReal?.interacao_cliente === false
-    if (semCliente && input.destino === 'cliente') input.destino = 'empresa'
+    if (semCliente && input.destino === 'cliente') input.destino = 'tecnica'
     if (modo === 'demo') {
       const novo: Card = {
         id: 'c_' + Date.now(),
