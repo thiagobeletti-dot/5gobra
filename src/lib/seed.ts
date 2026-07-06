@@ -7,6 +7,7 @@ export const SEED: DadosObra = {
     cliente: 'Joao da Silva',
     empresa: 'Esquadrias 5G',
     inicio: '2026-03-12',
+    interacaoCliente: true,
   },
   cards: [
     {

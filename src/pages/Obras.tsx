@@ -336,22 +336,32 @@ export default function Obras() {
                   <div className="text-xs text-slate-400 mt-2">Início: {o.inicio || '-'}</div>
                 </Link>
                 <div className="mt-4 pt-3 border-t border-slate-200 flex items-center gap-2">
-                  <button
-                    onClick={() => copiarLink(o)}
-                    className="text-xs text-slate-500 hover:text-laranja-dark font-semibold inline-flex items-center gap-1.5 transition"
-                  >
-                    {linkCopiado === o.id ? (
-                      <>
-                        <span className="text-status-andamento">OK</span>
-                        Link copiado!
-                      </>
-                    ) : (
-                      <>
-                        <span>@</span>
-                        Copiar link do cliente
-                      </>
-                    )}
-                  </button>
+                  {o.interacao_cliente === false ? (
+                    <span
+                      className="text-xs text-slate-400 font-medium inline-flex items-center gap-1.5"
+                      title="Obra em modo gerencial — o cliente não tem portal nem aceites. Mude em Editar dados da obra."
+                    >
+                      <span aria-hidden>🔒</span>
+                      Modo gerencial (sem portal do cliente)
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => copiarLink(o)}
+                      className="text-xs text-slate-500 hover:text-laranja-dark font-semibold inline-flex items-center gap-1.5 transition"
+                    >
+                      {linkCopiado === o.id ? (
+                        <>
+                          <span className="text-status-andamento">OK</span>
+                          Link copiado!
+                        </>
+                      ) : (
+                        <>
+                          <span>@</span>
+                          Copiar link do cliente
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
               ))}

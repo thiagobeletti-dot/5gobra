@@ -66,6 +66,18 @@ export default function ObraCliente() {
 
   const dados = data.dados
 
+  // Obra em modo gerencial (interação do cliente desativada): não há portal do
+  // cliente. Mostra aviso em vez do painel de acompanhamento.
+  if (dados.obra.interacaoCliente === false) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-slate-600 px-6 text-center">
+        <LogoFull />
+        <p className="mt-6 max-w-md">Esta obra é acompanhada diretamente pela empresa responsável e não tem portal do cliente ativo.</p>
+        <p className="text-sm text-slate-400">Para saber o andamento, fale direto com a empresa.</p>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <header className="bg-white border-b border-slate-200 px-4 md:px-7 py-3.5">

@@ -54,6 +54,9 @@ export interface ObraInfo {
   cliente: string
   empresa: string
   inicio: string
+  /** Se false, a obra roda em modo gerencial (sem portal/aceites do cliente).
+   * Default true. Cravado 04/07/2026 (pedido Patrick/Windoor). */
+  interacaoCliente: boolean
 }
 
 export interface DadosObra {

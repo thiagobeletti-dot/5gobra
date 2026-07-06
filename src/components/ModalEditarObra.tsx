@@ -25,6 +25,7 @@ export default function ModalEditarObra({ obra, onClose, onSalvo }: ModalEditarO
   const [endereco, setEndereco] = useState(obra.endereco ?? '')
   const [clienteTelefone, setClienteTelefone] = useState(obra.cliente_telefone ?? '')
   const [clienteEmail, setClienteEmail] = useState(obra.cliente_email ?? '')
+  const [interacaoCliente, setInteracaoCliente] = useState(obra.interacao_cliente ?? true)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
@@ -44,6 +45,7 @@ export default function ModalEditarObra({ obra, onClose, onSalvo }: ModalEditarO
         endereco: endereco.trim() || null,
         cliente_telefone: clienteTelefone.trim() || null,
         cliente_email: clienteEmail.trim() || null,
+        interacao_cliente: interacaoCliente,
       })
       onSalvo()
     } catch (e) {
@@ -145,6 +147,26 @@ export default function ModalEditarObra({ obra, onClose, onSalvo }: ModalEditarO
                 placeholder="cliente@email.com"
               />
             </div>
+          </div>
+
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={interacaoCliente}
+                onChange={(e) => setInteracaoCliente(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-laranja focus:ring-laranja"
+              />
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-slate-900">Interação do cliente</span>
+                <span className="block text-xs text-slate-500 mt-0.5 leading-relaxed">
+                  <strong>Ligado:</strong> o cliente recebe o link, acompanha a obra e dá os aceites.{' '}
+                  <strong>Desligado:</strong> obra em modo gerencial (só empresa) — sem portal do cliente.
+                  Itens novos já entram em Técnica (pulam o aceite inicial) e a peça é finalizada ao
+                  concluir, sem esperar o aceite do cliente. A prova continua na foto do técnico.
+                </span>
+              </span>
+            </label>
           </div>
 
           {erro && (

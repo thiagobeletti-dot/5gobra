@@ -258,6 +258,10 @@ export function useObraData(
 
   const alterarStatus = useCallback(async (cardId: string, novoStatus: string) => {
     if (!dados) return
+    const ehConcluido = novoStatus === 'Concluido' || novoStatus === 'Concluído'
+    // Modo gerencial (interação do cliente desativada nesta obra): ao concluir,
+    // a peça é finalizada na hora — não fica esperando o aceite final do cliente.
+    const semCliente = obraReal?.interacao_cliente === false
     if (modo === 'demo') {
       setDados((d) => {
         if (!d) return d
@@ -266,7 +270,11 @@ export function useObraData(
           cards: d.cards.map((c) => {
             if (c.id !== cardId) return c
             const hist = [...c.historico, { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Status: "' + (c.statusEmAndamento ?? '-') + '" -> "' + novoStatus + '".', interno: true }]
-            if (novoStatus === 'Concluido' || novoStatus === 'Concluído') {
+            if (ehConcluido) {
+              if (semCliente) {
+                hist.push({ autor: 'Sistema', tipo: 'sistema', data: agora(), texto: 'Item concluído pela empresa. Obra em modo gerencial — finalizado automaticamente (sem aceite do cliente).', interno: false })
+                return { ...c, statusEmAndamento: novoStatus, aba: 'conclusao' as AbaId, encerrado: true, subStatus: 'Concluído (obra gerencial)', historico: hist }
+              }
               hist.push({ autor: 'Sistema', tipo: 'sistema', data: agora(), texto: 'Item concluído pela empresa. Aguardando aceite final do cliente.', interno: false })
               return { ...c, statusEmAndamento: novoStatus, aba: 'conclusao' as AbaId, subStatus: 'Aguardando aceite final', historico: hist }
             }
@@ -280,19 +288,33 @@ export function useObraData(
     const card = dados.cards.find((c) => c.id === cardId)
     if (!card) return
     const updates: any = { status_em_andamento: novoStatus }
-    if (novoStatus === 'Concluido' || novoStatus === 'Concluído') {
+    if (ehConcluido) {
       updates.aba = 'conclusao'
-      updates.sub_status = 'Aguardando aceite final'
+      if (semCliente) {
+        updates.encerrado = true
+        updates.sub_status = 'Concluído (obra gerencial)'
+      } else {
+        updates.sub_status = 'Aguardando aceite final'
+      }
     }
     await atualizarCard(cardId, updates, client)
     await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Status: "' + (card.statusEmAndamento ?? '-') + '" -> "' + novoStatus + '".', interno: true }, client)
-    if (novoStatus === 'Concluido' || novoStatus === 'Concluído') {
-      await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Item concluído pela empresa. Aguardando aceite final do cliente.' }, client)
+    if (ehConcluido) {
+      await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: semCliente ? 'Item concluído pela empresa. Obra em modo gerencial — finalizado automaticamente (sem aceite do cliente).' : 'Item concluído pela empresa. Aguardando aceite final do cliente.' }, client)
     }
     const novo = dados
       ? await recarregarCard(obraReal, cardId, dados, client)
       : await carregarDoBanco(obraReal, client)
     setDados(novo)
+    // Modo gerencial: auto-encerra a obra se todas as peças finalizaram.
+    if (ehConcluido && semCliente && novo && !obraReal.encerrada) {
+      const cardsDePeca = novo.cards.filter((c) => c.tipo === 'peca')
+      const todosFinalizados = cardsDePeca.length > 0 && cardsDePeca.every((c) => (c.aba === 'conclusao' && !!c.aceiteFinal) || c.encerrado)
+      if (todosFinalizados) {
+        await atualizarObra(obraReal.id, { encerrada: true })
+        setObraReal({ ...obraReal, encerrada: true })
+      }
+    }
   }, [dados, modo, obraReal])
 
   // Quando empresa move card pra cliente, traduz sub-status interno em algo amigável.
@@ -793,6 +815,10 @@ export function useObraData(
 
   const criarNovo = useCallback(async (input: NovoCardInput, perfil: 'empresa' | 'cliente'): Promise<AbaId> => {
     const autor = perfil === 'empresa' ? 'Empresa' : 'Cliente'
+    // Modo gerencial (obra sem interação do cliente): não existe lane do cliente —
+    // qualquer item destinado ao cliente vai pra empresa.
+    const semCliente = obraReal?.interacao_cliente === false
+    if (semCliente && input.destino === 'cliente') input.destino = 'empresa'
     if (modo === 'demo') {
       const novo: Card = {
         id: 'c_' + Date.now(),
@@ -834,6 +860,10 @@ export function useObraData(
   const importarItens = useCallback(async (itens: ItemImportado[], perfil: 'empresa' | 'cliente'): Promise<number> => {
     if (itens.length === 0) return 0
     const autor = perfil === 'empresa' ? 'Empresa' : 'Cliente'
+    // Modo gerencial (obra sem interação do cliente): itens já entram em "Técnica",
+    // pulando o aceite inicial do cliente. Default (com cliente) entra em "Cliente".
+    const semCliente = obraReal?.interacao_cliente === false
+    const abaInicialImport: AbaId = semCliente ? 'tecnica' : 'cliente'
     if (modo === 'demo') {
       setDados((d) => {
         if (!d) return d
@@ -843,7 +873,7 @@ export function useObraData(
           sigla: it.sigla.toUpperCase(),
           nome: it.nome,
           descricao: it.descricao,
-          aba: 'cliente' as AbaId,
+          aba: abaInicialImport,
           statusEmAndamento: null,
           subStatus: null,
           prazoContrato: null,
@@ -865,7 +895,7 @@ export function useObraData(
       sigla: it.sigla.toUpperCase(),
       nome: it.nome,
       descricao: it.descricao,
-      aba: 'cliente' as AbaId,
+      aba: abaInicialImport,
       status_em_andamento: null,
       prazo_contrato: null,
     }))
