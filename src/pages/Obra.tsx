@@ -494,7 +494,13 @@ export default function Obra() {
         const inicial: DadosMedicao1 | null = m1
           ? (m1.dados as DadosMedicao1)
           : card
-            ? { ...VAZIO_MEDICAO1, descricao: card.descricao || card.nome }
+            ? {
+                ...VAZIO_MEDICAO1,
+                descricao: card.descricao || card.nome,
+                // Puxa a medida contratada pra facilitar pro técnico (ele ajusta se o vão diferir).
+                medida_largura: card.larguraMm ? String(card.larguraMm) : '',
+                medida_altura: card.alturaMm ? String(card.alturaMm) : '',
+              }
             : null
         return (
           <FormMedicao1
@@ -1124,11 +1130,13 @@ function ModalNovo({
   abaAtiva: AbaId
   interacaoCliente: boolean
   onClose: () => void
-  onCriar: (input: { tipo: TipoCard; sigla: string; nome: string; descricao: string; destino: AbaId; prazoContrato: string }) => Promise<void>
+  onCriar: (input: { tipo: TipoCard; sigla: string; nome: string; descricao: string; destino: AbaId; prazoContrato: string; larguraMm?: number | null; alturaMm?: number | null }) => Promise<void>
 }) {
   const [tipo, setTipo] = useState<TipoCard>('peca')
   const [sigla, setSigla] = useState('')
   const [nome, setNome] = useState('')
+  const [largura, setLargura] = useState('')
+  const [altura, setAltura] = useState('')
   const [descricao, setDescricao] = useState('')
   const [destino, setDestino] = useState<AbaId>(
     interacaoCliente
@@ -1208,6 +1216,19 @@ function ModalNovo({
             <input className="input" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Janela sala 2 / Cor da porta suite / Vidro trincado" />
           </div>
 
+          {tipo === 'peca' && (
+            <div className="flex gap-2.5">
+              <div className="flex-1">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Largura (mm)</label>
+                <input className="input" type="number" inputMode="numeric" value={largura} onChange={(e) => setLargura(e.target.value)} placeholder="Ex: 1200" />
+              </div>
+              <div className="flex-1">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Altura (mm)</label>
+                <input className="input" type="number" inputMode="numeric" value={altura} onChange={(e) => setAltura(e.target.value)} placeholder="Ex: 1000" />
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Descrição</label>
             <textarea className="input min-h-[90px]" value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Detalhes da peça, termos do acordo ou descrição do problema" />
@@ -1228,7 +1249,7 @@ function ModalNovo({
             disabled={salvando}
             onClick={async () => {
               setSalvando(true)
-              try { await onCriar({ tipo, sigla, nome, descricao, destino, prazoContrato }) } finally { setSalvando(false) }
+              try { await onCriar({ tipo, sigla, nome, descricao, destino, prazoContrato, larguraMm: largura ? parseInt(largura, 10) : null, alturaMm: altura ? parseInt(altura, 10) : null }) } finally { setSalvando(false) }
             }}
           >{salvando ? 'Criando...' : 'Criar'}</button>
         </div>

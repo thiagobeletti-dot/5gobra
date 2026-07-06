@@ -85,6 +85,8 @@ export default function ImportarOrcamento() {
           nome: c.nome,
           descricao: c.descricao,
           aba: 'cliente' as const,
+          largura_mm: c.larguraMm,
+          altura_mm: c.alturaMm,
         })),
       )
 

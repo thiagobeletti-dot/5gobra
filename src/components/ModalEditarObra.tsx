@@ -8,7 +8,7 @@
 // inicio — esses são imutáveis pra preservar histórico/aceite jurídico.
 
 import { useState } from 'react'
-import { atualizarObra } from '../lib/api'
+import { atualizarObra, aplicarModoGerencialNaObra } from '../lib/api'
 import { useEscClose } from '../hooks/useEscClose'
 import { mensagemDeErro } from '../lib/erros'
 import type { ObraRow } from '../lib/api'
@@ -47,6 +47,11 @@ export default function ModalEditarObra({ obra, onClose, onSalvo }: ModalEditarO
         cliente_email: clienteEmail.trim() || null,
         interacao_cliente: interacaoCliente,
       })
+      // Arrastão: se acabou de DESLIGAR a interação, resolve as pendências que
+      // dependiam do cliente (cliente→Técnica; conclusão sem aceite→encerrado).
+      if ((obra.interacao_cliente ?? true) && !interacaoCliente) {
+        await aplicarModoGerencialNaObra(obra.id)
+      }
       onSalvo()
     } catch (e) {
       setErro(mensagemDeErro(e))

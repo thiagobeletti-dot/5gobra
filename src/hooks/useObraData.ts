@@ -39,6 +39,8 @@ interface NovoCardInput {
   descricao: string
   destino: AbaId
   prazoContrato: string
+  larguraMm?: number | null
+  alturaMm?: number | null
 }
 
 interface UseObraDataResult {
@@ -854,6 +856,8 @@ export function useObraData(
       aba: input.destino,
       status_em_andamento: input.destino === 'emandamento' ? 'Aguardando lote' : null,
       prazo_contrato: input.destino === 'emandamento' ? input.prazoContrato : null,
+      largura_mm: input.larguraMm ?? null,
+      altura_mm: input.alturaMm ?? null,
     }, client)
     await adicionarHistorico({ card_id: cardRow.id, autor, autor_tipo: perfil, texto: 'Registro criado.' }, client)
     const novo = await carregarDoBanco(obraReal, client)

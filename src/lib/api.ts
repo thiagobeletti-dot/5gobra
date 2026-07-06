@@ -39,6 +39,9 @@ export interface CardRow {
   aceite_final_at: string | null
   aceite_final_ip: string | null
   aceite_final_user_agent: string | null
+  /** Medida contratada (do orçamento). Nullable — acordos/apontamentos não têm. */
+  largura_mm: number | null
+  altura_mm: number | null
   created_at: string
 }
 
@@ -287,6 +290,24 @@ export async function atualizarObra(
   return data as ObraRow
 }
 
+/**
+ * Modo gerencial: ao DESLIGAR a interação do cliente, resolve as pendências que
+ * dependiam dele — cards aguardando o cliente vão pra Técnica; cards em Conclusão
+ * sem aceite são encerrados (obra gerencial não espera aceite). Chamado no
+ * toggle true→false na edição da obra. Cravado 07/07/2026 (pedido Thiago).
+ */
+export async function aplicarModoGerencialNaObra(obraId: string) {
+  if (!supabase) return
+  // Aguardando o cliente (aba='cliente', não encerrados) → Técnica.
+  await supabase.from('cards')
+    .update({ aba: 'tecnica', sub_status: 'Aguardando visita técnica' })
+    .eq('obra_id', obraId).eq('aba', 'cliente').eq('encerrado', false)
+  // Em Conclusão sem aceite → encerra.
+  await supabase.from('cards')
+    .update({ encerrado: true, sub_status: 'Concluído (obra gerencial)' })
+    .eq('obra_id', obraId).eq('aba', 'conclusao').eq('encerrado', false).is('aceite_final_at', null)
+}
+
 // =============== Cards ===============
 
 export async function listarCardsDaObra(obraId: string, client: DbClient | null = supabase) {
@@ -309,6 +330,8 @@ export async function criarCard(dados: {
   aba: AbaId
   status_em_andamento?: string | null
   prazo_contrato?: string | null
+  largura_mm?: number | null
+  altura_mm?: number | null
 }, client: DbClient | null = supabase) {
   if (!client) throw new Error('Supabase não configurado')
   const { data, error } = await client.from('cards').insert(dados).select().single()
@@ -325,6 +348,8 @@ export async function criarVariosCards(dados: Array<{
   aba: AbaId
   status_em_andamento?: string | null
   prazo_contrato?: string | null
+  largura_mm?: number | null
+  altura_mm?: number | null
 }>, client: DbClient | null = supabase) {
   if (!client) throw new Error('Supabase não configurado')
   if (dados.length === 0) return []
@@ -420,6 +445,8 @@ export function rowsParaDadosObra(
     prazoIniciadoEm: r.prazo_iniciado_em ?? null,
     encerrado: r.encerrado,
     aceiteFinal: r.aceite_final_at,
+    larguraMm: r.largura_mm ?? null,
+    alturaMm: r.altura_mm ?? null,
     historico: (historicoPorCard[r.id] ?? []).map<RegistroHistorico>((h) => ({
       id: h.id,
       autor: h.autor,

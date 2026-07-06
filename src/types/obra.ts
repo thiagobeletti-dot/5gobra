@@ -43,6 +43,9 @@ export interface Card {
   prazoIniciadoEm: string | null
   encerrado: boolean
   aceiteFinal: string | null
+  /** Medida contratada (do orçamento), em mm. Opcional. Cravado 07/07/2026. */
+  larguraMm?: number | null
+  alturaMm?: number | null
   historico: RegistroHistorico[]
   fotos: FotoCard[]
   checklists: Checklist[]
