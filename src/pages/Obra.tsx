@@ -1141,7 +1141,7 @@ function ModalNovo({
   }, [tipo, destino])
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm grid place-items-center p-5 z-40" onClick={onClose} role="dialog" aria-modal="true">
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm grid place-items-center p-5 z-40" role="dialog" aria-modal="true">
       <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="px-6 py-5 border-b border-slate-200 flex items-start gap-4">
           <div className="flex-1">
