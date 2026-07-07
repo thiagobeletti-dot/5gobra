@@ -49,18 +49,14 @@ create policy "leads_anon_insert" on leads_quentes
   to anon
   with check (true);
 
--- Authenticated (empresa logada) pode LER tudo — futuro dashboard interno
+-- SEGURANCA (2026-07-07): leads_quentes sao leads da 5G (nao do tenant) e
+-- contem PII (WhatsApp/motivo). ANTES qualquer empresa cliente autenticada
+-- lia/alterava TODA a base. Como nao ha dashboard interno consumindo isso no
+-- app ainda (o Thiago le pelo painel do Supabase, que usa service_role e
+-- ignora RLS), removemos o acesso authenticated. Anon segue so INSERINDO.
+-- Quando existir dashboard admin, criar policy escopada a um papel admin real
+-- (ex.: coluna is_admin em usuarios, claim no JWT, ou tabela app_admins).
 drop policy if exists "leads_auth_select" on leads_quentes;
-create policy "leads_auth_select" on leads_quentes
-  for select
-  to authenticated
-  using (true);
-
--- Authenticated pode atualizar (mudar status, adicionar notas)
 drop policy if exists "leads_auth_update" on leads_quentes;
-create policy "leads_auth_update" on leads_quentes
-  for update
-  to authenticated
-  using (true);
 
 notify pgrst, 'reload schema';

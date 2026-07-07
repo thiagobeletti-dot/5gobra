@@ -5,18 +5,18 @@ import { ABAS } from '../types/obra'
 import type { AbaId, Card } from '../types/obra'
 import { diasAte, formataData, formataDataHora, statusSemantico } from '../lib/helpers'
 import { useObraData } from '../hooks/useObraData'
-import { supabasePublico } from '../lib/supabase'
+import { clientePublicoComToken } from '../lib/supabase'
 import GaleriaFotos from '../components/GaleriaFotos'
 import CronogramaSecaoCliente from '../components/CronogramaSecaoCliente'
 import { useConfirm } from '../hooks/useConfirm'
 
 export default function ObraCliente() {
   const { token = '' } = useParams<{ token: string }>()
-  // Passa supabasePublico (sem sessão persistida) pra forçar contexto anon
-  // mesmo se o usuário estiver logado no app na mesma origem. Sem isso, o
-  // JWT authenticated entra na policy obras_authenticated_all e o cliente
-  // não vê a obra dele (RLS bloqueia).
-  const data = useObraData(token, 'token', supabasePublico)
+  // Cliente anon ESCOPADO pelo token (header x-obra-token). Força contexto anon
+  // mesmo com usuário logado na mesma origem, e faz o RLS devolver só a obra
+  // deste token. Memoizado pra estabilidade entre renders.
+  const clientePublico = useMemo(() => clientePublicoComToken(token), [token])
+  const data = useObraData(token, 'token', clientePublico)
 
   const [abaAtiva, setAbaAtiva] = useState<AbaId>('cliente')
   const [cardAbertoId, setCardAbertoId] = useState<string | null>(null)
@@ -104,7 +104,7 @@ export default function ObraCliente() {
             <div className="mt-3">
               <CronogramaSecaoCliente
                 obraId={data.obraReal.id}
-                client={supabasePublico}
+                client={clientePublico}
                 cards={dados.cards}
                 onToast={toast}
               />

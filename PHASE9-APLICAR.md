@@ -1,3 +1,8 @@
+> ⚠️ **ARQUIVADO (2026-07-07)** — Este runbook já foi 100% aplicado em produção
+> (onboarding, aceites, FAQ, etc. estão no ar desde 05/2026). Mantido só como
+> histórico. Não é uma pendência. Pode ser movido pra `docs/historico/` quando
+> for conveniente.
+
 # Phase 9 — Onboarding interno + Aceite contratual
 
 Código preparado em sessão de dev de **05/05/2026**. Compilou limpo no `tsc --noEmit`. Este documento é o passo a passo pra você aplicar e testar localmente.

@@ -128,10 +128,15 @@ create policy "obras_empresa_all" on obras
   with check (empresa_id in (select id from empresas where owner_user_id = auth.uid()));
 
 -- Cliente (anon) le obra pelo token (link magico)
+-- IMPORTANTE: `to anon` OBRIGATORIO — sem isso a policy vale tambem pra
+-- `authenticated` e reabre o vazamento cross-tenant entre empresas logadas.
+-- O escopo REAL do anon (por token no header x-obra-token) e aplicado na
+-- migration supabase/2026-07-07-hardening-rls-anon.sql, que DEVE rodar depois
+-- deste schema. As policies anon aqui sao so o bootstrap.
 drop policy if exists "obras_cliente_select_by_token" on obras;
 create policy "obras_cliente_select_by_token" on obras
-  for select
-  using (true); -- restricao de fato eh por filtro no client + token na URL; refinar com edge functions depois
+  for select to anon
+  using (true);
 
 -- ---- CARDS ----
 drop policy if exists "cards_empresa_all" on cards;
@@ -156,33 +161,33 @@ create policy "cards_empresa_all" on cards
 -- (validacao do token sera feita no client + edge function refinada depois)
 drop policy if exists "cards_cliente_anon" on cards;
 create policy "cards_cliente_anon" on cards
-  for select using (true);
+  for select to anon using (true);
 
 drop policy if exists "cards_cliente_anon_insert" on cards;
 create policy "cards_cliente_anon_insert" on cards
-  for insert with check (true);
+  for insert to anon with check (true);
 
 drop policy if exists "cards_cliente_anon_update" on cards;
 create policy "cards_cliente_anon_update" on cards
-  for update using (true) with check (true);
+  for update to anon using (true) with check (true);
 
 -- ---- HISTORICO_CARD ----
 drop policy if exists "historico_select_all" on historico_card;
 create policy "historico_select_all" on historico_card
-  for select using (true);
+  for select to anon using (true);
 
 drop policy if exists "historico_insert_all" on historico_card;
 create policy "historico_insert_all" on historico_card
-  for insert with check (true);
+  for insert to anon with check (true);
 
 -- ---- ANEXOS ----
 drop policy if exists "anexos_select_all" on anexos;
 create policy "anexos_select_all" on anexos
-  for select using (true);
+  for select to anon using (true);
 
 drop policy if exists "anexos_insert_all" on anexos;
 create policy "anexos_insert_all" on anexos
-  for insert with check (true);
+  for insert to anon with check (true);
 
 -- =============================================================
 -- NOTA SOBRE SEGURANCA:

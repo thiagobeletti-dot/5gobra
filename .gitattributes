@@ -1,0 +1,13 @@
+# Normaliza fim de linha: evita os diffs full-file (CRLF<->LF) que poluem o repo.
+* text=auto eol=lf
+
+# Binários — nunca normalizar
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.webp binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.woff  binary
+*.woff2 binary

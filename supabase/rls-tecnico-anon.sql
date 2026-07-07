@@ -12,20 +12,24 @@
 -- Rodar no SQL Editor do Supabase.
 -- =============================================================
 
+-- IMPORTANTE: `to anon` OBRIGATORIO (senao vale pra authenticated e conflita
+-- com checklists_empresa_all). O escopo por token (header x-obra-token) vem na
+-- migration supabase/2026-07-07-hardening-rls-anon.sql, que roda DEPOIS desta.
+
 -- Anon (técnico/cliente via link) pode ler checklists
 drop policy if exists "checklists_anon_select" on checklists;
 create policy "checklists_anon_select" on checklists
-  for select using (true);
+  for select to anon using (true);
 
 -- Anon pode inserir checklists (técnico preenchendo M1/M2)
 drop policy if exists "checklists_anon_insert" on checklists;
 create policy "checklists_anon_insert" on checklists
-  for insert with check (true);
+  for insert to anon with check (true);
 
 -- Anon pode atualizar checklists (técnico editando M1/M2 já salvo)
 drop policy if exists "checklists_anon_update" on checklists;
 create policy "checklists_anon_update" on checklists
-  for update using (true) with check (true);
+  for update to anon using (true) with check (true);
 
 -- =============================================================
 -- NOTA DE SEGURANÇA:

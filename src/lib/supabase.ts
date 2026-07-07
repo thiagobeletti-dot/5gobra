@@ -27,6 +27,32 @@ export const supabasePublico = supabaseUrl && supabaseAnonKey
     })
   : null
 
+// Cliente público ESCOPADO por token do link mágico.
+// Envia o token no header `x-obra-token` em toda request — as policies RLS
+// anon (ver supabase/2026-07-07-hardening-rls-anon.sql) exigem esse header
+// pra devolver/aceitar só as linhas da obra daquele token. Sem header, anon
+// não enxerga nada. O header viaja junto no `.select()` que roda depois de
+// insert/update, então as escritas continuam funcionando. Cacheado por token
+// pra não instanciar N clients GoTrue.
+const _publicClientCache = new Map<string, SupabaseClient>()
+export function clientePublicoComToken(token: string | null | undefined): SupabaseClient | null {
+  if (!supabaseUrl || !supabaseAnonKey) return null
+  const key = token ?? ''
+  const existente = _publicClientCache.get(key)
+  if (existente) return existente
+  const client = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      storageKey: 'sb-5gobra-publico',
+    },
+    global: key ? { headers: { 'x-obra-token': key } } : undefined,
+  })
+  _publicClientCache.set(key, client)
+  return client
+}
+
 export const supabaseConfigurado = Boolean(supabase)
 
 // Tipo helper pra assinaturas das funções helpers que aceitam client opcional

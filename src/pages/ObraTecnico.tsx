@@ -11,7 +11,7 @@ import { listarAnexosDeVariosCards, uploadFoto, removerAnexo, type Anexo } from 
 import { listarChecklistsDeVariosCards, salvarMedicao1, salvarMedicao2 } from '../lib/checklist'
 import type { Checklist, DadosMedicao1, DadosMedicao2 } from '../types/checklist'
 import { resumoMedicao1, resumoMedicao2, ROTULOS_TIPOLOGIA, VAZIO_MEDICAO1, VAZIO_MEDICAO2 } from '../types/checklist'
-import { supabasePublico } from '../lib/supabase'
+import { clientePublicoComToken } from '../lib/supabase'
 import GaleriaFotos from '../components/GaleriaFotos'
 import FormMedicao1 from '../components/FormMedicao1'
 import FormMedicao2 from '../components/FormMedicao2'
@@ -19,6 +19,9 @@ import type { DadosObra } from '../types/obra'
 
 export default function ObraTecnico() {
   const { token = '' } = useParams<{ token: string }>()
+  // Cliente anon ESCOPADO pelo token do técnico (header x-obra-token). O RLS
+  // resolve o token -> obra e libera só os dados daquela obra.
+  const clientePublico = useMemo(() => clientePublicoComToken(token), [token])
   const [tecnico, setTecnico] = useState<TecnicoObra | null>(null)
   const [obraReal, setObraReal] = useState<ObraRow | null>(null)
   const [dados, setDados] = useState<DadosObra | null>(null)
@@ -37,17 +40,17 @@ export default function ObraTecnico() {
   }
 
   async function recarregar(obraId: string) {
-    if (!supabasePublico) return
-    const obra = await pegarObraPorId(obraId, supabasePublico)
+    if (!clientePublico) return
+    const obra = await pegarObraPorId(obraId, clientePublico)
     if (!obra) { setErro('Obra não encontrada'); return }
     setObraReal(obra)
-    const cardsRows = await listarCardsDaObra(obra.id, supabasePublico)
+    const cardsRows = await listarCardsDaObra(obra.id, clientePublico)
     const histPorCard: Record<string, HistoricoRow[]> = {}
     let anexosPorCard: Record<string, Anexo[]> = {}
     let checklistsPorCard: Record<string, Checklist[]> = {}
     if (cardsRows.length > 0) {
       const ids = cardsRows.map((c) => c.id)
-      const { data: hists } = await supabasePublico
+      const { data: hists } = await clientePublico
         .from('historico_card')
         .select('*')
         .in('card_id', ids)
@@ -55,9 +58,9 @@ export default function ObraTecnico() {
       for (const h of (hists ?? []) as HistoricoRow[]) {
         ;(histPorCard[h.card_id] ??= []).push(h)
       }
-      anexosPorCard = await listarAnexosDeVariosCards(ids, supabasePublico)
+      anexosPorCard = await listarAnexosDeVariosCards(ids, clientePublico)
       try {
-        checklistsPorCard = await listarChecklistsDeVariosCards(ids, supabasePublico)
+        checklistsPorCard = await listarChecklistsDeVariosCards(ids, clientePublico)
       } catch {}
     }
     setDados(rowsParaDadosObra(obra, cardsRows, histPorCard, anexosPorCard, checklistsPorCard))
@@ -69,7 +72,7 @@ export default function ObraTecnico() {
     setErro(null)
     ;(async () => {
       try {
-        const r = await pegarTecnicoPorToken(token, supabasePublico)
+        const r = await pegarTecnicoPorToken(token, clientePublico)
         if (!ativo) return
         if (!r) { setErro('Link inválido ou revogado'); return }
         setTecnico(r.tecnico)
@@ -97,7 +100,7 @@ export default function ObraTecnico() {
       dados: dadosForm,
       autor: autorTecnico,
       autorTipo: 'tecnico',
-    }, supabasePublico)
+    }, clientePublico)
 
     // Auto-move pós-M1 (mesma lógica da empresa)
     let novaAba: AbaId | null = null
@@ -133,7 +136,7 @@ export default function ObraTecnico() {
       try {
         const updates: any = { aba: novaAba, sub_status: novoSubStatus }
         if (novaAba === 'emandamento') updates.status_em_andamento = 'Aguardando lote'
-        await atualizarCard(cardId, updates, supabasePublico)
+        await atualizarCard(cardId, updates, clientePublico)
       } catch {}
     }
 
@@ -148,7 +151,7 @@ export default function ObraTecnico() {
         autor_tipo: 'tecnico',
         texto: mensagemHistorico,
         interno: !registroPublico,
-      }, supabasePublico)
+      }, clientePublico)
       if (novaAba === 'emandamento') {
         await adicionarHistorico({
           card_id: cardId,
@@ -156,7 +159,7 @@ export default function ObraTecnico() {
           autor_tipo: 'sistema',
           texto: 'Visita técnica realizada. Vão está pronto. Item aprovado para produção.',
           interno: false,
-        }, supabasePublico)
+        }, clientePublico)
       }
     } catch {}
 
@@ -170,7 +173,7 @@ export default function ObraTecnico() {
       dados: dadosForm,
       autor: autorTecnico,
       autorTipo: 'tecnico',
-    }, supabasePublico)
+    }, clientePublico)
 
     let novaAba: AbaId | null = null
     let novoSubStatus: string | null = null
@@ -195,7 +198,7 @@ export default function ObraTecnico() {
       try {
         const updates: any = { aba: novaAba, sub_status: novoSubStatus }
         if (novaAba === 'emandamento') updates.status_em_andamento = 'Aguardando lote'
-        await atualizarCard(cardId, updates, supabasePublico)
+        await atualizarCard(cardId, updates, clientePublico)
       } catch {}
     }
 
@@ -208,7 +211,7 @@ export default function ObraTecnico() {
         autor_tipo: 'tecnico',
         texto: mensagemInterno,
         interno: !registroPublico,
-      }, supabasePublico)
+      }, clientePublico)
       if (mensagemPublico) {
         await adicionarHistorico({
           card_id: cardId,
@@ -216,7 +219,7 @@ export default function ObraTecnico() {
           autor_tipo: 'sistema',
           texto: mensagemPublico,
           interno: false,
-        }, supabasePublico)
+        }, clientePublico)
       }
     } catch {}
 
@@ -225,7 +228,7 @@ export default function ObraTecnico() {
 
   async function adicionarFotoTecnico(cardId: string, arquivos: File[]) {
     if (!obraReal) return
-    for (const a of arquivos) await uploadFoto({ arquivo: a, obraId: obraReal.id, cardId }, supabasePublico)
+    for (const a of arquivos) await uploadFoto({ arquivo: a, obraId: obraReal.id, cardId }, clientePublico)
     try {
       await adicionarHistorico({
         card_id: cardId,
@@ -233,15 +236,15 @@ export default function ObraTecnico() {
         autor_tipo: 'tecnico',
         texto: 'Foto adicionada pelo técnico (' + arquivos.length + ').',
         interno: true,
-      }, supabasePublico)
+      }, clientePublico)
     } catch {}
     await recarregar(obraReal.id)
   }
 
   async function removerFotoTecnico(cardId: string, fotoId: string) {
-    if (!obraReal || !supabasePublico) return
+    if (!obraReal || !clientePublico) return
     // Busca o anexo pra ter o storage_path antes de remover
-    const { data, error } = await supabasePublico
+    const { data, error } = await clientePublico
       .from('anexos')
       .select('*')
       .eq('id', fotoId)
@@ -258,7 +261,7 @@ export default function ObraTecnico() {
       content_type: data.content_type ?? null,
       created_at: data.created_at,
     }
-    await removerAnexo(anexo, supabasePublico)
+    await removerAnexo(anexo, clientePublico)
     try {
       await adicionarHistorico({
         card_id: cardId,
@@ -266,7 +269,7 @@ export default function ObraTecnico() {
         autor_tipo: 'tecnico',
         texto: 'Foto removida pelo técnico.',
         interno: true,
-      }, supabasePublico)
+      }, clientePublico)
     } catch {}
     await recarregar(obraReal.id)
   }
@@ -369,7 +372,7 @@ export default function ObraTecnico() {
             toast('Foto removida')
           }}
           onRegistrarObservacao={async (texto, interno) => {
-            if (!texto.trim() || !supabasePublico || !obraReal) return
+            if (!texto.trim() || !clientePublico || !obraReal) return
             await adicionarHistorico(
               {
                 card_id: cardAberto.id,
@@ -378,7 +381,7 @@ export default function ObraTecnico() {
                 texto,
                 interno,
               },
-              supabasePublico,
+              clientePublico,
             )
             await recarregar(obraReal.id)
             toast(interno ? 'Observação interna salva (cliente não vê)' : 'Observação registrada')

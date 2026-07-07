@@ -20,6 +20,7 @@
 // =============================================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
+import { corsFor } from '../_shared/cors.ts'
 
 const PRECO_MENSAL_CENTAVOS = 34900 // R$ 349,00
 const ASAAS_BASE_URL = Deno.env.get('ASAAS_API_URL') ?? Deno.env.get('ASAAS_BASE_URL') ?? 'https://api-sandbox.asaas.com/v3'
@@ -28,11 +29,9 @@ const ASAAS_API_KEY = Deno.env.get('ASAAS_API_KEY') ?? ''
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
+// Validadores simples de formato (defesa contra lixo/abuso no gateway Asaas).
+const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+function apenasDigitos(v: string) { return (v ?? '').replace(/\D/g, '') }
 
 interface CompraPublicaInput {
   nome_completo: string
@@ -45,8 +44,18 @@ interface CompraPublicaInput {
 }
 
 Deno.serve(async (req: Request) => {
+  const corsHeaders = corsFor(req)
+  const jsonError = (status: number, error: string) =>
+    new Response(JSON.stringify({ ok: false, error }), {
+      status,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
+  }
+  if (req.method !== 'POST') {
+    return jsonError(405, 'Método não permitido')
   }
 
   try {
@@ -55,6 +64,27 @@ Deno.serve(async (req: Request) => {
     // ========== Validação básica ==========
     if (!input.nome_completo || !input.email || !input.whatsapp || !input.cpf_cnpj) {
       return jsonError(400, 'Dados obrigatórios: nome_completo, email, whatsapp, cpf_cnpj')
+    }
+
+    // ========== Validação de formato (anti-abuso) ==========
+    const nome = String(input.nome_completo).trim()
+    const email = String(input.email).trim().toLowerCase()
+    const whatsappDig = apenasDigitos(input.whatsapp)
+    const cpfCnpjDig = apenasDigitos(input.cpf_cnpj)
+    if (nome.length < 3 || nome.length > 120) {
+      return jsonError(400, 'Nome inválido')
+    }
+    if (!RE_EMAIL.test(email) || email.length > 150) {
+      return jsonError(400, 'E-mail inválido')
+    }
+    if (whatsappDig.length < 10 || whatsappDig.length > 13) {
+      return jsonError(400, 'WhatsApp inválido')
+    }
+    if (cpfCnpjDig.length !== 11 && cpfCnpjDig.length !== 14) {
+      return jsonError(400, 'CPF/CNPJ inválido')
+    }
+    if (input.cupom && String(input.cupom).length > 40) {
+      return jsonError(400, 'Cupom inválido')
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
@@ -212,10 +242,3 @@ Deno.serve(async (req: Request) => {
     return jsonError(500, (e as Error).message ?? 'Erro desconhecido')
   }
 })
-
-function jsonError(status: number, error: string) {
-  return new Response(JSON.stringify({ ok: false, error }), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
-}

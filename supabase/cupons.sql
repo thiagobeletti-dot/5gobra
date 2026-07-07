@@ -40,9 +40,10 @@ alter table cupons enable row level security;
 
 -- Anon pode LER (precisamos validar cupom no checkout sem cliente logado)
 -- Só retorna se ativo e não vencido (lógica no client/edge function)
+-- SEGURANCA (2026-07-07): anon NAO le a tabela direto (evita enumerar todos os
+-- codigos/percentuais). A validacao no checkout usa a funcao validar_cupom()
+-- abaixo, que e SECURITY DEFINER e retorna so o percentual de um codigo dado.
 drop policy if exists "cupons_anon_select" on cupons;
-create policy "cupons_anon_select" on cupons
-  for select to anon using (true);
 
 -- Authenticated empresa pode tudo (admin via dashboard futuro)
 drop policy if exists "cupons_auth_all" on cupons;
