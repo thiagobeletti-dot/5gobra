@@ -67,6 +67,11 @@ grant execute on function anon_obra_ids()   to anon, authenticated;
 -- ============================================================
 -- 2) OBRAS — anon lê só a(s) obra(s) do token
 -- ============================================================
+-- NOTA: `obras_anon_select` era uma policy permissiva (using true) criada À MÃO
+-- pelo painel do Supabase no debug de RLS de maio/2026 — não estava em nenhum
+-- .sql, por isso não era dropada. Ela mantinha o vazamento aberto mesmo com o
+-- resto do hardening. Drop explícito abaixo (achada via pg_policies em 07/07).
+drop policy if exists "obras_anon_select" on obras;
 drop policy if exists "obras_cliente_select_by_token" on obras;
 drop policy if exists "obras_anon_select_scoped" on obras;
 create policy "obras_anon_select_scoped" on obras
@@ -141,6 +146,8 @@ create policy "anexos_anon_insert_scoped" on anexos
   );
 
 -- Técnico pode remover foto que ele mesmo subiu (UI chama removerAnexo).
+-- `anexos_anon_delete` era permissiva (using true) legada — drop explícito.
+drop policy if exists "anexos_anon_delete" on anexos;
 drop policy if exists "anexos_anon_delete_scoped" on anexos;
 create policy "anexos_anon_delete_scoped" on anexos
   for delete to anon
