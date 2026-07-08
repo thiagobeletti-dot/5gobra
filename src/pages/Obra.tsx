@@ -183,6 +183,14 @@ export default function Obra() {
         )}
         <div className="h-px bg-slate-200 my-2 mx-1" />
         <SidebarSec titulo="Sistema" />
+        {data.modo === 'banco' && habilitado && (
+          <Link to="/app/dashboard" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition text-left text-slate-600 hover:bg-slate-100 hover:text-slate-900">
+            <span className="w-4 inline-flex items-center justify-center">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><rect x="3" y="3" width="7" height="9" rx="1" /><rect x="14" y="3" width="7" height="5" rx="1" /><rect x="14" y="12" width="7" height="9" rx="1" /><rect x="3" y="16" width="7" height="5" rx="1" /></svg>
+            </span>
+            Dashboard
+          </Link>
+        )}
         {data.modo === 'banco' && habilitado ? (
           <Link to="/app/obras" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition text-left text-slate-600 hover:bg-slate-100 hover:text-slate-900">
             <span className="w-4 inline-flex items-center justify-center">@</span>
