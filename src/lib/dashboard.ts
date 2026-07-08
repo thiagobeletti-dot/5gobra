@@ -54,6 +54,7 @@ export interface DashboardData {
   proximas: ObraDashboard[]
   aguardandoCliente: ObraDashboard[]
   noPrazo: ObraDashboard[]
+  semCronogramaObras: ObraDashboard[]
   totalObras: number
 }
 
@@ -177,21 +178,26 @@ export async function pegarDashboard(): Promise<DashboardData> {
     semCronograma: ativas.filter((o) => !o.cronograma).length,
   }
 
+  // Listas COMPLETAS por estágio (sem corte) — a UI mostra os 3 primeiros e o
+  // "Ver todas" abre o resto. Cada lista já vem ordenada da mais crítica pra menos.
   const atrasadas = naoPausadas
     .filter((o) => o.atrasada && o.diasRestantes !== null)
-    .sort((a, b) => (a.diasRestantes ?? 0) - (b.diasRestantes ?? 0))
-    .slice(0, 5)
+    .sort((a, b) => (a.diasRestantes ?? 0) - (b.diasRestantes ?? 0)) // mais vencida primeiro
 
   const proximas = naoPausadas
     .filter(
       (o) => !o.atrasada && o.diasRestantes !== null && o.diasRestantes >= 0 && o.diasRestantes <= 7,
     )
-    .sort((a, b) => (a.diasRestantes ?? 0) - (b.diasRestantes ?? 0))
-    .slice(0, 5)
+    .sort((a, b) => (a.diasRestantes ?? 0) - (b.diasRestantes ?? 0)) // vence antes primeiro
 
   const aguardandoCliente = ativas
     .filter((o) => o.obraPausadaPorCliente)
-    .slice(0, 5)
+    .sort((a, b) => {
+      // menor progresso primeiro (proxy de "parada há mais tempo")
+      const pa = a.totalCards > 0 ? a.cardsConcluidos / a.totalCards : 0
+      const pb = b.totalCards > 0 ? b.cardsConcluidos / b.totalCards : 0
+      return pa - pb
+    })
 
   const noPrazo = naoPausadas
     .filter(
@@ -200,8 +206,11 @@ export async function pegarDashboard(): Promise<DashboardData> {
         !o.atrasada &&
         (o.diasRestantes === null || o.diasRestantes > 7),
     )
-    .sort((a, b) => (b.diasRestantes ?? 0) - (a.diasRestantes ?? 0))
-    .slice(0, 5)
+    .sort((a, b) => (a.diasRestantes ?? 9999) - (b.diasRestantes ?? 9999)) // prazo mais próximo primeiro
+
+  const semCronogramaObras = ativas
+    .filter((o) => !o.cronograma)
+    .sort((a, b) => (a.obra.nome || '').localeCompare(b.obra.nome || ''))
 
   return {
     metricas,
@@ -209,6 +218,7 @@ export async function pegarDashboard(): Promise<DashboardData> {
     proximas,
     aguardandoCliente,
     noPrazo,
+    semCronogramaObras,
     totalObras: ativas.length,
   }
 }
