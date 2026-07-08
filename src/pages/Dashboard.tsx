@@ -333,7 +333,7 @@ function ModalEstagio({ data, modal, onClose }: { data: DashboardData; modal: St
       <div className="bg-white w-full max-w-2xl max-h-[88vh] rounded-t-2xl md:rounded-2xl shadow-2xl flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}>
         <div className="px-5 py-4 border-b border-slate-200 flex items-center gap-2.5">
-          {modal === 'semcrono' ? <IcAlerta className="w-4 h-4 text-amber-500" /> : <cfg!.Icon className={`w-4 h-4 ${cfg!.iconColor}`} />}
+          {modal === 'semcrono' ? <IcAlerta className="w-4 h-4 text-amber-500" /> : cfg && <cfg.Icon className={`w-4 h-4 ${cfg.iconColor}`} />}
           <span className="font-bold text-base">{titulo}</span>
           <span className="text-xs font-bold text-slate-400 bg-slate-100 rounded-full px-2 py-0.5">{obras.length}</span>
           <button onClick={onClose} className="ml-auto w-8 h-8 rounded-md bg-slate-100 text-slate-500 grid place-items-center hover:bg-slate-200 hover:text-slate-900 transition" aria-label="Fechar">
