@@ -35,6 +35,7 @@ export default function ImportarOrcamento() {
   const [orcamento, setOrcamento] = useState<OrcamentoUnificado | null>(null)
   const [cards, setCards] = useState<CardImportadoUnificado[]>([])
   const [nomeObraEdit, setNomeObraEdit] = useState('')
+  const [interacaoCliente, setInteracaoCliente] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
   const [obraIdCriada, setObraIdCriada] = useState<string | null>(null)
 
@@ -74,9 +75,12 @@ export default function ImportarOrcamento() {
         nome: nomeObraEdit.trim() || 'Obra importada',
         endereco: orcamento.cliente.endereco ?? undefined,
         cliente_nome: orcamento.cliente.nome ?? undefined,
+        interacao_cliente: interacaoCliente,
       })
 
-      // Cria os cards em batch
+      // Cria os cards em batch. Obra gerencial (sem interação do cliente):
+      // não existe lane do cliente — itens já nascem em Técnica (mesma regra
+      // do criarNovo/aplicarModoGerencialNaObra).
       await criarVariosCards(
         cards.map((c) => ({
           obra_id: obra.id,
@@ -84,7 +88,7 @@ export default function ImportarOrcamento() {
           sigla: c.sigla,
           nome: c.nome,
           descricao: c.descricao,
-          aba: 'cliente' as const,
+          aba: interacaoCliente ? ('cliente' as const) : ('tecnica' as const),
           largura_mm: c.larguraMm,
           altura_mm: c.alturaMm,
         })),
@@ -161,6 +165,8 @@ export default function ImportarOrcamento() {
             cards={cards}
             nomeObra={nomeObraEdit}
             onNomeObraChange={setNomeObraEdit}
+            interacaoCliente={interacaoCliente}
+            onInteracaoClienteChange={setInteracaoCliente}
             onConfirmar={confirmarImportacao}
             onVoltar={() => setEtapa('selecionar')}
           />
@@ -313,6 +319,8 @@ function Preview({
   cards,
   nomeObra,
   onNomeObraChange,
+  interacaoCliente,
+  onInteracaoClienteChange,
   onConfirmar,
   onVoltar,
 }: {
@@ -320,6 +328,8 @@ function Preview({
   cards: CardImportadoUnificado[]
   nomeObra: string
   onNomeObraChange: (v: string) => void
+  interacaoCliente: boolean
+  onInteracaoClienteChange: (v: boolean) => void
   onConfirmar: () => void
   onVoltar: () => void
 }) {
@@ -371,6 +381,26 @@ function Preview({
         <p className="text-xs text-slate-500 mt-2">
           Editável. Por padrão usamos o nome do cliente do orçamento.
         </p>
+
+        <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={interacaoCliente}
+              onChange={(e) => onInteracaoClienteChange(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-laranja focus:ring-laranja"
+            />
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-slate-900">Interação do cliente</span>
+              <span className="block text-xs text-slate-500 mt-0.5 leading-relaxed">
+                <strong>Ligado:</strong> o cliente recebe o link, acompanha a obra e dá os aceites.{' '}
+                <strong>Desligado:</strong> obra em modo gerencial (só empresa) — os itens importados
+                já entram em Técnica e a entrega é finalizada pela sua conferência, sem aceite do cliente.
+                Dá pra mudar depois em Editar obra.
+              </span>
+            </span>
+          </label>
+        </div>
       </section>
 
       <section className="bg-white border border-slate-200 rounded-xl p-5">

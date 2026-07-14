@@ -419,7 +419,7 @@ export default function FormMedicao1({ inicial, onSalvar, onCancelar }: Props) {
                   <GrupoRadio
                     label="Lado de abertura"
                     valor={d.correr_abertura_lado}
-                    opcoes={[{ v: 'esquerda', l: 'Esquerda' }, { v: 'direita', l: 'Direita' }, { v: 'ambos', l: 'Ambos' }]}
+                    opcoes={[{ v: 'esquerda', l: 'Esquerda' }, { v: 'direita', l: 'Direita' }, { v: 'central', l: 'Central' }, { v: 'ambos', l: 'Ambos' }]}
                     onChange={(v) => up('correr_abertura_lado', v)}
                   />
                   <GrupoRadio

@@ -25,6 +25,7 @@ import type { HistoricoRow } from './api'
 const ROTULOS_CORRER_ABERTURA: Record<string, string> = {
   esquerda: 'Esquerda',
   direita: 'Direita',
+  central: 'Central',
   ambos: 'Ambos os lados',
 }
 const ROTULOS_CORRER_FECHO: Record<string, string> = {

@@ -394,6 +394,13 @@ function ModalCardCliente({
                 <div className="bg-emerald-50 border border-emerald-200 px-4 py-3 rounded-lg text-xs text-slate-700">
                   <span className="text-emerald-700 font-bold">✓ Aceite confirmado</span> em {formataDataHora(card.aceiteFinal)}. Garantia iniciada.
                 </div>
+              ) : card.subStatus === 'Aguardando conferência do gestor' ? (
+                // Instalação concluída, mas a empresa ainda vai conferir o
+                // serviço — o aceite só abre depois do "Peça entregue".
+                <div className="bg-slate-50 border border-slate-200 px-4 py-4 rounded-lg">
+                  <div className="font-bold text-sm text-slate-700 mb-1">Instalação concluída — em conferência</div>
+                  <p className="text-xs text-slate-600">A empresa está conferindo o serviço. Assim que confirmar a entrega, você poderá dar o aceite final aqui.</p>
+                </div>
               ) : (
                 <div className="bg-emerald-50 border border-emerald-200 px-4 py-4 rounded-lg">
                   <div className="font-bold text-sm text-emerald-700 mb-1">Confirmar aceite final</div>

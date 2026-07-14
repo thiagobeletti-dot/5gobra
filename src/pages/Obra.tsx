@@ -477,6 +477,20 @@ export default function Obra() {
             setCardAbertoId(null)
             toast('Marcado como corrigido — aguardando novo aceite')
           }}
+          onPecaEntregue={async () => {
+            const semCliente = data.obraReal?.interacao_cliente === false
+            const ok = await confirmar({
+              titulo: 'Confirmar a entrega desta peça?',
+              descricao: semCliente
+                ? 'Você confere a instalação e o item é finalizado (obra gerencial — sem aceite do cliente).'
+                : 'Você confere a instalação e o card abre pro aceite final do cliente.',
+              labelConfirmar: 'Peça entregue',
+            })
+            if (ok === null) return
+            await data.marcarPecaEntregue(cardAberto.id)
+            setCardAbertoId(null)
+            toast(semCliente ? 'Peça entregue — item finalizado ✓' : 'Peça entregue — aguardando aceite do cliente')
+          }}
           onApagar={async () => {
             const ok = await confirmar({
               titulo: 'Apagar este item permanentemente?',
@@ -736,7 +750,7 @@ function CardView({ card, perfil, onClick }: { card: Card; perfil: Perfil; onCli
 }
 
 function ModalCard({
-  card, perfil, interacaoCliente, podeFotos, onClose, onAlterarStatus, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto, podeChecklist, onAbrirMedicao1, onAbrirMedicao2, onMarcarContraMarcoEntregue, onMarcarVaoPronto, onEncerrar, onResolverApontamento, onMarcarCorrigido, onApagar, onEditarDados,
+  card, perfil, interacaoCliente, podeFotos, onClose, onAlterarStatus, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto, podeChecklist, onAbrirMedicao1, onAbrirMedicao2, onMarcarContraMarcoEntregue, onMarcarVaoPronto, onEncerrar, onResolverApontamento, onMarcarCorrigido, onPecaEntregue, onApagar, onEditarDados,
 }: {
   card: Card; perfil: Perfil; interacaoCliente: boolean; podeFotos: boolean; onClose: () => void
   onAlterarStatus: (s: string) => Promise<void>
@@ -753,6 +767,7 @@ function ModalCard({
   onEncerrar: () => Promise<void>
   onResolverApontamento: () => Promise<void>
   onMarcarCorrigido: () => Promise<void>
+  onPecaEntregue: () => Promise<void>
   onApagar: () => Promise<void>
   onEditarDados: () => void
 }) {
@@ -907,6 +922,20 @@ function ModalCard({
               ) : card.aceiteFinal ? (
                 <div className="bg-emerald-50 border border-emerald-200 px-4 py-3 rounded-lg text-xs text-slate-700">
                   <span className="text-emerald-700 font-bold">✓ Aceite confirmado</span> pelo cliente em {formataDataHora(card.aceiteFinal)}. Garantia iniciada nesta data.
+                </div>
+              ) : card.subStatus === 'Aguardando conferência do gestor' ? (
+                // Instalação concluída pelo técnico (G Instalação) — vistoria
+                // do gestor antes de encerrar/abrir o aceite do cliente.
+                <div className="bg-laranja-soft border border-laranja-border rounded-lg px-4 py-4">
+                  <div className="font-bold text-sm text-laranja-dark mb-1">🔍 Aguardando sua conferência</div>
+                  <p className="text-xs text-slate-700 mb-3">
+                    O técnico concluiu a instalação (veja a foto final no histórico). Confira o
+                    serviço e marque como entregue.{' '}
+                    {interacaoCliente
+                      ? 'O card abre pro aceite final do cliente.'
+                      : 'Obra gerencial: o item é finalizado aqui, sem aceite do cliente.'}
+                  </p>
+                  <button className="btn-primary" onClick={onPecaEntregue}>✅ Peça entregue{interacaoCliente ? ' → aceite do cliente' : ' → finalizar'}</button>
                 </div>
               ) : (
                 <div className="bg-emerald-50 border border-emerald-200 px-4 py-4 rounded-lg">

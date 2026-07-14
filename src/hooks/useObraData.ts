@@ -62,6 +62,8 @@ interface UseObraDataResult {
   encerrarCard: (cardId: string, motivo: string) => Promise<void>
   apagarCard: (cardId: string) => Promise<void>
   marcarCorrigido: (cardId: string) => Promise<void>
+  /** Conferência do gestor pós-instalação (G Instalação): encerra (gerencial) ou abre o aceite do cliente. */
+  marcarPecaEntregue: (cardId: string) => Promise<void>
   darAceite: (cardId: string) => Promise<void>
   reabrir: (cardId: string, texto: string, perfil: 'empresa' | 'cliente') => Promise<void>
   criarNovo: (input: NovoCardInput, perfil: 'empresa' | 'cliente') => Promise<AbaId>
@@ -819,6 +821,61 @@ export function useObraData(
     setDados(novo)
   }, [dados, modo, obraReal])
 
+  // "Peça entregue" — conferência do gestor após a instalação (G Instalação
+  // 006d manda o card pra Conclusão com 'Aguardando conferência do gestor';
+  // decisão do Thiago 08/07: vistoria de um superior SEMPRE, não confiar só
+  // no instalador). Sem interação do cliente → encerra aqui; com interação →
+  // abre o aceite final do cliente (fluxo existente).
+  const marcarPecaEntregue = useCallback(async (cardId: string) => {
+    if (!dados) return
+    const semCliente = obraReal?.interacao_cliente === false
+    if (modo === 'demo') {
+      setDados((d) => {
+        if (!d) return d
+        return {
+          ...d,
+          cards: d.cards.map((c) => {
+            if (c.id !== cardId) return c
+            const hist = [
+              ...c.historico,
+              { autor: 'Empresa', tipo: 'empresa' as AutorTipo, data: agora(), texto: 'Peça conferida e entregue pelo gestor.', interno: false },
+            ]
+            return { ...c, subStatus: 'Aguardando aceite final', historico: hist }
+          }),
+        }
+      })
+      return
+    }
+    if (!obraReal) return
+    await adicionarHistorico({ card_id: cardId, autor: 'Empresa', autor_tipo: 'empresa', texto: 'Peça conferida e entregue pelo gestor.' }, client)
+    if (semCliente) {
+      await atualizarCard(cardId, { encerrado: true, sub_status: 'Concluído (obra gerencial)' }, client)
+      await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Item finalizado (obra gerencial — sem aceite do cliente).', interno: true }, client)
+    } else {
+      await atualizarCard(cardId, { sub_status: 'Aguardando aceite final' }, client)
+      await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Conferência da empresa concluída. Aguardando aceite final do cliente.', interno: true }, client)
+    }
+    const novo = dados
+      ? await recarregarCard(obraReal, cardId, dados, client)
+      : await carregarDoBanco(obraReal, client)
+    setDados(novo)
+
+    // No ramo gerencial o card encerra aqui → aplica a mesma regra de
+    // auto-encerramento da obra usada no darAceite.
+    if (semCliente && novo && !obraReal.encerrada) {
+      const cardsDePeca = novo.cards.filter((c) => c.tipo === 'peca')
+      const todosFinalizados =
+        cardsDePeca.length > 0 &&
+        cardsDePeca.every(
+          (c) => (c.aba === 'conclusao' && !!c.aceiteFinal) || c.encerrado,
+        )
+      if (todosFinalizados) {
+        await atualizarObra(obraReal.id, { encerrada: true })
+        setObraReal({ ...obraReal, encerrada: true })
+      }
+    }
+  }, [dados, modo, obraReal])
+
   const criarNovo = useCallback(async (input: NovoCardInput, perfil: 'empresa' | 'cliente'): Promise<AbaId> => {
     const autor = perfil === 'empresa' ? 'Empresa' : 'Cliente'
     // Modo gerencial (obra sem interação do cliente): não existe lane do cliente —
@@ -1149,5 +1206,5 @@ export function useObraData(
     setDados(structuredClone(SEED))
   }, [modo, idOrToken])
 
-  return { dados, modo, obraReal, carregando, ocupado, erro, alterarStatus, registrar, confirmarItem, marcarContraMarcoEntregue, marcarVaoPronto, marcarApontamentoResolvido, marcarApontamentoCiente, encerrarCard, apagarCard, marcarCorrigido, darAceite, reabrir, criarNovo, importarItens, adicionarFotos, removerFoto, salvarMedicao1Card, salvarMedicao2Card, resetar }
+  return { dados, modo, obraReal, carregando, ocupado, erro, alterarStatus, registrar, confirmarItem, marcarContraMarcoEntregue, marcarVaoPronto, marcarApontamentoResolvido, marcarApontamentoCiente, encerrarCard, apagarCard, marcarCorrigido, marcarPecaEntregue, darAceite, reabrir, criarNovo, importarItens, adicionarFotos, removerFoto, salvarMedicao1Card, salvarMedicao2Card, resetar }
 }
