@@ -39,7 +39,7 @@ export interface DadosMedicao1 {
   giro_puxador: boolean // tem puxador adicional? (true=sim, false=não)
 
   // Específicos de Correr
-  correr_abertura_lado: 'esquerda' | 'direita' | 'ambos' | ''
+  correr_abertura_lado: 'esquerda' | 'direita' | 'central' | 'ambos' | ''
   correr_fecho: 'fechadura' | 'cremona' | 'concha' | ''
   correr_trilho: 'convencional' | 'embutido_u' | 'embutido_concavo' | 'na' | ''
   correr_somente_puxador: boolean // sem chave, só puxador
@@ -128,7 +128,7 @@ export interface DadosMedicao2 {
   giro_abertura: 'interna' | 'externa' | ''
   giro_fechadura_lado: 'esquerda' | 'direita' | ''
   giro_puxador: boolean
-  correr_abertura_lado: 'esquerda' | 'direita' | 'ambos' | ''
+  correr_abertura_lado: 'esquerda' | 'direita' | 'central' | 'ambos' | ''
   correr_fecho: 'fechadura' | 'cremona' | 'concha' | ''
   correr_trilho: 'convencional' | 'embutido_u' | 'embutido_concavo' | 'na' | ''
   correr_somente_puxador: boolean
