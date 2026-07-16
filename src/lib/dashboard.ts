@@ -37,6 +37,8 @@ export interface ObraDashboard {
   obraPausadaPorCliente: boolean
   temCardsEmAndamento: boolean
   todosCardsConcluidos: boolean
+  /** Previsão de fim da última fase (Conclusão) do cronograma = data de entrega. */
+  dataEntrega: string | null
 }
 
 export interface MetricasDashboard {
@@ -55,6 +57,8 @@ export interface DashboardData {
   aguardandoCliente: ObraDashboard[]
   noPrazo: ObraDashboard[]
   semCronogramaObras: ObraDashboard[]
+  /** Obras ativas COM data de entrega prevista (Conclusão), pro calendário. */
+  entregas: ObraDashboard[]
   totalObras: number
 }
 
@@ -140,6 +144,11 @@ export async function pegarDashboard(): Promise<DashboardData> {
       const atrasada =
         !obraPausadaPorCliente && (cardsAtrasados.length > 0 || faseAtrasada)
 
+      // Data de entrega = previsão de fim da ÚLTIMA fase do cronograma (Conclusão).
+      const fasesOrdenadas = cronograma ? [...cronograma.fases].sort((a, b) => a.ordem - b.ordem) : []
+      const ultimaFase = fasesOrdenadas.length > 0 ? fasesOrdenadas[fasesOrdenadas.length - 1] : undefined
+      const dataEntrega = ultimaFase?.previsaoFim ?? null
+
       return {
         obra,
         cronograma,
@@ -153,6 +162,7 @@ export async function pegarDashboard(): Promise<DashboardData> {
         obraPausadaPorCliente,
         temCardsEmAndamento,
         todosCardsConcluidos,
+        dataEntrega,
       }
     }),
   )
@@ -212,6 +222,11 @@ export async function pegarDashboard(): Promise<DashboardData> {
     .filter((o) => !o.cronograma)
     .sort((a, b) => (a.obra.nome || '').localeCompare(b.obra.nome || ''))
 
+  // Entregas: obras ativas com data de entrega prevista, ordenadas por data.
+  const entregas = ativas
+    .filter((o) => !!o.dataEntrega)
+    .sort((a, b) => (a.dataEntrega ?? '').localeCompare(b.dataEntrega ?? ''))
+
   return {
     metricas,
     atrasadas,
@@ -219,6 +234,7 @@ export async function pegarDashboard(): Promise<DashboardData> {
     aguardandoCliente,
     noPrazo,
     semCronogramaObras,
+    entregas,
     totalObras: ativas.length,
   }
 }

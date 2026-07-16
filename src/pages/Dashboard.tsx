@@ -102,6 +102,23 @@ function faseTexto(key: StageKey, o: ObraDashboard): string {
 }
 
 // ============================================================
+// ENTREGAS (calendário)
+// ============================================================
+function ymd(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+const MESES_ABREV = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+
+// Status da obra pra colorir a entrega (mais crítico = rank menor).
+function statusEntrega(o: ObraDashboard): { cor: string; rank: number; label: string } {
+  if (o.atrasada) return { cor: '#ef4444', rank: 0, label: 'Atrasada' }
+  if (o.diasRestantes !== null && o.diasRestantes <= 3) return { cor: '#f97316', rank: 1, label: 'Atenção' }
+  if (o.obraPausadaPorCliente) return { cor: '#eab308', rank: 2, label: 'Aguardando cliente' }
+  return { cor: '#22c55e', rank: 3, label: 'No prazo' }
+}
+
+// ============================================================
 // PÁGINA
 // ============================================================
 export default function Dashboard() {
@@ -112,6 +129,7 @@ export default function Dashboard() {
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
   const [modal, setModal] = useState<StageKey | 'semcrono' | null>(null)
+  const [diaModal, setDiaModal] = useState<string | null>(null)
 
   useEffect(() => {
     let ativo = true
@@ -230,6 +248,9 @@ export default function Dashboard() {
               )}
             </section>
 
+            {/* ===== CALENDÁRIO DE ENTREGAS ===== */}
+            <MiniCalendario entregas={data.entregas} onDia={setDiaModal} />
+
             {/* ===== 4 ESTÁGIOS ===== */}
             <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {STAGES.map((cfg) => (
@@ -247,6 +268,11 @@ export default function Dashboard() {
           modal={modal}
           onClose={() => setModal(null)}
         />
+      )}
+
+      {/* ===== MODAL entregas do dia ===== */}
+      {diaModal && data && (
+        <ModalEntregasDia dia={diaModal} entregas={data.entregas} onClose={() => setDiaModal(null)} />
       )}
     </div>
   )
@@ -384,6 +410,162 @@ function LinhaObra({ o, modal }: { o: ObraDashboard; modal: StageKey | 'semcrono
         ? <IcCalendario className="w-[18px] h-[18px] text-amber-500 shrink-0" />
         : <IcChevron className="w-[18px] h-[18px] text-slate-300 shrink-0" />}
     </Link>
+  )
+}
+
+function MiniCalendario({ entregas, onDia }: { entregas: ObraDashboard[]; onDia: (dia: string) => void }) {
+  const hoje = new Date()
+  const [ref, setRef] = useState(() => new Date(hoje.getFullYear(), hoje.getMonth(), 1))
+  const ano = ref.getFullYear()
+  const mes = ref.getMonth()
+  const hojeStr = ymd(hoje)
+
+  const porDia = useMemo(() => {
+    const m: Record<string, ObraDashboard[]> = {}
+    for (const o of entregas) { if (o.dataEntrega) (m[o.dataEntrega] ??= []).push(o) }
+    return m
+  }, [entregas])
+
+  const primeiroDiaSemana = new Date(ano, mes, 1).getDay()
+  const diasNoMes = new Date(ano, mes + 1, 0).getDate()
+  const celulas: (number | null)[] = []
+  for (let i = 0; i < primeiroDiaSemana; i++) celulas.push(null)
+  for (let d = 1; d <= diasNoMes; d++) celulas.push(d)
+  while (celulas.length % 7 !== 0) celulas.push(null)
+
+  const proximas = entregas.filter((o) => (o.dataEntrega ?? '') >= hojeStr).slice(0, 3)
+
+  function corDoDia(dia: string): string | null {
+    const listaDia = porDia[dia]
+    if (!listaDia || listaDia.length === 0) return null
+    let melhorRank = 99
+    let cor: string | null = null
+    for (const o of listaDia) {
+      const s = statusEntrega(o)
+      if (s.rank <= melhorRank) { melhorRank = s.rank; cor = s.cor }
+    }
+    return cor
+  }
+
+  return (
+    <section className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 md:p-5 mb-4">
+      <div className="flex items-center gap-2 mb-3">
+        <IcCalendario className="w-4 h-4 text-laranja" />
+        <span className="text-sm font-extrabold">Entregas</span>
+        <div className="ml-auto flex items-center gap-1.5">
+          <button onClick={() => setRef(new Date(ano, mes - 1, 1))} className="w-6 h-6 grid place-items-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition" aria-label="Mês anterior">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><path d="M15 18l-6-6 6-6" /></svg>
+          </button>
+          <span className="text-xs font-bold text-slate-600 w-28 text-center">{MESES[mes]} {ano}</span>
+          <button onClick={() => setRef(new Date(ano, mes + 1, 1))} className="w-6 h-6 grid place-items-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition" aria-label="Próximo mês">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><path d="M9 18l6-6-6-6" /></svg>
+          </button>
+        </div>
+      </div>
+
+      <div className="flex gap-4 flex-wrap">
+        <div className="flex-1 min-w-[250px]">
+          <div className="grid grid-cols-7 gap-0.5 text-center text-[10px] font-bold text-slate-400 mb-1">
+            {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((d, i) => <div key={i}>{d}</div>)}
+          </div>
+          <div className="grid grid-cols-7 gap-0.5 text-center text-[11.5px]">
+            {celulas.map((d, i) => {
+              if (d === null) return <div key={i} />
+              const dia = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+              const cor = corDoDia(dia)
+              const ehHoje = dia === hojeStr
+              return (
+                <button key={i} disabled={!cor} onClick={() => cor && onDia(dia)}
+                  className={`py-1 rounded-md transition ${cor ? 'cursor-pointer hover:bg-slate-100' : 'cursor-default'}`}>
+                  {ehHoje ? (
+                    <span className="inline-flex w-[22px] h-[22px] items-center justify-center rounded-full border-2 border-laranja text-laranja font-extrabold">{d}</span>
+                  ) : (
+                    <span className={cor ? 'font-bold text-slate-800' : 'text-slate-500'}>{d}</span>
+                  )}
+                  <span className="block w-1.5 h-1.5 rounded-full mx-auto mt-0.5" style={{ background: cor ?? 'transparent' }} />
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="w-[220px] flex-grow">
+          <div className="text-[10px] font-extrabold uppercase tracking-wide text-slate-400 mb-2">Próximas entregas</div>
+          {proximas.length === 0 ? (
+            <div className="text-[11px] text-slate-400 border border-dashed border-slate-200 rounded-lg p-3 text-center">Nenhuma entrega prevista.</div>
+          ) : (
+            proximas.map((o) => {
+              const s = statusEntrega(o)
+              const partes = (o.dataEntrega ?? '--').split('-')
+              const mm = partes[1] ?? '', dd = partes[2] ?? ''
+              return (
+                <button key={o.obra.id} onClick={() => o.dataEntrega && onDia(o.dataEntrega)}
+                  className="w-full flex items-center gap-2.5 border border-slate-200 rounded-lg px-2.5 py-2 mb-1.5 hover:border-slate-300 transition text-left">
+                  <div className="text-center shrink-0 w-7">
+                    <div className="text-sm font-extrabold leading-none" style={{ color: s.cor }}>{dd}</div>
+                    <div className="text-[9px] text-slate-400">{MESES_ABREV[(parseInt(mm) || 1) - 1]}</div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[12px] font-bold truncate">{o.obra.nome}</div>
+                    <div className="text-[10px] text-slate-400">Entrega prevista</div>
+                  </div>
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: s.cor }} />
+                </button>
+              )
+            })
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function ModalEntregasDia({ dia, entregas, onClose }: { dia: string; entregas: ObraDashboard[]; onClose: () => void }) {
+  const lista = entregas.filter((o) => o.dataEntrega === dia).sort((a, b) => statusEntrega(a).rank - statusEntrega(b).rank)
+  const partes = dia.split('-')
+  const ano = partes[0] ?? '', mm = partes[1] ?? '', dd = partes[2] ?? ''
+  return (
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-end md:items-center justify-center p-0 md:p-6" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="bg-white w-full max-w-2xl max-h-[88vh] rounded-t-2xl md:rounded-2xl shadow-2xl flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="px-5 py-4 border-b border-slate-200 flex items-center gap-2.5">
+          <IcCalendario className="w-4 h-4 text-laranja" />
+          <span className="font-bold text-base">Entregas · {dd}/{mm}/{ano}</span>
+          <span className="text-xs font-bold text-slate-400 bg-slate-100 rounded-full px-2 py-0.5">{lista.length}</span>
+          <button onClick={onClose} className="ml-auto w-8 h-8 rounded-md bg-slate-100 text-slate-500 grid place-items-center hover:bg-slate-200 hover:text-slate-900 transition" aria-label="Fechar">
+            <IcX className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-3 md:px-4 py-3 space-y-2">
+          {lista.length === 0 ? (
+            <div className="text-center text-sm text-slate-400 py-10">Nenhuma entrega neste dia.</div>
+          ) : (
+            lista.map((o) => {
+              const s = statusEntrega(o)
+              const pct = o.totalCards > 0 ? Math.round((o.cardsConcluidos / o.totalCards) * 100) : 0
+              return (
+                <Link key={o.obra.id} to={`/app/obra/${o.obra.id}`} className="flex items-center gap-3 border border-slate-200 rounded-xl px-3.5 py-3 hover:border-slate-300 hover:shadow-sm transition">
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: s.cor }} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-bold text-slate-900 truncate">{o.obra.nome}</span>
+                      <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded" style={{ background: s.cor + '22', color: s.cor }}>{s.label}</span>
+                    </div>
+                    <div className="text-xs text-slate-500 mt-0.5 truncate">{o.obra.cliente_nome || 'Sem cliente'}{o.obra.endereco ? ` · ${o.obra.endereco}` : ''}</div>
+                    {o.totalCards > 0 && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden max-w-[220px]"><div className="h-full bg-slate-400 rounded-full" style={{ width: `${pct}%` }} /></div>
+                        <span className="text-[11px] text-slate-400 font-semibold">{o.cardsConcluidos}/{o.totalCards} itens</span>
+                      </div>
+                    )}
+                  </div>
+                  <IcChevron className="w-[18px] h-[18px] text-slate-300 shrink-0" />
+                </Link>
+              )
+            })
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
 
