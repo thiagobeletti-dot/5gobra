@@ -173,8 +173,8 @@ export default function Dashboard() {
     <div className="min-h-screen">
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-3">
-          <Link to="/app/dashboard"><LogoFull /></Link>
-          <nav className="hidden md:flex items-center gap-5 text-sm">
+          <Link to="/app/dashboard"><LogoFull height={210} /></Link>
+          <nav className="hidden md:flex items-center gap-6 text-base">
             <Link to="/app/dashboard" className="font-semibold text-laranja-dark">Dashboard</Link>
             <Link to="/app/obras" className="text-slate-500 hover:text-slate-900">Obras</Link>
             <Link to="/app/ajuda" className="text-slate-500 hover:text-slate-900">Ajuda</Link>
@@ -189,8 +189,8 @@ export default function Dashboard() {
 
       <main className="max-w-6xl mx-auto px-6 py-7">
         <div className="mb-5 flex items-baseline gap-3 flex-wrap">
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          {empresaNome && <p className="text-sm text-slate-500">{empresaNome}</p>}
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          {empresaNome && <p className="text-base text-slate-500">{empresaNome}</p>}
         </div>
 
         {erro && (
@@ -217,7 +217,7 @@ export default function Dashboard() {
                 </div>
                 <div className="w-full md:w-[240px] border border-slate-100 rounded-xl p-3 flex items-center gap-3">
                   <Donut segments={donutSegs} total={data.metricas.totalAtivas} />
-                  <div className="text-[11px] flex flex-col gap-1.5 flex-1">
+                  <div className="text-[12.5px] flex flex-col gap-1.5 flex-1">
                     <LegendaItem cor="#22c55e" rotulo="No prazo" valor={data.metricas.noPrazo} />
                     <LegendaItem cor="#eab308" rotulo="Aguardando" valor={data.metricas.aguardandoCliente} />
                     <LegendaItem cor="#f97316" rotulo="Atenção" valor={data.metricas.atencaoHoje} />
@@ -233,10 +233,10 @@ export default function Dashboard() {
                     <IcAlerta className="w-[18px] h-[18px]" />
                   </span>
                   <div className="flex-1 min-w-[180px]">
-                    <div className="text-[13px] font-extrabold text-amber-800">
+                    <div className="text-[15px] font-extrabold text-amber-800">
                       {data.metricas.semCronograma} obra{data.metricas.semCronograma !== 1 ? 's' : ''} ainda sem cronograma
                     </div>
-                    <div className="text-[11.5px] text-amber-700 mt-0.5">
+                    <div className="text-[13px] text-amber-700 mt-0.5">
                       Sem cronograma elas ficam fora do controle de prazos — e invisíveis nos estágios abaixo.
                     </div>
                   </div>
@@ -288,8 +288,8 @@ function TileMetrica({ valor, rotulo, acento, numeroCor, borda, Icon, iconCor }:
     <div className={`relative overflow-hidden bg-white border ${borda ?? 'border-slate-200'} rounded-xl px-3 py-2.5`}>
       <span className={`absolute left-0 top-0 bottom-0 w-[3px] ${acento}`} />
       {Icon && <Icon className={`w-3.5 h-3.5 mb-1 ${iconCor ?? ''}`} />}
-      <div className={`text-[23px] leading-none font-extrabold ${numeroCor}`}>{valor}</div>
-      <div className="text-[10px] text-slate-500 mt-1 font-medium">{rotulo}</div>
+      <div className={`text-[30px] leading-none font-extrabold ${numeroCor}`}>{valor}</div>
+      <div className="text-[11.5px] text-slate-500 mt-1 font-medium">{rotulo}</div>
     </div>
   )
 }
@@ -311,21 +311,21 @@ function ColunaEstagio({ cfg, obras, onVerTodas }: { cfg: StageCfg; obras: ObraD
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-1.5 px-0.5">
         <cfg.Icon className={`w-3.5 h-3.5 ${cfg.iconColor}`} />
-        <span className="text-[12px] font-extrabold text-slate-700">{cfg.label}</span>
-        <span className={`ml-auto text-[11px] font-extrabold rounded-full px-2 py-0.5 ${cfg.badge}`}>{obras.length}</span>
+        <span className="text-[13.5px] font-extrabold text-slate-700">{cfg.label}</span>
+        <span className={`ml-auto text-[12.5px] font-extrabold rounded-full px-2 py-0.5 ${cfg.badge}`}>{obras.length}</span>
       </div>
 
       {obras.length === 0 ? (
         <div className="border border-dashed border-slate-200 rounded-xl p-4 text-center bg-white">
           <IcCheck className="w-[18px] h-[18px] text-green-400 mx-auto mb-1" />
-          <div className="text-[11px] text-slate-400">{cfg.vazio}</div>
+          <div className="text-[12.5px] text-slate-400">{cfg.vazio}</div>
         </div>
       ) : (
         <>
           {visiveis.map((o) => <CardEnxuto key={o.obra.id} o={o} cfg={cfg} />)}
           {resto > 0 && (
             <button onClick={onVerTodas}
-              className={`border-[1.5px] rounded-xl py-2 text-[11.5px] font-extrabold inline-flex items-center justify-center gap-1 transition ${cfg.verMais}`}>
+              className={`border-[1.5px] rounded-xl py-2 text-[13px] font-extrabold inline-flex items-center justify-center gap-1 transition ${cfg.verMais}`}>
               Ver todas ({obras.length}) <IcChevron className="w-3 h-3" />
             </button>
           )}
@@ -339,9 +339,9 @@ function CardEnxuto({ o, cfg }: { o: ObraDashboard; cfg: StageCfg }) {
   return (
     <Link to={`/app/obra/${o.obra.id}`}
       className={`block bg-white border ${cfg.cardBorder} rounded-xl p-2.5 shadow-[0_1px_2px_rgba(15,23,42,.04)] hover:shadow-md hover:-translate-y-px transition`}>
-      <div className="text-[12.5px] font-bold leading-tight text-slate-900 truncate">{o.obra.nome}</div>
-      <div className="text-[11px] text-slate-400 mt-0.5 truncate">{faseTexto(cfg.key, o)}</div>
-      <span className={`inline-block mt-1.5 text-[10px] font-extrabold px-1.5 py-0.5 rounded ${cfg.chip}`}>
+      <div className="text-sm font-bold leading-tight text-slate-900 truncate">{o.obra.nome}</div>
+      <div className="text-[12.5px] text-slate-400 mt-0.5 truncate">{faseTexto(cfg.key, o)}</div>
+      <span className={`inline-block mt-1.5 text-[11.5px] font-extrabold px-1.5 py-0.5 rounded ${cfg.chip}`}>
         {chipTexto(cfg.key, o)}
       </span>
     </Link>
@@ -388,9 +388,9 @@ function LinhaObra({ o, modal }: { o: ObraDashboard; modal: StageKey | 'semcrono
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-bold text-slate-900 truncate">{o.obra.nome}</span>
           {cfg ? (
-            <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded ${cfg.chip}`}>{chipTexto(modal as StageKey, o)}</span>
+            <span className={`text-[11.5px] font-extrabold px-1.5 py-0.5 rounded ${cfg.chip}`}>{chipTexto(modal as StageKey, o)}</span>
           ) : (
-            <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Sem cronograma</span>
+            <span className="text-[11.5px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Sem cronograma</span>
           )}
         </div>
         <div className="text-xs text-slate-500 mt-0.5 truncate">
@@ -402,7 +402,7 @@ function LinhaObra({ o, modal }: { o: ObraDashboard; modal: StageKey | 'semcrono
             <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden max-w-[220px]">
               <div className="h-full bg-slate-400 rounded-full" style={{ width: `${pct}%` }} />
             </div>
-            <span className="text-[11px] text-slate-400 font-semibold">{o.cardsConcluidos}/{o.totalCards} itens</span>
+            <span className="text-[12.5px] text-slate-400 font-semibold">{o.cardsConcluidos}/{o.totalCards} itens</span>
           </div>
         )}
       </div>
@@ -465,10 +465,10 @@ function MiniCalendario({ entregas, onDia }: { entregas: ObraDashboard[]; onDia:
 
       <div className="flex gap-4 flex-wrap">
         <div className="flex-1 min-w-[250px]">
-          <div className="grid grid-cols-7 gap-0.5 text-center text-[10px] font-bold text-slate-400 mb-1">
+          <div className="grid grid-cols-7 gap-0.5 text-center text-[11.5px] font-bold text-slate-400 mb-1">
             {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((d, i) => <div key={i}>{d}</div>)}
           </div>
-          <div className="grid grid-cols-7 gap-0.5 text-center text-[11.5px]">
+          <div className="grid grid-cols-7 gap-0.5 text-center text-[13px]">
             {celulas.map((d, i) => {
               if (d === null) return <div key={i} />
               const dia = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
@@ -490,9 +490,9 @@ function MiniCalendario({ entregas, onDia }: { entregas: ObraDashboard[]; onDia:
         </div>
 
         <div className="w-[220px] flex-grow">
-          <div className="text-[10px] font-extrabold uppercase tracking-wide text-slate-400 mb-2">Próximas entregas</div>
+          <div className="text-[11.5px] font-extrabold uppercase tracking-wide text-slate-400 mb-2">Próximas entregas</div>
           {proximas.length === 0 ? (
-            <div className="text-[11px] text-slate-400 border border-dashed border-slate-200 rounded-lg p-3 text-center">Nenhuma entrega prevista.</div>
+            <div className="text-[12.5px] text-slate-400 border border-dashed border-slate-200 rounded-lg p-3 text-center">Nenhuma entrega prevista.</div>
           ) : (
             proximas.map((o) => {
               const s = statusEntrega(o)
@@ -506,8 +506,8 @@ function MiniCalendario({ entregas, onDia }: { entregas: ObraDashboard[]; onDia:
                     <div className="text-[9px] text-slate-400">{MESES_ABREV[(parseInt(mm) || 1) - 1]}</div>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-[12px] font-bold truncate">{o.obra.nome}</div>
-                    <div className="text-[10px] text-slate-400">Entrega prevista</div>
+                    <div className="text-[13.5px] font-bold truncate">{o.obra.nome}</div>
+                    <div className="text-[11.5px] text-slate-400">Entrega prevista</div>
                   </div>
                   <span className="w-2 h-2 rounded-full shrink-0" style={{ background: s.cor }} />
                 </button>
@@ -548,13 +548,13 @@ function ModalEntregasDia({ dia, entregas, onClose }: { dia: string; entregas: O
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-bold text-slate-900 truncate">{o.obra.nome}</span>
-                      <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded" style={{ background: s.cor + '22', color: s.cor }}>{s.label}</span>
+                      <span className="text-[11.5px] font-extrabold px-1.5 py-0.5 rounded" style={{ background: s.cor + '22', color: s.cor }}>{s.label}</span>
                     </div>
                     <div className="text-xs text-slate-500 mt-0.5 truncate">{o.obra.cliente_nome || 'Sem cliente'}{o.obra.endereco ? ` · ${o.obra.endereco}` : ''}</div>
                     {o.totalCards > 0 && (
                       <div className="flex items-center gap-2 mt-2">
                         <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden max-w-[220px]"><div className="h-full bg-slate-400 rounded-full" style={{ width: `${pct}%` }} /></div>
-                        <span className="text-[11px] text-slate-400 font-semibold">{o.cardsConcluidos}/{o.totalCards} itens</span>
+                        <span className="text-[12.5px] text-slate-400 font-semibold">{o.cardsConcluidos}/{o.totalCards} itens</span>
                       </div>
                     )}
                   </div>
