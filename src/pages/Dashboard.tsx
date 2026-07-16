@@ -173,8 +173,8 @@ export default function Dashboard() {
     <div className="min-h-screen">
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-3">
-          <Link to="/app/dashboard"><LogoFull height={210} /></Link>
-          <nav className="hidden md:flex items-center gap-6 text-base">
+          <Link to="/app/dashboard"><LogoFull height={240} /></Link>
+          <nav className="hidden md:flex items-center gap-7 text-lg">
             <Link to="/app/dashboard" className="font-semibold text-laranja-dark">Dashboard</Link>
             <Link to="/app/obras" className="text-slate-500 hover:text-slate-900">Obras</Link>
             <Link to="/app/ajuda" className="text-slate-500 hover:text-slate-900">Ajuda</Link>
@@ -217,7 +217,7 @@ export default function Dashboard() {
                 </div>
                 <div className="w-full md:w-[240px] border border-slate-100 rounded-xl p-3 flex items-center gap-3">
                   <Donut segments={donutSegs} total={data.metricas.totalAtivas} />
-                  <div className="text-[12.5px] flex flex-col gap-1.5 flex-1">
+                  <div className="text-[14px] flex flex-col gap-2 flex-1">
                     <LegendaItem cor="#22c55e" rotulo="No prazo" valor={data.metricas.noPrazo} />
                     <LegendaItem cor="#eab308" rotulo="Aguardando" valor={data.metricas.aguardandoCliente} />
                     <LegendaItem cor="#f97316" rotulo="Atenção" valor={data.metricas.atencaoHoje} />
@@ -285,11 +285,11 @@ function TileMetrica({ valor, rotulo, acento, numeroCor, borda, Icon, iconCor }:
   valor: number; rotulo: string; acento: string; numeroCor: string; borda?: string; Icon?: (p: IcProps) => JSX.Element; iconCor?: string
 }) {
   return (
-    <div className={`relative overflow-hidden bg-white border ${borda ?? 'border-slate-200'} rounded-xl px-3 py-2.5`}>
-      <span className={`absolute left-0 top-0 bottom-0 w-[3px] ${acento}`} />
-      {Icon && <Icon className={`w-3.5 h-3.5 mb-1 ${iconCor ?? ''}`} />}
-      <div className={`text-[30px] leading-none font-extrabold ${numeroCor}`}>{valor}</div>
-      <div className="text-[11.5px] text-slate-500 mt-1 font-medium">{rotulo}</div>
+    <div className={`relative overflow-hidden bg-white border ${borda ?? 'border-slate-200'} rounded-xl px-4 py-4`}>
+      <span className={`absolute left-0 top-0 bottom-0 w-1 ${acento}`} />
+      {Icon && <Icon className={`w-5 h-5 mb-1.5 ${iconCor ?? ''}`} />}
+      <div className={`text-[38px] leading-none font-extrabold ${numeroCor}`}>{valor}</div>
+      <div className="text-base text-slate-600 mt-2 font-semibold">{rotulo}</div>
     </div>
   )
 }
@@ -310,9 +310,9 @@ function ColunaEstagio({ cfg, obras, onVerTodas }: { cfg: StageCfg; obras: ObraD
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-1.5 px-0.5">
-        <cfg.Icon className={`w-3.5 h-3.5 ${cfg.iconColor}`} />
-        <span className="text-[13.5px] font-extrabold text-slate-700">{cfg.label}</span>
-        <span className={`ml-auto text-[12.5px] font-extrabold rounded-full px-2 py-0.5 ${cfg.badge}`}>{obras.length}</span>
+        <cfg.Icon className={`w-[18px] h-[18px] ${cfg.iconColor}`} />
+        <span className="text-[15px] font-extrabold text-slate-700">{cfg.label}</span>
+        <span className={`ml-auto text-[13px] font-extrabold rounded-full px-2.5 py-0.5 ${cfg.badge}`}>{obras.length}</span>
       </div>
 
       {obras.length === 0 ? (
@@ -339,9 +339,9 @@ function CardEnxuto({ o, cfg }: { o: ObraDashboard; cfg: StageCfg }) {
   return (
     <Link to={`/app/obra/${o.obra.id}`}
       className={`block bg-white border ${cfg.cardBorder} rounded-xl p-2.5 shadow-[0_1px_2px_rgba(15,23,42,.04)] hover:shadow-md hover:-translate-y-px transition`}>
-      <div className="text-sm font-bold leading-tight text-slate-900 truncate">{o.obra.nome}</div>
-      <div className="text-[12.5px] text-slate-400 mt-0.5 truncate">{faseTexto(cfg.key, o)}</div>
-      <span className={`inline-block mt-1.5 text-[11.5px] font-extrabold px-1.5 py-0.5 rounded ${cfg.chip}`}>
+      <div className="text-[15px] font-bold leading-tight text-slate-900 truncate">{o.obra.nome}</div>
+      <div className="text-[13px] text-slate-400 mt-1 truncate">{faseTexto(cfg.key, o)}</div>
+      <span className={`inline-block mt-2 text-[12px] font-extrabold px-2 py-0.5 rounded ${cfg.chip}`}>
         {chipTexto(cfg.key, o)}
       </span>
     </Link>
