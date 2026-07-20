@@ -9,13 +9,15 @@
 
 interface FullProps {
   small?: boolean
+  /** Sobrescreve a altura em px (ignora `small`). Ex.: header do dashboard. */
+  height?: number
 }
 
 // Logo principal usado no header.
 // Tamanhos aumentados em 06/05 (versão 2): small=120, normal=160 — Thiago
 // pediu "mais que dobrar" depois do tamanho anterior (56/72) ainda parecer pequeno.
-export function LogoFull({ small = false }: FullProps) {
-  const altura = small ? 120 : 160
+export function LogoFull({ small = false, height }: FullProps) {
+  const altura = height ?? (small ? 120 : 160)
   return (
     <img
       src="/logo-gobra-tagline.png"
