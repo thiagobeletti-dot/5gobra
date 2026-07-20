@@ -156,6 +156,9 @@ export default function Obras() {
             <Link to="/app/obras" className="font-semibold text-laranja-dark">
               Obras
             </Link>
+            <Link to="/app/metas" className="text-slate-500 hover:text-slate-900">
+              Metas
+            </Link>
             <Link to="/app/ajuda" className="text-slate-500 hover:text-slate-900">
               Ajuda
             </Link>

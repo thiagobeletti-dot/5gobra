@@ -159,6 +159,7 @@ export default function Dashboard() {
           <nav className="hidden md:flex items-center gap-5 text-sm">
             <Link to="/app/dashboard" className="font-semibold text-laranja-dark">Dashboard</Link>
             <Link to="/app/obras" className="text-slate-500 hover:text-slate-900">Obras</Link>
+            <Link to="/app/metas" className="text-slate-500 hover:text-slate-900">Metas</Link>
             <Link to="/app/ajuda" className="text-slate-500 hover:text-slate-900">Ajuda</Link>
             <Link to="/app/configuracoes" className="text-slate-500 hover:text-slate-900">Configurações</Link>
           </nav>

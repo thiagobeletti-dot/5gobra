@@ -6,6 +6,7 @@ import Cadastro from './pages/Cadastro'
 import RecuperarSenha from './pages/RecuperarSenha'
 import RedefinirSenha from './pages/RedefinirSenha'
 import Dashboard from './pages/Dashboard'
+import Metas from './pages/Metas'
 import Obras from './pages/Obras'
 import ImportarOrcamento from './pages/ImportarOrcamento'
 import Obra from './pages/Obra'
@@ -47,6 +48,14 @@ function App() {
             element={
               <RotaProtegida>
                 <Obras />
+              </RotaProtegida>
+            }
+          />
+          <Route
+            path="/app/metas"
+            element={
+              <RotaProtegida>
+                <Metas />
               </RotaProtegida>
             }
           />
