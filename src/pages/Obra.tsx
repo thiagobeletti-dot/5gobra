@@ -191,6 +191,12 @@ export default function Obra() {
             Dashboard
           </Link>
         )}
+        {data.modo === 'banco' && habilitado && (
+          <Link to="/app/metas" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition text-left text-slate-600 hover:bg-slate-100 hover:text-slate-900">
+            <span className="w-4 inline-flex items-center justify-center">🎯</span>
+            Metas
+          </Link>
+        )}
         {data.modo === 'banco' && habilitado ? (
           <Link to="/app/obras" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition text-left text-slate-600 hover:bg-slate-100 hover:text-slate-900">
             <span className="w-4 inline-flex items-center justify-center">@</span>
