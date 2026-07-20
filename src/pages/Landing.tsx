@@ -7,7 +7,7 @@ import PopupSaida from '../components/PopupSaida'
 import ModalComprar from '../components/ModalComprar'
 
 const WA_DUVIDA =
-  'https://wa.me/5511995400050?text=' +
+  'https://wa.me/5511933969913?text=' +
   encodeURIComponent('Olá! Tô olhando o G Obra e tenho algumas dúvidas.')
 
 // Link do Calendly do fundador (30min, qualificação prévia nos campos do form).
@@ -325,7 +325,7 @@ export default function Landing() {
                 rel="noopener noreferrer"
                 className="text-laranja-dark font-semibold hover:underline"
               >
-                WhatsApp (11) 99540-0050
+                WhatsApp (11) 93396-9913
               </a>
               .
             </div>

@@ -9,7 +9,7 @@
 // configurado, troca pro link de pagamento direto.
 
 const WHATSAPP_LINK =
-  'https://wa.me/5511995400050?text=' +
+  'https://wa.me/5511933969913?text=' +
   encodeURIComponent('Olá! Quero assinar o G Obra (R$ 349/mês).')
 
 type AssinaturaStatus = 'trial' | 'ativo' | 'suspenso' | 'cancelado'

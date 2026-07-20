@@ -101,7 +101,7 @@ export default function Ajuda() {
   function abrirWhatsApp() {
     const empresa = empresaNome || 'minha empresa'
     const texto = `[SUPORTE G OBRA - ${empresa}] Olá, preciso de ajuda com:`
-    const url = `https://wa.me/5511995400050?text=${encodeURIComponent(texto)}`
+    const url = `https://wa.me/5511933969913?text=${encodeURIComponent(texto)}`
     window.open(url, '_blank', 'noopener,noreferrer')
   }
 
