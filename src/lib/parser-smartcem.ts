@@ -39,7 +39,8 @@ export interface VidroItemSmartCEM {
 }
 
 export interface ItemSmartCEM {
-  ordem: number                  // Tipo do orçamento (1, 2, 3...) — também a posição
+  ordem: number                  // Posição no orçamento (1, 2, 3...) — uso interno/fallback
+  tipo: string                   // Valor da coluna "Tipo" do orçamento (ex: "CA01") — vira a sigla
   descricaoCompleta: string      // Ex: "PORTA DE CORRER - 2 FOLHAS - LINHA SUPREMA"
   tipologia: TipologiaSmartCEM   // Inferida da descrição
   linha: string                  // "LINHA SUPREMA" → "SUPREMA"
@@ -134,7 +135,7 @@ function extrairCliente(linhas: string[]): ClienteSmartCEM {
   for (const l of linhas) {
     // Captura "Cliente: <nome>" e descarta o que vier depois (Contato:, etc)
     if (!nome) {
-      const m = l.match(/Cliente\s*:\s*([^|]+?)(?:\s+Contato\s*:|$)/i)
+      const m = l.match(/Cliente\s*:\s*([^|]+?)(?:\s+(?:Contato|CPF)\s*:|$)/i)
       if (m && m[1].trim()) nome = limparTexto(m[1])
     }
     if (!endereco) {
@@ -210,6 +211,7 @@ function parsearItem(bloco: string[], linhaDados: string, ordemFallback: number)
   if (!dadosMatch) return null
 
   const ordem = parseInt(dadosMatch[1], 10) || ordemFallback
+  const tipo = limparTexto(dadosMatch[1]) // "CA01", "1", etc — vira a sigla
   const qtde = parseInt(dadosMatch[2], 10) || 1
   const larguraMm = parseInt(dadosMatch[3], 10) || 0
   const alturaMm = parseInt(dadosMatch[4], 10) || 0
@@ -231,12 +233,19 @@ function parsearItem(bloco: string[], linhaDados: string, ordemFallback: number)
   let vidroBruto = ''
   let ambiente = ''
 
+  // Linhas do cabeçalho da proposta (só aparecem no bloco do 1º item, que começa no
+  // topo do PDF) e rodapé de página → RESETAM o acumulador, descartando tudo que vem
+  // ANTES do título da esquadria. Assim o 1º item não puxa "Proposta/Cliente/Obra/...".
+  const reRuidoCabecalho = /^(End\.|Emitido\s+por|Prazo|Validade|[ÁA]rea\b|Obra\b|-+$)/i
+  const reNumOuPagina = /^\d{2,}-\d{2,}-\d{2,}$|\d+\s*\/\s*\d+\s*$/
+
   let acumuladorDescricao = ''
   for (const l of linhasDescricao) {
-    if (/^Cor\s*:/i.test(l)) {
+    // "Cor:" OU "Acabamento:" (o SmartCEM usa Acabamento) fecham a descrição.
+    if (/^(Cor|Acabamento)\s*:/i.test(l)) {
       if (acumuladorDescricao && !descricaoCompleta) descricaoCompleta = acumuladorDescricao
       acumuladorDescricao = ''
-      const m = l.match(/^Cor\s*:\s*(.+)$/i)
+      const m = l.match(/^(?:Cor|Acabamento)\s*:\s*(.+)$/i)
       if (m) corPerfil = limparTexto(m[1])
       continue
     }
@@ -248,6 +257,11 @@ function parsearItem(bloco: string[], linhaDados: string, ordemFallback: number)
     if (/^Localiza[çc][aã]o\s*:/i.test(l)) {
       const m = l.match(/^Localiza[çc][aã]o\s*:\s*(.+)$/i)
       if (m) ambiente = limparTexto(m[1])
+      continue
+    }
+    // Ruído de cabeçalho/rodapé → descarta o acumulado (fica só o título).
+    if (reRuidoCabecalho.test(l) || reNumOuPagina.test(l)) {
+      acumuladorDescricao = ''
       continue
     }
     // Linha de descrição (pode estar quebrada em 2): acumula
@@ -266,6 +280,7 @@ function parsearItem(bloco: string[], linhaDados: string, ordemFallback: number)
 
   return {
     ordem,
+    tipo,
     descricaoCompleta: limparTexto(descricaoCompleta),
     tipologia: inferirTipologia(descricaoCompleta),
     linha,
@@ -360,7 +375,7 @@ export function expandirItensSmartCEMEmCards(itens: ItemSmartCEM[]): CardImporta
   for (const item of itens) {
     for (let i = 0; i < item.qtde; i++) {
       const sufixo = item.qtde > 1 ? ` (${i + 1}/${item.qtde})` : ''
-      const baseSigla = `T${item.ordem}` // SmartCEM usa "Tipo: N" — viramos em "T1", "T2"...
+      const baseSigla = item.tipo || `T${item.ordem}` // usa o "Tipo" do orçamento (ex: CA01); fallback T{ordem}
       const sigla = item.qtde > 1 ? `${baseSigla}-${i + 1}` : baseSigla
       const nome = nomeCurtoDoItem(item)
       cards.push({
