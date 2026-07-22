@@ -286,7 +286,7 @@ function itensDoOrcamento(orc: OrcamentoUnificado): ItemPreview[] {
   if (orc.detalhes.smartcem) {
     return orc.detalhes.smartcem.itens.map((i) => ({
       chave: String(i.ordem),
-      codigo: `T${i.ordem}`,
+      codigo: i.tipo || `T${i.ordem}`,
       descricao: i.descricaoCompleta,
       qtde: i.qtde,
       larguraMm: i.larguraMm,
