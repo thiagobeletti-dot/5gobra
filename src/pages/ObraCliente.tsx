@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { LogoFull } from '../lib/logo'
 import { ABAS } from '../types/obra'
@@ -8,6 +8,7 @@ import { useObraData } from '../hooks/useObraData'
 import { clientePublicoComToken } from '../lib/supabase'
 import GaleriaFotos from '../components/GaleriaFotos'
 import CronogramaSecaoCliente from '../components/CronogramaSecaoCliente'
+import TourCliente from '../components/TourCliente'
 import { useConfirm } from '../hooks/useConfirm'
 
 export default function ObraCliente() {
@@ -50,6 +51,23 @@ export default function ObraCliente() {
     ).length,
     [data.dados],
   )
+  const nParaConfirmar = useMemo(
+    () => (data.dados?.cards ?? []).filter((c) =>
+      c.aba === 'cliente' && !c.encerrado && !c.subStatus && (c.tipo === 'peca' || c.tipo === 'acordo')
+    ).length,
+    [data.dados],
+  )
+  // Tour do cliente: dispara automático na 1ª visita (flag por token no localStorage).
+  const [tourAtivo, setTourAtivo] = useState(false)
+  const totalCards = data.dados?.cards.length ?? 0
+  useEffect(() => {
+    if (totalCards === 0) return
+    try {
+      if (!localStorage.getItem(`tour_cliente_visto_${token}`)) setTourAtivo(true)
+    } catch {
+      /* localStorage indisponível — sem tour automático */
+    }
+  }, [totalCards, token])
 
   if (data.carregando) {
     return <div className="min-h-screen flex items-center justify-center text-slate-500">Carregando obra...</div>
@@ -80,6 +98,14 @@ export default function ObraCliente() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <TourCliente
+        ativo={tourAtivo}
+        mostrarAtalho={nParaConfirmar > 1}
+        onTerminado={() => {
+          setTourAtivo(false)
+          try { localStorage.setItem(`tour_cliente_visto_${token}`, '1') } catch { /* ignore */ }
+        }}
+      />
       <header className="bg-white border-b border-slate-200 px-4 md:px-7 py-3.5">
         <div className="max-w-4xl mx-auto flex items-center gap-3">
           <Link to="/"><LogoFull small /></Link>
@@ -88,9 +114,18 @@ export default function ObraCliente() {
 
       <div className="bg-white border-b border-slate-200 px-4 md:px-7 py-4">
         <div className="max-w-4xl mx-auto">
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-lg md:text-xl font-bold">{dados.obra.nome}</h1>
-            <span className="bg-laranja-soft text-laranja-dark border border-laranja-border px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">Sua obra</span>
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <div className="flex items-center gap-2 min-w-0">
+              <h1 className="text-lg md:text-xl font-bold truncate">{dados.obra.nome}</h1>
+              <span className="bg-laranja-soft text-laranja-dark border border-laranja-border px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0">Sua obra</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setTourAtivo(true)}
+              className="shrink-0 text-xs font-medium text-slate-500 hover:text-laranja border border-slate-200 hover:border-laranja rounded-lg px-2.5 py-1.5 transition"
+            >
+              ❓ Como funciona
+            </button>
           </div>
           <div className="text-xs md:text-sm text-slate-500">{dados.obra.endereco}</div>
           {meusPendentes > 0 && (
@@ -114,11 +149,12 @@ export default function ObraCliente() {
       </div>
 
       {/* Barra de abas com gradient fade no mobile pra indicar scroll horizontal */}
-      <div className="relative bg-white border-b border-slate-200 sticky top-0 z-10">
+      <div data-tour-cliente="abas" className="relative bg-white border-b border-slate-200 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 md:px-7 flex gap-1 overflow-x-auto pr-10 md:pr-7">
           {ABAS.map((a) => (
             <button
               key={a.id}
+              data-tour-cliente-aba={a.id}
               onClick={() => setAbaAtiva(a.id)}
               className={'py-3 px-3 md:px-4 text-xs md:text-[13px] font-semibold border-b-2 -mb-px whitespace-nowrap inline-flex items-center gap-2 transition ' + (abaAtiva === a.id ? 'text-laranja border-laranja' : 'text-slate-500 border-transparent hover:text-slate-900')}
             >
@@ -153,13 +189,30 @@ export default function ObraCliente() {
         const mostrarConfirmar = abaAtiva === 'cliente' && nConfirmar > 1
         const mostrarLiberar = abaAtiva === 'cliente' && nLiberar > 1
         const mostrarAceite = abaAtiva === 'conclusao' && nAceite > 1
-        if (!mostrarConfirmar && !mostrarLiberar && !mostrarAceite) return null
+        const mostrarOnboarding = abaAtiva === 'cliente' && nConfirmar >= 1
+        if (!mostrarConfirmar && !mostrarLiberar && !mostrarAceite && !mostrarOnboarding) return null
         return (
+          <>
+          {mostrarOnboarding && (
+            <div className="bg-blue-50 border-b border-blue-200 px-4 md:px-7 py-3.5">
+              <div className="max-w-4xl mx-auto flex items-start gap-2.5 text-sm text-blue-900 leading-relaxed">
+                <span className="text-base leading-none mt-0.5" aria-hidden>👋</span>
+                <p>
+                  <strong>Para dar início à sua obra</strong>, confirme abaixo os {nConfirmar} {nConfirmar === 1 ? 'item' : 'itens'} que
+                  serão fabricados e instalados. Revise cada um e toque em <strong>Confirmar item</strong>
+                  {nConfirmar > 1 && <> — ou use o atalho <strong>“Confirmar todos os itens”</strong></>}.
+                  Assim que você confirmar, a fabricação começa.
+                </p>
+              </div>
+            </div>
+          )}
+          {(mostrarConfirmar || mostrarLiberar || mostrarAceite) && (
           <div className="bg-laranja-soft/60 border-b border-laranja-border px-4 md:px-7 py-3">
             <div className="max-w-4xl mx-auto flex flex-wrap items-center gap-2">
               <span className="text-xs text-slate-600 mr-1">Atalho — faça de uma vez:</span>
               {mostrarConfirmar && (
                 <button
+                  data-tour-cliente="atalho"
                   className="btn-primary text-xs py-1.5 px-3"
                   onClick={async () => {
                     const ok = await confirmar({
@@ -211,11 +264,13 @@ export default function ObraCliente() {
               )}
             </div>
           </div>
+          )}
+          </>
         )
       })()}
 
       <main className="flex-1">
-        <div className="max-w-4xl mx-auto px-4 md:px-7 py-5">
+        <div data-tour-cliente="itens" className="max-w-4xl mx-auto px-4 md:px-7 py-5">
           {cardsDaAba.length === 0 ? (
             <div className="py-16 text-center text-slate-400 text-sm">Nada nesta aba no momento.</div>
           ) : (
