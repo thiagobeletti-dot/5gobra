@@ -17,6 +17,8 @@ export interface ObraRow {
   encerrada: boolean
   /** Se false, obra em modo gerencial (sem portal/aceites do cliente). Default true. */
   interacao_cliente: boolean
+  /** Se false, medição (M1/M2) é opcional — empresa move os cards livremente. Default true. */
+  medicao_sistema: boolean
   created_at: string
 }
 
@@ -214,7 +216,7 @@ export async function listarObras() {
   // Audit Sprint B item P2.
   const { data, error } = await supabase
     .from('obras')
-    .select('id, empresa_id, nome, endereco, cliente_nome, inicio, token_cliente, encerrada, interacao_cliente, created_at')
+    .select('id, empresa_id, nome, endereco, cliente_nome, inicio, token_cliente, encerrada, interacao_cliente, medicao_sistema, created_at')
     .order('created_at', { ascending: false })
   if (error) throw error
   return (data ?? []) as ObraRow[]
@@ -246,6 +248,7 @@ export async function criarObra(dados: {
   cliente_telefone?: string
   cliente_email?: string
   interacao_cliente?: boolean
+  medicao_sistema?: boolean
 }) {
   if (!supabase) throw new Error('Supabase não configurado')
   const { data, error } = await supabase
@@ -277,6 +280,7 @@ export async function atualizarObra(
     cliente_email: string | null
     encerrada: boolean
     interacao_cliente: boolean
+    medicao_sistema: boolean
   }>,
 ) {
   if (!supabase) throw new Error('Supabase não configurado')
@@ -431,6 +435,7 @@ export function rowsParaDadosObra(
     empresa: '',
     inicio: obraRow.inicio ?? '',
     interacaoCliente: obraRow.interacao_cliente ?? true,
+    medicaoSistema: obraRow.medicao_sistema ?? true,
   }
   const cards: Card[] = cardsRows.map((r) => ({
     id: r.id,

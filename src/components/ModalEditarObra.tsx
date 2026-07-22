@@ -26,6 +26,7 @@ export default function ModalEditarObra({ obra, onClose, onSalvo }: ModalEditarO
   const [clienteTelefone, setClienteTelefone] = useState(obra.cliente_telefone ?? '')
   const [clienteEmail, setClienteEmail] = useState(obra.cliente_email ?? '')
   const [interacaoCliente, setInteracaoCliente] = useState(obra.interacao_cliente ?? true)
+  const [medicaoSistema, setMedicaoSistema] = useState(obra.medicao_sistema ?? true)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
@@ -46,6 +47,7 @@ export default function ModalEditarObra({ obra, onClose, onSalvo }: ModalEditarO
         cliente_telefone: clienteTelefone.trim() || null,
         cliente_email: clienteEmail.trim() || null,
         interacao_cliente: interacaoCliente,
+        medicao_sistema: medicaoSistema,
       })
       // Arrastão: se acabou de DESLIGAR a interação, resolve as pendências que
       // dependiam do cliente (cliente→Técnica; conclusão sem aceite→encerrado).
@@ -169,6 +171,25 @@ export default function ModalEditarObra({ obra, onClose, onSalvo }: ModalEditarO
                   <strong>Desligado:</strong> obra em modo gerencial (só empresa) — sem portal do cliente.
                   Itens novos já entram em Técnica (pulam o aceite inicial) e a peça é finalizada ao
                   concluir, sem esperar o aceite do cliente. A prova continua na foto do técnico.
+                </span>
+              </span>
+            </label>
+          </div>
+
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={medicaoSistema}
+                onChange={(e) => setMedicaoSistema(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-laranja focus:ring-laranja"
+              />
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-slate-900">Medição pelo sistema</span>
+                <span className="block text-xs text-slate-500 mt-0.5 leading-relaxed">
+                  <strong>Ligado:</strong> a medição (M1/M2) faz parte do fluxo no G Obra.{' '}
+                  <strong>Desligado:</strong> a medição vira opcional — a empresa move os cards
+                  livremente pelas abas e preenche a medição só se quiser.
                 </span>
               </span>
             </label>

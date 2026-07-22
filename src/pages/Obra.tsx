@@ -387,6 +387,12 @@ export default function Obra() {
           card={cardAberto}
           perfil={perfil}
           interacaoCliente={data.obraReal?.interacao_cliente !== false}
+          medicaoSistema={data.obraReal?.medicao_sistema !== false}
+          onMoverAba={async (destino) => {
+            await data.moverCardParaAba(cardAberto.id, destino)
+            setCardAbertoId(null)
+            toast('Card movido')
+          }}
           podeFotos={data.modo === 'banco'}
           onClose={() => setCardAbertoId(null)}
           onAlterarStatus={async (s) => {
@@ -756,9 +762,9 @@ function CardView({ card, perfil, onClick }: { card: Card; perfil: Perfil; onCli
 }
 
 function ModalCard({
-  card, perfil, interacaoCliente, podeFotos, onClose, onAlterarStatus, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto, podeChecklist, onAbrirMedicao1, onAbrirMedicao2, onMarcarContraMarcoEntregue, onMarcarVaoPronto, onEncerrar, onResolverApontamento, onMarcarCorrigido, onPecaEntregue, onApagar, onEditarDados,
+  card, perfil, interacaoCliente, medicaoSistema, onMoverAba, podeFotos, onClose, onAlterarStatus, onRegistrar, onAceitar, onReabrir, onAdicionarFotos, onRemoverFoto, podeChecklist, onAbrirMedicao1, onAbrirMedicao2, onMarcarContraMarcoEntregue, onMarcarVaoPronto, onEncerrar, onResolverApontamento, onMarcarCorrigido, onPecaEntregue, onApagar, onEditarDados,
 }: {
-  card: Card; perfil: Perfil; interacaoCliente: boolean; podeFotos: boolean; onClose: () => void
+  card: Card; perfil: Perfil; interacaoCliente: boolean; medicaoSistema: boolean; onMoverAba: (destino: AbaId) => Promise<void>; podeFotos: boolean; onClose: () => void
   onAlterarStatus: (s: string) => Promise<void>
   onRegistrar: (texto: string, moveAba: boolean, interno?: boolean) => Promise<void>
   onAceitar: () => Promise<void>
@@ -813,6 +819,41 @@ function ModalCard({
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+          {medicaoSistema === false && perfil === 'empresa' && !card.encerrado && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-amber-700 mb-2">
+                Mover livremente (medição opcional)
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {([
+                  ['cliente', 'Cliente'],
+                  ['empresa', 'Empresa'],
+                  ['tecnica', 'Técnica'],
+                  ['emandamento', 'Produção'],
+                  ['conclusao', 'Conclusão'],
+                ] as [AbaId, string][]).map(([aba, label]) => (
+                  <button
+                    key={aba}
+                    type="button"
+                    disabled={card.aba === aba}
+                    onClick={() => onMoverAba(aba)}
+                    className={
+                      'text-xs px-3 py-1.5 rounded-md border transition ' +
+                      (card.aba === aba
+                        ? 'border-amber-300 bg-amber-100 text-amber-800 font-semibold cursor-default'
+                        : 'border-slate-300 bg-white text-slate-600 hover:border-laranja hover:text-laranja-dark')
+                    }
+                  >
+                    {card.aba === aba ? `● ${label}` : label}
+                  </button>
+                ))}
+              </div>
+              <div className="text-[11px] text-amber-700/80 mt-2">
+                A medição (M1/M2) continua disponível, mas é opcional nesta obra.
+              </div>
+            </div>
+          )}
+
           {card.prazoContrato && (
             <div className="flex items-baseline gap-2">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Prazo contratual</span>

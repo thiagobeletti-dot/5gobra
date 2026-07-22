@@ -36,6 +36,7 @@ export default function ImportarOrcamento() {
   const [cards, setCards] = useState<CardImportadoUnificado[]>([])
   const [nomeObraEdit, setNomeObraEdit] = useState('')
   const [interacaoCliente, setInteracaoCliente] = useState(true)
+  const [medicaoSistema, setMedicaoSistema] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
   const [obraIdCriada, setObraIdCriada] = useState<string | null>(null)
   const [edicoes, setEdicoes] = useState<Record<string, EdicaoItem>>({})
@@ -83,6 +84,7 @@ export default function ImportarOrcamento() {
         endereco: orcamento.cliente.endereco ?? undefined,
         cliente_nome: orcamento.cliente.nome ?? undefined,
         interacao_cliente: interacaoCliente,
+        medicao_sistema: medicaoSistema,
       })
 
       // Cria os cards em batch, aplicando as edições do preview (qtde alterada /
@@ -166,6 +168,8 @@ export default function ImportarOrcamento() {
             onNomeObraChange={setNomeObraEdit}
             interacaoCliente={interacaoCliente}
             onInteracaoClienteChange={setInteracaoCliente}
+            medicaoSistema={medicaoSistema}
+            onMedicaoSistemaChange={setMedicaoSistema}
             edicoes={edicoes}
             onEditarItem={(chave, patch) =>
               setEdicoes((prev) => ({ ...prev, [chave]: { ...(prev[chave] ?? {}), ...patch } }))
@@ -403,6 +407,8 @@ function Preview({
   onNomeObraChange,
   interacaoCliente,
   onInteracaoClienteChange,
+  medicaoSistema,
+  onMedicaoSistemaChange,
   edicoes,
   onEditarItem,
   onConfirmar,
@@ -414,6 +420,8 @@ function Preview({
   onNomeObraChange: (v: string) => void
   interacaoCliente: boolean
   onInteracaoClienteChange: (v: boolean) => void
+  medicaoSistema: boolean
+  onMedicaoSistemaChange: (v: boolean) => void
   edicoes: Record<string, EdicaoItem>
   onEditarItem: (chave: string, patch: EdicaoItem) => void
   onConfirmar: () => void
@@ -485,6 +493,25 @@ function Preview({
                 <strong>Desligado:</strong> obra em modo gerencial (só empresa) — os itens importados
                 já entram em Técnica e a entrega é finalizada pela sua conferência, sem aceite do cliente.
                 Dá pra mudar depois em Editar obra.
+              </span>
+            </span>
+          </label>
+        </div>
+
+        <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={medicaoSistema}
+              onChange={(e) => onMedicaoSistemaChange(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-laranja focus:ring-laranja"
+            />
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-slate-900">Medição pelo sistema</span>
+              <span className="block text-xs text-slate-500 mt-0.5 leading-relaxed">
+                <strong>Ligado:</strong> a medição (M1/M2) faz parte do fluxo no G Obra.{' '}
+                <strong>Desligado:</strong> a medição vira opcional — você move os cards livremente
+                pelas abas e preenche a medição só se quiser. Dá pra mudar depois em Editar obra.
               </span>
             </span>
           </label>

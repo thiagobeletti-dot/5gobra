@@ -72,6 +72,8 @@ interface UseObraDataResult {
   removerFoto: (cardId: string, fotoId: string) => Promise<void>
   salvarMedicao1Card: (cardId: string, dados: DadosMedicao1, autorNome: string) => Promise<Checklist>
   salvarMedicao2Card: (cardId: string, dados: DadosMedicao2, autorNome: string) => Promise<Checklist>
+  /** Movimentação livre entre abas (habilitada quando medicao_sistema=false). */
+  moverCardParaAba: (cardId: string, destino: AbaId) => Promise<void>
   resetar: () => void
 }
 
@@ -498,6 +500,46 @@ export function useObraData(
     await adicionarHistorico({ card_id: cardId, autor: 'Empresa', autor_tipo: 'empresa', texto: textoMsg }, client)
     await atualizarCard(cardId, { aba: 'cliente', sub_status: 'Aguardando instalação do contra-marco e vão pronto' }, client)
     await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Contra-marco entregue. Item devolvido ao cliente para instalação.', interno: true }, client)
+    const novo = dados
+      ? await recarregarCard(obraReal, cardId, dados, client)
+      : await carregarDoBanco(obraReal, client)
+    setDados(novo)
+  }, [dados, modo, obraReal])
+
+  // Movimentação livre entre abas — usada quando a obra roda com medição opcional
+  // (medicao_sistema=false): a empresa toca a obra do jeito dela, sem depender do
+  // formulário de medição pra avançar. Só MOVE — não encerra nem finaliza (isso
+  // continua sendo o aceite/encerrar). Cravado 22/07/2026 (pedido Thiago).
+  const moverCardParaAba = useCallback(async (cardId: string, destino: AbaId) => {
+    if (!dados) return
+    const info = {
+      cliente: { nome: 'Cliente', sub: 'Com o cliente' },
+      empresa: { nome: 'Empresa', sub: 'Com a empresa' },
+      tecnica: { nome: 'Técnica', sub: 'No setor técnico' },
+      emandamento: { nome: 'Produção', sub: 'Em produção' },
+      conclusao: { nome: 'Conclusão', sub: 'Movido para conclusão' },
+    }[destino]
+    const textoMsg = `Card movido manualmente para ${info.nome} (medição opcional).`
+    if (modo === 'demo') {
+      setDados((d) => {
+        if (!d) return d
+        return {
+          ...d,
+          cards: d.cards.map((c) => {
+            if (c.id !== cardId) return c
+            const hist = [
+              ...c.historico,
+              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: textoMsg, interno: true },
+            ]
+            return { ...c, aba: destino, subStatus: info.sub, historico: hist }
+          }),
+        }
+      })
+      return
+    }
+    if (!obraReal) return
+    await atualizarCard(cardId, { aba: destino, sub_status: info.sub }, client)
+    await adicionarHistorico({ card_id: cardId, autor: 'Sistema', autor_tipo: 'sistema', texto: textoMsg, interno: true }, client)
     const novo = dados
       ? await recarregarCard(obraReal, cardId, dados, client)
       : await carregarDoBanco(obraReal, client)
@@ -1206,5 +1248,5 @@ export function useObraData(
     setDados(structuredClone(SEED))
   }, [modo, idOrToken])
 
-  return { dados, modo, obraReal, carregando, ocupado, erro, alterarStatus, registrar, confirmarItem, marcarContraMarcoEntregue, marcarVaoPronto, marcarApontamentoResolvido, marcarApontamentoCiente, encerrarCard, apagarCard, marcarCorrigido, marcarPecaEntregue, darAceite, reabrir, criarNovo, importarItens, adicionarFotos, removerFoto, salvarMedicao1Card, salvarMedicao2Card, resetar }
+  return { dados, modo, obraReal, carregando, ocupado, erro, alterarStatus, registrar, confirmarItem, marcarContraMarcoEntregue, marcarVaoPronto, marcarApontamentoResolvido, marcarApontamentoCiente, encerrarCard, apagarCard, marcarCorrigido, marcarPecaEntregue, darAceite, reabrir, criarNovo, importarItens, adicionarFotos, removerFoto, salvarMedicao1Card, salvarMedicao2Card, moverCardParaAba, resetar }
 }

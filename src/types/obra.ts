@@ -60,6 +60,9 @@ export interface ObraInfo {
   /** Se false, a obra roda em modo gerencial (sem portal/aceites do cliente).
    * Default true. Cravado 04/07/2026 (pedido Patrick/Windoor). */
   interacaoCliente: boolean
+  /** Se false, medição (M1/M2) é opcional — empresa move os cards livremente
+   * pelas abas. Default true. Cravado 22/07/2026 (pedido Thiago). */
+  medicaoSistema: boolean
 }
 
 export interface DadosObra {
