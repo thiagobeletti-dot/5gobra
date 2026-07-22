@@ -145,6 +145,75 @@ export default function ObraCliente() {
         </div>
       </div>
 
+      {(() => {
+        const todos = data.dados?.cards ?? []
+        const nConfirmar = todos.filter((c) => c.aba === 'cliente' && !c.encerrado && !c.subStatus && (c.tipo === 'peca' || c.tipo === 'acordo')).length
+        const nLiberar = todos.filter((c) => c.aba === 'cliente' && !c.encerrado && (c.subStatus === 'Aguardando instalação do contra-marco e vão pronto' || c.subStatus === 'Aguardando finalizar vão')).length
+        const nAceite = todos.filter((c) => c.aba === 'conclusao' && !c.aceiteFinal && !c.encerrado && c.subStatus !== 'Aguardando conferência do gestor').length
+        const mostrarConfirmar = abaAtiva === 'cliente' && nConfirmar > 1
+        const mostrarLiberar = abaAtiva === 'cliente' && nLiberar > 1
+        const mostrarAceite = abaAtiva === 'conclusao' && nAceite > 1
+        if (!mostrarConfirmar && !mostrarLiberar && !mostrarAceite) return null
+        return (
+          <div className="bg-laranja-soft/60 border-b border-laranja-border px-4 md:px-7 py-3">
+            <div className="max-w-4xl mx-auto flex flex-wrap items-center gap-2">
+              <span className="text-xs text-slate-600 mr-1">Atalho — faça de uma vez:</span>
+              {mostrarConfirmar && (
+                <button
+                  className="btn-primary text-xs py-1.5 px-3"
+                  onClick={async () => {
+                    const ok = await confirmar({
+                      titulo: `Confirmar todos os ${nConfirmar} itens?`,
+                      descricao: 'Todos os itens pendentes seguem de uma vez para a etapa técnica. Você continua acompanhando cada um.',
+                      labelConfirmar: 'Confirmar todos',
+                    })
+                    if (ok === null) return
+                    await data.confirmarTodosItens()
+                    toast(`${nConfirmar} itens confirmados`)
+                  }}
+                >
+                  ✓ Confirmar todos os itens ({nConfirmar})
+                </button>
+              )}
+              {mostrarLiberar && (
+                <button
+                  className="btn-primary text-xs py-1.5 px-3"
+                  onClick={async () => {
+                    const ok = await confirmar({
+                      titulo: `Liberar todos os ${nLiberar} vãos?`,
+                      descricao: 'Marca todos como prontos de uma vez, liberando a empresa para a 2ª medição.',
+                      labelConfirmar: 'Liberar todos',
+                    })
+                    if (ok === null) return
+                    await data.liberarTodosVaos()
+                    toast(`${nLiberar} vãos liberados`)
+                  }}
+                >
+                  Liberar todos os vãos ({nLiberar})
+                </button>
+              )}
+              {mostrarAceite && (
+                <button
+                  className="btn-primary text-xs py-1.5 px-3"
+                  onClick={async () => {
+                    const ok = await confirmar({
+                      titulo: `Dar aceite final em todos os ${nAceite} itens?`,
+                      descricao: 'Você está dando o aceite final de todas as peças de uma vez. Cada peça recebe seu registro oficial (data e hora) e a garantia inicia para todas.',
+                      labelConfirmar: 'Dar aceite em todos',
+                    })
+                    if (ok === null) return
+                    await data.darAceiteEmTodos()
+                    toast(`Aceite dado em ${nAceite} itens`)
+                  }}
+                >
+                  ✓ Dar aceite em todos ({nAceite})
+                </button>
+              )}
+            </div>
+          </div>
+        )
+      })()}
+
       <main className="flex-1">
         <div className="max-w-4xl mx-auto px-4 md:px-7 py-5">
           {cardsDaAba.length === 0 ? (

@@ -74,6 +74,10 @@ interface UseObraDataResult {
   salvarMedicao2Card: (cardId: string, dados: DadosMedicao2, autorNome: string) => Promise<Checklist>
   /** Movimentação livre entre abas (habilitada quando medicao_sistema=false). */
   moverCardParaAba: (cardId: string, destino: AbaId) => Promise<void>
+  /** Ações em lote do cliente (atalhos "de uma vez"). */
+  confirmarTodosItens: () => Promise<void>
+  liberarTodosVaos: () => Promise<void>
+  darAceiteEmTodos: () => Promise<void>
   resetar: () => void
 }
 
@@ -793,6 +797,146 @@ export function useObraData(
     }
   }, [dados, modo, obraReal])
 
+  // ── Ações em lote do cliente (atalhos "de uma vez"). Aplicam a MESMA transição
+  //    da ação individual a todos os cards pendentes daquele passo, com um único
+  //    reload no fim. Cravado 22/07/2026 (pedido Thiago — cliente com 108 peças).
+
+  // 1) Confirmar todos os itens pendentes na aba Cliente (peça → Técnica; acordo → Conclusão).
+  const confirmarTodosItens = useCallback(async () => {
+    if (!dados) return
+    const elegiveis = dados.cards.filter(
+      (c) => c.aba === 'cliente' && !c.encerrado && !c.subStatus && (c.tipo === 'peca' || c.tipo === 'acordo'),
+    )
+    if (elegiveis.length === 0) return
+    if (modo === 'demo') {
+      const ids = new Set(elegiveis.map((c) => c.id))
+      setDados((d) => {
+        if (!d) return d
+        return {
+          ...d,
+          cards: d.cards.map((c) => {
+            if (!ids.has(c.id)) return c
+            if (c.tipo === 'acordo') {
+              return { ...c, aba: 'conclusao' as AbaId, encerrado: true, subStatus: 'Acordo aceito', historico: [
+                ...c.historico,
+                { autor: 'Cliente', tipo: 'cliente' as AutorTipo, data: agora(), texto: 'Acordo aceito pelo cliente. Registrado oficialmente.', interno: false },
+                { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Acordo encerrado. Registro permanente na obra.', interno: false },
+              ] }
+            }
+            return { ...c, aba: 'tecnica' as AbaId, subStatus: 'Aguardando visita técnica', historico: [
+              ...c.historico,
+              { autor: 'Cliente', tipo: 'cliente' as AutorTipo, data: agora(), texto: 'Cliente confirmou o item (em lote). Aguardando visita técnica para medição.', interno: false },
+              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Item enviado para o setor técnico. Aguardando agendamento da visita técnica (Medição 1).', interno: true },
+            ] }
+          }),
+        }
+      })
+      return
+    }
+    if (!obraReal) return
+    for (const c of elegiveis) {
+      if (c.tipo === 'acordo') {
+        await adicionarHistorico({ card_id: c.id, autor: 'Cliente', autor_tipo: 'cliente', texto: 'Acordo aceito pelo cliente. Registrado oficialmente.' }, client)
+        await atualizarCard(c.id, { aba: 'conclusao', encerrado: true, sub_status: 'Acordo aceito' }, client)
+        await adicionarHistorico({ card_id: c.id, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Acordo encerrado. Registro permanente na obra.', interno: false }, client)
+      } else {
+        await adicionarHistorico({ card_id: c.id, autor: 'Cliente', autor_tipo: 'cliente', texto: 'Cliente confirmou o item (em lote). Aguardando visita técnica para medição.' }, client)
+        await atualizarCard(c.id, { aba: 'tecnica', sub_status: 'Aguardando visita técnica' }, client)
+      }
+    }
+    const novo = await carregarDoBanco(obraReal, client)
+    setDados(novo)
+  }, [dados, modo, obraReal])
+
+  // 2) Liberar todos os vãos prontos de uma vez (contra-marco instalado / vão finalizado) → Técnica p/ M2.
+  const liberarTodosVaos = useCallback(async () => {
+    if (!dados) return
+    const elegiveis = dados.cards.filter(
+      (c) => c.aba === 'cliente' && !c.encerrado &&
+        (c.subStatus === 'Aguardando instalação do contra-marco e vão pronto' || c.subStatus === 'Aguardando finalizar vão'),
+    )
+    if (elegiveis.length === 0) return
+    const textoDe = (c: Card) => (c.subStatus?.toLowerCase().includes('contra-marco')
+      ? 'Contra-marco instalado e vão finalizado (em lote). Aguardando 2ª medição (M2).'
+      : 'Vão finalizado (em lote). Pronto para a 2ª medição (M2).')
+    if (modo === 'demo') {
+      const ids = new Set(elegiveis.map((c) => c.id))
+      setDados((d) => {
+        if (!d) return d
+        return {
+          ...d,
+          cards: d.cards.map((c) => {
+            if (!ids.has(c.id)) return c
+            return { ...c, aba: 'tecnica' as AbaId, subStatus: 'Aguardando 2ª medição (M2)', historico: [
+              ...c.historico,
+              { autor: 'Cliente', tipo: 'cliente' as AutorTipo, data: agora(), texto: textoDe(c), interno: false },
+              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: agora(), texto: 'Item enviado para o setor técnico. Aguardando agendamento da visita técnica (Medição 2).', interno: true },
+            ] }
+          }),
+        }
+      })
+      return
+    }
+    if (!obraReal) return
+    for (const c of elegiveis) {
+      await adicionarHistorico({ card_id: c.id, autor: 'Cliente', autor_tipo: 'cliente', texto: textoDe(c) }, client)
+      await atualizarCard(c.id, { aba: 'tecnica', sub_status: 'Aguardando 2ª medição (M2)' }, client)
+    }
+    const novo = await carregarDoBanco(obraReal, client)
+    setDados(novo)
+  }, [dados, modo, obraReal])
+
+  // 3) Dar aceite final em todos os itens prontos na Conclusão (carimbo jurídico por peça).
+  const darAceiteEmTodos = useCallback(async () => {
+    if (!dados) return
+    const elegiveis = dados.cards.filter(
+      (c) => c.aba === 'conclusao' && !c.aceiteFinal && !c.encerrado && c.subStatus !== 'Aguardando conferência do gestor',
+    )
+    if (elegiveis.length === 0) return
+    const quando = agora()
+    if (modo === 'demo') {
+      const ids = new Set(elegiveis.map((c) => c.id))
+      setDados((d) => {
+        if (!d) return d
+        return {
+          ...d,
+          cards: d.cards.map((c) => {
+            if (!ids.has(c.id)) return c
+            return { ...c, aceiteFinal: quando, encerrado: true, subStatus: 'Aceite confirmado — garantia iniciada', historico: [
+              ...c.historico,
+              { autor: 'Cliente', tipo: 'cliente' as AutorTipo, data: quando, texto: 'Aceite final confirmado (em lote). Item oficialmente entregue e garantia iniciada.', interno: false },
+              { autor: 'Sistema', tipo: 'sistema' as AutorTipo, data: quando, texto: 'Item encerrado. Início de garantia registrado.', interno: false },
+            ] }
+          }),
+        }
+      })
+      return
+    }
+    if (!obraReal) return
+    for (const c of elegiveis) {
+      await atualizarCard(c.id, {
+        aceite_final_at: new Date().toISOString(),
+        aceite_final_user_agent: navigator.userAgent,
+        encerrado: true,
+        sub_status: 'Aceite confirmado — garantia iniciada',
+      }, client)
+      await adicionarHistorico({ card_id: c.id, autor: 'Cliente', autor_tipo: 'cliente', texto: 'Aceite final confirmado (em lote). Item oficialmente entregue e garantia iniciada.' }, client)
+      await adicionarHistorico({ card_id: c.id, autor: 'Sistema', autor_tipo: 'sistema', texto: 'Item encerrado. Início de garantia registrado.' }, client)
+    }
+    const novo = await carregarDoBanco(obraReal, client)
+    setDados(novo)
+    // Auto-encerra a obra se todos os cards de peça estiverem finalizados.
+    if (novo && !obraReal.encerrada) {
+      const cardsDePeca = novo.cards.filter((c) => c.tipo === 'peca')
+      const todosFinalizados = cardsDePeca.length > 0 &&
+        cardsDePeca.every((c) => (c.aba === 'conclusao' && !!c.aceiteFinal) || c.encerrado)
+      if (todosFinalizados) {
+        await atualizarObra(obraReal.id, { encerrada: true })
+        setObraReal({ ...obraReal, encerrada: true })
+      }
+    }
+  }, [dados, modo, obraReal])
+
   const reabrir = useCallback(async (cardId: string, texto: string, perfil: 'empresa' | 'cliente') => {
     if (!dados || !texto.trim()) return
     // Guard: card encerrado nao pode ser reaberto pelo fluxo normal — precisa
@@ -1248,5 +1392,5 @@ export function useObraData(
     setDados(structuredClone(SEED))
   }, [modo, idOrToken])
 
-  return { dados, modo, obraReal, carregando, ocupado, erro, alterarStatus, registrar, confirmarItem, marcarContraMarcoEntregue, marcarVaoPronto, marcarApontamentoResolvido, marcarApontamentoCiente, encerrarCard, apagarCard, marcarCorrigido, marcarPecaEntregue, darAceite, reabrir, criarNovo, importarItens, adicionarFotos, removerFoto, salvarMedicao1Card, salvarMedicao2Card, moverCardParaAba, resetar }
+  return { dados, modo, obraReal, carregando, ocupado, erro, alterarStatus, registrar, confirmarItem, marcarContraMarcoEntregue, marcarVaoPronto, marcarApontamentoResolvido, marcarApontamentoCiente, encerrarCard, apagarCard, marcarCorrigido, marcarPecaEntregue, darAceite, reabrir, criarNovo, importarItens, adicionarFotos, removerFoto, salvarMedicao1Card, salvarMedicao2Card, moverCardParaAba, confirmarTodosItens, liberarTodosVaos, darAceiteEmTodos, resetar }
 }
