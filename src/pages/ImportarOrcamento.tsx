@@ -38,6 +38,7 @@ export default function ImportarOrcamento() {
   const [interacaoCliente, setInteracaoCliente] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
   const [obraIdCriada, setObraIdCriada] = useState<string | null>(null)
+  const [edicoes, setEdicoes] = useState<Record<string, EdicaoItem>>({})
 
   async function logout() {
     await sair()
@@ -54,6 +55,7 @@ export default function ImportarOrcamento() {
       const orc = await parsearPdfOrcamentoCompleto(arquivo)
       setOrcamento(orc)
       setCards(orc.cards)
+      setEdicoes({})
       setNomeObraEdit(orc.cliente.nome ?? 'Obra importada')
       setEtapa('preview')
     } catch (e: any) {
@@ -64,6 +66,11 @@ export default function ImportarOrcamento() {
 
   async function confirmarImportacao() {
     if (!orcamento || cards.length === 0) return
+    const itensPreview = itensDoOrcamento(orcamento)
+    if (totalPecasComEdicoes(itensPreview, edicoes) === 0) {
+      setErro('Selecione pelo menos um item pra criar a obra.')
+      return
+    }
     setErro(null)
     setEtapa('salvando')
     try {
@@ -78,20 +85,12 @@ export default function ImportarOrcamento() {
         interacao_cliente: interacaoCliente,
       })
 
-      // Cria os cards em batch. Obra gerencial (sem interação do cliente):
-      // não existe lane do cliente — itens já nascem em Técnica (mesma regra
-      // do criarNovo/aplicarModoGerencialNaObra).
+      // Cria os cards em batch, aplicando as edições do preview (qtde alterada /
+      // itens removidos). Obra gerencial (sem interação do cliente): não existe lane
+      // do cliente — itens já nascem em Técnica (mesma regra do criarNovo/aplicarModoGerencialNaObra).
+      const aba = interacaoCliente ? ('cliente' as const) : ('tecnica' as const)
       await criarVariosCards(
-        cards.map((c) => ({
-          obra_id: obra.id,
-          tipo: 'peca' as const,
-          sigla: c.sigla,
-          nome: c.nome,
-          descricao: c.descricao,
-          aba: interacaoCliente ? ('cliente' as const) : ('tecnica' as const),
-          largura_mm: c.larguraMm,
-          altura_mm: c.alturaMm,
-        })),
+        construirLinhasParaCriar(obra.id, itensPreview, cards, edicoes, aba),
       )
 
       setObraIdCriada(obra.id)
@@ -167,6 +166,10 @@ export default function ImportarOrcamento() {
             onNomeObraChange={setNomeObraEdit}
             interacaoCliente={interacaoCliente}
             onInteracaoClienteChange={setInteracaoCliente}
+            edicoes={edicoes}
+            onEditarItem={(chave, patch) =>
+              setEdicoes((prev) => ({ ...prev, [chave]: { ...(prev[chave] ?? {}), ...patch } }))
+            }
             onConfirmar={confirmarImportacao}
             onVoltar={() => setEtapa('selecionar')}
           />
@@ -314,6 +317,85 @@ function itensDoOrcamento(orc: OrcamentoUnificado): ItemPreview[] {
   return []
 }
 
+// Edições do usuário no preview. Campos opcionais = "sem override" (usa o original).
+type EdicaoItem = { qtde?: number; incluir?: boolean }
+
+/**
+ * Monta as linhas de card a partir dos itens, aplicando as edições do usuário
+ * (qtde alterada ou item removido). Os parsers expandem os cards EM ORDEM — item 1
+ * gera qtde1 cards, item 2 gera qtde2... — então fatiamos `cards` por qtde acumulada
+ * e mapeamos item→cards com segurança em qualquer formato, sem casar sigla.
+ * Sem mudança de qtde: usa os cards originais (nome/descrição/sigla intactos).
+ * Com mudança: regenera sigla/nome a partir da sigla-base do próprio item.
+ */
+function construirLinhasParaCriar(
+  obraId: string,
+  itens: ItemPreview[],
+  cards: CardImportadoUnificado[],
+  edicoes: Record<string, EdicaoItem>,
+  aba: 'cliente' | 'tecnica',
+) {
+  const linhas: Array<{
+    obra_id: string
+    tipo: 'peca'
+    sigla: string
+    nome: string
+    descricao: string
+    aba: 'cliente' | 'tecnica'
+    largura_mm: number
+    altura_mm: number
+  }> = []
+  let offset = 0
+  for (const item of itens) {
+    const qtdeOrig = item.qtde
+    const slice = cards.slice(offset, offset + qtdeOrig)
+    offset += qtdeOrig
+    const ed = edicoes[item.chave]
+    if (ed && ed.incluir === false) continue
+    const novaQtde = Math.max(1, Math.floor(ed?.qtde ?? qtdeOrig))
+    if (novaQtde === qtdeOrig) {
+      for (const c of slice) {
+        linhas.push({
+          obra_id: obraId,
+          tipo: 'peca',
+          sigla: c.sigla,
+          nome: c.nome,
+          descricao: c.descricao,
+          aba,
+          largura_mm: c.larguraMm,
+          altura_mm: c.alturaMm,
+        })
+      }
+    } else {
+      const baseSigla = (slice[0]?.sigla ?? item.codigo).replace(/-\d+$/, '')
+      for (let k = 0; k < novaQtde; k++) {
+        const src = slice[Math.min(k, slice.length - 1)]
+        const baseNome = (src?.nome ?? item.descricao).replace(/\s*\(\s*\d+\s*\/\s*\d+\s*\)\s*$/, '')
+        linhas.push({
+          obra_id: obraId,
+          tipo: 'peca',
+          sigla: novaQtde > 1 ? `${baseSigla}-${k + 1}` : baseSigla,
+          nome: novaQtde > 1 ? `${baseNome} (${k + 1}/${novaQtde})` : baseNome,
+          descricao: src?.descricao ?? item.descricao,
+          aba,
+          largura_mm: src?.larguraMm ?? item.larguraMm,
+          altura_mm: src?.alturaMm ?? item.alturaMm,
+        })
+      }
+    }
+  }
+  return linhas
+}
+
+/** Total de peças considerando as edições (removidos não contam; qtde alterada conta). */
+function totalPecasComEdicoes(itens: ItemPreview[], edicoes: Record<string, EdicaoItem>): number {
+  return itens.reduce((soma, item) => {
+    const ed = edicoes[item.chave]
+    if (ed && ed.incluir === false) return soma
+    return soma + Math.max(1, Math.floor(ed?.qtde ?? item.qtde))
+  }, 0)
+}
+
 function Preview({
   orcamento,
   cards,
@@ -321,6 +403,8 @@ function Preview({
   onNomeObraChange,
   interacaoCliente,
   onInteracaoClienteChange,
+  edicoes,
+  onEditarItem,
   onConfirmar,
   onVoltar,
 }: {
@@ -330,11 +414,15 @@ function Preview({
   onNomeObraChange: (v: string) => void
   interacaoCliente: boolean
   onInteracaoClienteChange: (v: boolean) => void
+  edicoes: Record<string, EdicaoItem>
+  onEditarItem: (chave: string, patch: EdicaoItem) => void
   onConfirmar: () => void
   onVoltar: () => void
 }) {
   const itensPreview = itensDoOrcamento(orcamento)
   const qtdeItens = itensPreview.length
+  const totalPecas = totalPecasComEdicoes(itensPreview, edicoes)
+  const tiposAtivos = itensPreview.filter((i) => edicoes[i.chave]?.incluir !== false).length
 
   return (
     <div className="space-y-6">
@@ -362,8 +450,8 @@ function Preview({
           <div>
             <dt className="text-slate-500 text-xs uppercase tracking-wide">Itens detectados</dt>
             <dd className="font-semibold text-slate-900">
-              <span className="text-laranja">{qtdeItens}</span> tipo{qtdeItens !== 1 ? 's' : ''} ·{' '}
-              <span className="text-laranja">{cards.length}</span> peça{cards.length !== 1 ? 's' : ''} no total
+              <span className="text-laranja">{tiposAtivos}</span> tipo{tiposAtivos !== 1 ? 's' : ''} ·{' '}
+              <span className="text-laranja">{totalPecas}</span> peça{totalPecas !== 1 ? 's' : ''} no total
             </dd>
           </div>
         </dl>
@@ -408,32 +496,103 @@ function Preview({
           📦 Itens identificados ({qtdeItens})
         </h2>
         <ul className="space-y-2">
-          {itensPreview.map((item) => (
-            <li
-              key={item.chave}
-              className="border border-slate-200 rounded-lg p-3 text-sm"
-            >
-              <div className="font-semibold flex items-center gap-2 flex-wrap">
-                <span className="inline-block px-2 py-0.5 rounded bg-slate-100 text-xs text-slate-700 font-mono">
-                  {item.codigo}
-                </span>
-                <span>{item.descricao}</span>
-                <span className="text-xs text-slate-500">
-                  · {item.qtde}× {item.larguraMm}×{item.alturaMm}mm
-                </span>
-              </div>
-              <div className="text-xs text-slate-500 mt-1">
-                <strong>Ambiente:</strong> {item.ambiente || '—'} ·{' '}
-                <strong>Tipologia:</strong> {item.tipologia} ·{' '}
-                <strong>Vidro:</strong> {item.vidroDescricao} ·{' '}
-                <strong>Cor perfil:</strong> {item.corPerfil || '—'}
-              </div>
-            </li>
-          ))}
+          {itensPreview.map((item) => {
+            const ed = edicoes[item.chave]
+            const incluido = ed?.incluir !== false
+            const qtde = Math.max(1, Math.floor(ed?.qtde ?? item.qtde))
+            const qtdeMudou = qtde !== item.qtde
+            return (
+              <li
+                key={item.chave}
+                className={`border rounded-lg p-3 text-sm ${
+                  incluido ? 'border-slate-200' : 'border-slate-200 bg-slate-50 opacity-60'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-semibold flex items-center gap-2 flex-wrap">
+                      <span className="inline-block px-2 py-0.5 rounded bg-slate-100 text-xs text-slate-700 font-mono">
+                        {item.codigo}
+                      </span>
+                      <span className={incluido ? '' : 'line-through text-slate-400'}>
+                        {item.descricao}
+                      </span>
+                      <span className="text-xs text-slate-500">
+                        · {item.larguraMm}×{item.alturaMm}mm
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      <strong>Ambiente:</strong> {item.ambiente || '—'} ·{' '}
+                      <strong>Tipologia:</strong> {item.tipologia} ·{' '}
+                      <strong>Vidro:</strong> {item.vidroDescricao} ·{' '}
+                      <strong>Cor perfil:</strong> {item.corPerfil || '—'}
+                    </div>
+                    {incluido && qtdeMudou && (
+                      <div className="text-xs text-amber-600 mt-1">
+                        Quantidade ajustada: {item.qtde} → {qtde} peça{qtde !== 1 ? 's' : ''}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {incluido ? (
+                      <>
+                        <div className="flex items-center gap-1" title="Quantidade de peças">
+                          <button
+                            type="button"
+                            onClick={() => onEditarItem(item.chave, { qtde: Math.max(1, qtde - 1) })}
+                            className="w-7 h-7 rounded border border-slate-300 text-slate-600 hover:bg-slate-100 leading-none"
+                            aria-label="Diminuir quantidade"
+                          >
+                            −
+                          </button>
+                          <input
+                            type="number"
+                            min={1}
+                            value={qtde}
+                            onChange={(e) => {
+                              const v = parseInt(e.target.value, 10)
+                              onEditarItem(item.chave, { qtde: Number.isNaN(v) ? 1 : Math.max(1, v) })
+                            }}
+                            className="w-14 text-center border border-slate-300 rounded py-1 text-sm"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => onEditarItem(item.chave, { qtde: qtde + 1 })}
+                            className="w-7 h-7 rounded border border-slate-300 text-slate-600 hover:bg-slate-100 leading-none"
+                            aria-label="Aumentar quantidade"
+                          >
+                            +
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => onEditarItem(item.chave, { incluir: false })}
+                          className="w-7 h-7 rounded border border-red-200 text-red-500 hover:bg-red-50 leading-none"
+                          aria-label="Remover item"
+                          title="Remover item"
+                        >
+                          ✕
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onEditarItem(item.chave, { incluir: true })}
+                        className="text-xs px-2 py-1 rounded border border-slate-300 text-slate-600 hover:bg-slate-100 whitespace-nowrap"
+                      >
+                        ↩ Incluir de volta
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </li>
+            )
+          })}
         </ul>
         <p className="text-xs text-slate-500 mt-3">
-          💡 Cada item vira <strong>{cards.length}</strong> card
-          {cards.length !== 1 ? 's' : ''} individual no G Obra (1 por peça da quantidade).
+          💡 Cada peça vira <strong>1 card</strong> individual no G Obra — total de{' '}
+          <strong>{totalPecas}</strong> card{totalPecas !== 1 ? 's' : ''}. Ajuste a quantidade nos{' '}
+          <span className="font-mono">− / +</span> ou remova um item no <strong>✕</strong> antes de criar.
           Você gerencia medição, produção e aceite peça a peça.
         </p>
       </section>
@@ -442,7 +601,7 @@ function Preview({
         <div className="flex-1 min-w-0">
           <div className="font-semibold text-slate-900">Tudo certo pra criar a obra?</div>
           <div className="text-xs text-slate-600 mt-1">
-            Vamos criar <strong>1 obra</strong> e <strong>{cards.length} card{cards.length !== 1 ? 's' : ''} de peça</strong> no
+            Vamos criar <strong>1 obra</strong> e <strong>{totalPecas} card{totalPecas !== 1 ? 's' : ''} de peça</strong> no
             G Obra. Pode ajustar depois a vontade.
           </div>
         </div>
@@ -450,7 +609,11 @@ function Preview({
           <button onClick={onVoltar} className="btn-ghost">
             ← Voltar
           </button>
-          <button onClick={onConfirmar} className="btn-primary">
+          <button
+            onClick={onConfirmar}
+            disabled={totalPecas === 0}
+            className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             Criar obra →
           </button>
         </div>
