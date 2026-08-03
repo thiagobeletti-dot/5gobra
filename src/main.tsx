@@ -2,7 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
-import { initMetaPixel, trackLead } from './lib/meta-pixel.ts'
+import { initMetaPixel, trackLead, trackSchedule } from './lib/meta-pixel.ts'
 
 // Inicializa Meta Pixel se VITE_META_PIXEL_ID estiver setado.
 // Em dev sem ID, vira no-op com console.info.
@@ -69,8 +69,19 @@ if (typeof window !== 'undefined') {
         // payload fora do formato esperado → dispara sem dedup (como antes)
       }
       const eventId = inviteeUuid ? `calendly_${inviteeUuid}` : undefined
-      trackLead(eventId)
-      console.info('[meta-pixel] Lead disparado (Calendly: demo agendada)', { eventId })
+
+      // `comCapi: false` de proposito: quem manda o Lead server-side e' o
+      // webhook `calendly-capi`, com o MESMO event_id e com os dados do
+      // invitee (email + telefone) que o browser nao tem. Espelhar aqui
+      // tambem faria o mesmo agendamento sair duas vezes pelo servidor.
+      trackLead({ eventId, origem: 'calendly', comCapi: false })
+
+      // Schedule: evento padrao do Meta pra agendamento marcado. Nao existia
+      // ate 03/08/2026 — o agendamento so aparecia como Lead generico, sem
+      // distincao de quem so' deixou contato. Este passa pelo CAPI normal.
+      trackSchedule(inviteeUuid)
+
+      console.info('[meta-pixel] Lead + Schedule disparados (Calendly)', { eventId })
 
       // Grava _fbp/_fbc associados ao invitee pro CAPI server-side (T4) usar.
       if (inviteeUuid) salvarPixelCookies(inviteeUuid)

@@ -86,8 +86,17 @@ export default function PopupSaida({ forcarAbrir }: Props) {
         origem: 'landing-gobra',
         consentimento_versao: POLITICA_VERSAO,
       })
-      // Dispara Lead no Meta Pixel pra audiencia de remarketing
-      trackLead()
+      // Lead no Meta Pixel + espelho CAPI com o telefone que a pessoa acabou
+      // de digitar. Ate 03/08/2026 esse `trackLead()` ia vazio: o dado de
+      // match mais forte que a landing captura era jogado fora, e o evento
+      // chegava no Meta praticamente anonimo (EMQ 6,1).
+      //
+      // Base legal: a pessoa marcou o consentimento da Politica de
+      // Privacidade acima — o envio so acontece depois disso.
+      trackLead({
+        pessoa: { telefone: whatsapp.replace(/\D/g, '') },
+        origem: 'popup-saida',
+      })
       setEnviado(true)
       marcarPopupDispensado()
     } catch (err: any) {

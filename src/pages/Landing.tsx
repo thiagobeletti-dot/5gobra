@@ -1,7 +1,12 @@
 import { useEffect, useState, type MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { LogoFull } from '../lib/logo'
-import { trackCustom } from '../lib/meta-pixel'
+import {
+  trackCustom,
+  trackContact,
+  trackInitiateCheckout,
+  type OrigemWhatsApp,
+} from '../lib/meta-pixel'
 import CarrosselSistema from '../components/CarrosselSistema'
 import PopupSaida from '../components/PopupSaida'
 import ModalComprar from '../components/ModalComprar'
@@ -33,6 +38,29 @@ function abrirCalendlyPopup(e: MouseEvent<HTMLAnchorElement>) {
 export default function Landing() {
   const [comprarAberto, setComprarAberto] = useState(false)
 
+  // Clique em WhatsApp -> evento `Contact` no Meta, com a origem do botao.
+  //
+  // Ate 03/08/2026 nenhum dos 5 botoes de WhatsApp da pagina disparava evento
+  // nenhum. Como o WhatsApp e' o principal canal de conversao do G Obra, o
+  // Meta literalmente nunca soube que alguem tinha entrado em contato — e por
+  // isso nao tinha por onde otimizar entrega nem montar publico semelhante.
+  //
+  // Nao usamos preventDefault: o link abre normalmente. O `Contact` sai antes,
+  // e o `keepalive` do fetch garante o envio server-side mesmo com a aba
+  // trocando pro WhatsApp.
+  function aoClicarWhatsApp(origem: OrigemWhatsApp) {
+    return () => trackContact(origem)
+  }
+
+  // Abrir o modal de contratacao JA e' iniciar checkout. Antes o evento so
+  // saia depois da cobranca criada no Asaas, escondendo todo o abandono de
+  // formulario.
+  function abrirCheckout(origem: string) {
+    trackInitiateCheckout()
+    trackCustom('checkout_aberto', { origem })
+    setComprarAberto(true)
+  }
+
   // A/B test da headline do hero — cravado 17/06/2026 (briefing Pixel, Campanha 3).
   // 50/50 entre A (atual, categorial) e B (agitação de dor "WhatsApp"). A variante
   // é sorteada uma vez e persistida em localStorage, então a mesma sessão vê sempre
@@ -56,7 +84,7 @@ export default function Landing() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('comprar') === '1') {
-      setComprarAberto(true)
+      abrirCheckout('url-param')
     }
   }, [])
 
@@ -75,7 +103,7 @@ export default function Landing() {
             <a href="#problemas" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition">Problemas</a>
             <a href="#como-funciona" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition">Como funciona</a>
             <a href="#faq" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition">FAQ</a>
-            <a href={WA_DUVIDA} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition">Entre em Contato</a>
+            <a href={WA_DUVIDA} target="_blank" rel="noopener noreferrer" onClick={aoClicarWhatsApp('header')} className="text-sm font-medium text-slate-600 hover:text-slate-900 transition">Entre em Contato</a>
           </nav>
           {/* CTAs do header reduzidos a 2 — cravado 17/06/2026 (briefing Pixel,
               Campanha 3). Antes eram 5 (WhatsApp / Entrar / Ver sistema / Contratar
@@ -92,7 +120,7 @@ export default function Landing() {
           <div className="flex items-center gap-2 sm:gap-3">
             <button
               type="button"
-              onClick={() => setComprarAberto(true)}
+              onClick={() => abrirCheckout('header')}
               className="btn-ghost text-sm"
             >
               Contratar
@@ -161,7 +189,7 @@ export default function Landing() {
               </a>
               <button
                 type="button"
-                onClick={() => setComprarAberto(true)}
+                onClick={() => abrirCheckout('hero')}
                 className="btn-ghost text-base px-6 py-3"
               >
                 Contratar AGORA · R$ 349/mês
@@ -323,6 +351,7 @@ export default function Landing() {
                 href={WA_DUVIDA}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={aoClicarWhatsApp('secao-duvidas')}
                 className="text-laranja-dark font-semibold hover:underline"
               >
                 WhatsApp (11) 93396-9913
@@ -362,6 +391,7 @@ export default function Landing() {
               href={WA_DUVIDA}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={aoClicarWhatsApp('cta-final')}
               className="btn-ghost text-base px-8 py-3.5"
             >
               Tirar dúvidas no WhatsApp
@@ -377,8 +407,8 @@ export default function Landing() {
           <div className="flex items-center gap-5 flex-wrap justify-center">
             {/* Caminhos secundários movidos do header pro rodapé (17/06/2026) */}
             <Link to="/app/demo" className="hover:text-slate-900 transition">Ver sistema</Link>
-            <a href={WA_DUVIDA} target="_blank" rel="noopener noreferrer" className="hover:text-slate-900 transition">WhatsApp</a>
-            <button type="button" onClick={() => setComprarAberto(true)} className="hover:text-slate-900 transition">Contratar</button>
+            <a href={WA_DUVIDA} target="_blank" rel="noopener noreferrer" onClick={aoClicarWhatsApp('rodape')} className="hover:text-slate-900 transition">WhatsApp</a>
+            <button type="button" onClick={() => abrirCheckout('rodape')} className="hover:text-slate-900 transition">Contratar</button>
             <Link to="/termos" className="hover:text-slate-900 transition">Termos de Uso</Link>
             <Link to="/privacidade" className="hover:text-slate-900 transition">Privacidade</Link>
             <span>© 2026 5G Gerenciamento</span>
@@ -401,6 +431,7 @@ export default function Landing() {
         href={WA_DUVIDA}
         target="_blank"
         rel="noopener noreferrer"
+        onClick={aoClicarWhatsApp('flutuante')}
         aria-label="Falar no WhatsApp"
         className="fixed left-5 bottom-[calc(1.25rem+env(safe-area-inset-bottom))] z-50 flex items-center justify-center w-14 h-14 rounded-full bg-[#25D366] shadow-lg hover:scale-105 active:scale-95 transition-transform"
       >

@@ -15,7 +15,7 @@
 import { useEffect, useState, FormEvent } from 'react'
 import { comprarPublico } from '../lib/asaas'
 import { useEscClose } from '../hooks/useEscClose'
-import { trackInitiateCheckout } from '../lib/meta-pixel'
+import { trackAddPaymentInfo, valorPorCupom } from '../lib/meta-pixel'
 
 interface Props {
   aberto: boolean
@@ -78,9 +78,26 @@ export default function ModalComprar({ aberto, onFechar, cupomInicial }: Props) 
         return
       }
 
-      // Dispara InitiateCheckout no Meta Pixel pra remarketing/conversao.
-      // Valor 349 (full); se tiver cupom OBRA10 o Asaas aplica desconto na fatura.
-      trackInitiateCheckout(349, 'BRL')
+      // AddPaymentInfo: cobranca criada, indo pro Asaas pagar.
+      //
+      // Aqui era `InitiateCheckout` ate 03/08/2026 — mas o InitiateCheckout
+      // agora dispara na ABERTURA do modal (Landing.tsx). A diferenca entre os
+      // dois numeros e' a taxa de abandono do formulario, que antes era
+      // invisivel. Este e' o passo padrao do Meta entre iniciar e comprar.
+      //
+      // Manda tambem nome/email/telefone/CPF pro Advanced Matching e pro CAPI
+      // (hasheados no servidor). Sao os dados de correspondencia mais fortes
+      // do funil inteiro — e ate agora estavam sendo descartados.
+      trackAddPaymentInfo(
+        {
+          nome: nome.trim(),
+          email: email.trim(),
+          telefone: whatsapp.replace(/\D/g, ''),
+          cpfCnpj: cpfCnpj.replace(/\D/g, ''),
+        },
+        valorPorCupom(cupom),
+        'BRL',
+      )
 
       // Redireciona pro Asaas pra pagar (mesma aba pra preservar fluxo)
       window.location.href = r.invoiceUrl
