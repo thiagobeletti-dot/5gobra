@@ -15,6 +15,7 @@ import ObraCliente from './pages/ObraCliente'
 import ObraTecnico from './pages/ObraTecnico'
 import Ajuda from './pages/Ajuda'
 import Configuracoes from './pages/Configuracoes'
+import Admin from './pages/Admin'
 import Termos from './pages/Termos'
 import Privacidade from './pages/Privacidade'
 import RotaProtegida from './components/RotaProtegida'
@@ -48,6 +49,15 @@ function App() {
             element={
               <RotaProtegida>
                 <Obras />
+              </RotaProtegida>
+            }
+          />
+          {/* Painel gerencial — a própria RPC recusa quem não é admin. */}
+          <Route
+            path="/app/admin"
+            element={
+              <RotaProtegida>
+                <Admin />
               </RotaProtegida>
             }
           />
