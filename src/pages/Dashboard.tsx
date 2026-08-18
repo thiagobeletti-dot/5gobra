@@ -13,6 +13,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { LogoFull } from '../lib/logo'
+import AtalhosModulos from '../components/AtalhosModulos'
 import { sair, useAuth } from '../lib/auth'
 import { pegarDashboard, type DashboardData, type ObraDashboard } from '../lib/dashboard'
 import { pegarMinhaEmpresa } from '../lib/api'
@@ -173,7 +174,10 @@ export default function Dashboard() {
     <div className="min-h-screen">
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-3">
-          <Link to="/app/dashboard"><LogoFull height={240} /></Link>
+          <div className="flex items-center">
+            <Link to="/app/dashboard"><LogoFull height={240} /></Link>
+            <AtalhosModulos altura={46} />
+          </div>
           <nav className="hidden md:flex items-center gap-7 text-lg">
             <Link to="/app/dashboard" className="font-semibold text-laranja-dark">Dashboard</Link>
             <Link to="/app/obras" className="text-slate-500 hover:text-slate-900">Obras</Link>
