@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import AtalhosModulos from '../components/AtalhosModulos'
 import { LogoFull } from '../lib/logo'
 import { sair, useAuth } from '../lib/auth'
 import {
@@ -165,6 +166,7 @@ export default function Obras() {
             <Link to="/app/configuracoes" className="text-slate-500 hover:text-slate-900">
               Configurações
             </Link>
+            <AtalhosModulos />
           </nav>
           <div className="flex items-center gap-3">
             <span className="text-sm text-slate-500 hidden lg:inline">{user?.email}</span>

@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import AtalhosModulos from '../components/AtalhosModulos'
 import { sair, useAuth } from '../lib/auth'
 import { LogoFull } from '../lib/logo'
 import {
@@ -70,6 +71,7 @@ export default function Metas() {
             <Link to="/app/metas" className="font-semibold text-laranja-dark">Metas</Link>
             <Link to="/app/ajuda" className="text-slate-500 hover:text-slate-900">Ajuda</Link>
             <Link to="/app/configuracoes" className="text-slate-500 hover:text-slate-900">Configurações</Link>
+            <AtalhosModulos />
           </nav>
           <div className="flex items-center gap-3">
             <span className="text-sm text-slate-500 hidden lg:inline">{user?.email}</span>

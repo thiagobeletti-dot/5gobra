@@ -16,6 +16,7 @@
 // duvida boba e protege o tempo do Thiago.
 
 import { Link, useNavigate, useLocation } from 'react-router-dom'
+import AtalhosModulos from '../components/AtalhosModulos'
 import { useState, useEffect } from 'react'
 import { LogoFull } from '../lib/logo'
 import { sair, useAuth } from '../lib/auth'
@@ -141,6 +142,7 @@ export default function Ajuda() {
             <Link to="/app/configuracoes" className="text-sm text-slate-500 hover:text-slate-900">
               Configurações
             </Link>
+            <AtalhosModulos />
             <span className="text-sm text-slate-500 hidden md:inline">{user?.email}</span>
             <button onClick={logout} className="btn-ghost text-xs">Sair</button>
           </div>

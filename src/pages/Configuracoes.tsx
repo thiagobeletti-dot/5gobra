@@ -8,6 +8,7 @@
 
 import { useEffect, useState, FormEvent } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
+import AtalhosModulos from '../components/AtalhosModulos'
 import { LogoFull } from '../lib/logo'
 import { sair, useAuth } from '../lib/auth'
 import {
@@ -273,6 +274,7 @@ export default function Configuracoes() {
             )}
             <Link to="/app/obras" className="text-sm text-slate-500 hover:text-slate-900">Obras</Link>
             <Link to="/app/ajuda" className="text-sm text-slate-500 hover:text-slate-900">Ajuda</Link>
+            <AtalhosModulos />
             <span className="text-sm text-slate-500 hidden md:inline">{user?.email}</span>
             <button onClick={logout} className="btn-ghost text-xs">Sair</button>
           </div>

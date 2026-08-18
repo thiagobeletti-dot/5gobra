@@ -174,16 +174,14 @@ export default function Dashboard() {
     <div className="min-h-screen">
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-3">
-          <div className="flex items-center">
-            <Link to="/app/dashboard"><LogoFull height={240} /></Link>
-            <AtalhosModulos altura={46} />
-          </div>
+          <Link to="/app/dashboard"><LogoFull height={240} /></Link>
           <nav className="hidden md:flex items-center gap-7 text-lg">
             <Link to="/app/dashboard" className="font-semibold text-laranja-dark">Dashboard</Link>
             <Link to="/app/obras" className="text-slate-500 hover:text-slate-900">Obras</Link>
             <Link to="/app/metas" className="text-slate-500 hover:text-slate-900">Metas</Link>
             <Link to="/app/ajuda" className="text-slate-500 hover:text-slate-900">Ajuda</Link>
             <Link to="/app/configuracoes" className="text-slate-500 hover:text-slate-900">Configurações</Link>
+            <AtalhosModulos />
           </nav>
           <div className="flex items-center gap-3">
             <span className="text-sm text-slate-500 hidden lg:inline">{user?.email}</span>
