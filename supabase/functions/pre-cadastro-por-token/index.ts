@@ -38,12 +38,16 @@ Deno.serve(async (req: Request) => {
 
     const { data, error } = await admin
       .from('pre_cadastros')
-      .select('id, nome_completo, email, whatsapp, cpf_cnpj, status, empresa_id, cupom')
+      // ATENÇÃO: a coluna na tabela é `cupom_codigo` — NÃO existe coluna `cupom`.
+      // Pedir 'cupom' aqui fazia o PostgREST devolver erro, a função retornava 500,
+      // e a tela /cadastro mostrava "Link inválido ou expirado" pra QUALQUER cliente
+      // que tivesse pago. Bug de produção corrigido em 26/08/2026 (caso Denilson).
+      .select('id, nome_completo, email, whatsapp, cpf_cnpj, status, empresa_id, cupom_codigo')
       .eq('token_cadastro', token)
       .maybeSingle()
 
     if (error) {
-      console.error('[pre-cadastro-por-token] erro:', error)
+      console.error('[pre-cadastro-por-token] erro:', error.message ?? error)
       return jsonError(500, 'Erro de banco')
     }
     if (!data) return jsonError(404, 'Token inválido')
@@ -65,7 +69,7 @@ Deno.serve(async (req: Request) => {
           cpf_cnpj_mascarado: cpfCnpjMascarado,
           status: data.status,
           empresa_id: data.empresa_id,
-          cupom: data.cupom ?? null,
+          cupom: data.cupom_codigo ?? null,
         },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
