@@ -95,7 +95,11 @@ export function ehPdfWvetroV2(texto: string): boolean {
   // V2 tem rodapé "© Wvetro - Sistema para Vidraçarias" E header de tabela
   // "Tipo: Qtd: M2: L: H:" — assinatura única.
   const temRodape = /©\s*Wvetro\s*-?\s*Sistema/i.test(texto)
-  const temHeaderTabelaV2 = /Tipo:\s*Qtd:\s*M2:\s*L:\s*H:/i.test(texto)
+  // A coluna M2 é OPCIONAL: existem orçamentos Wvetro cujo cabeçalho é
+  // "Tipo: Qtd: L: H: Vlr Unt: Vlr Total:" (sem M2) — ex.: guarda-corpo /
+  // serralheria (PDF Funifér "Proposta 3277", Denilson 31/08/2026). Exigir M2
+  // fazia esses PDFs não serem reconhecidos por nenhum parser.
+  const temHeaderTabelaV2 = /Tipo:\s*Qtd:\s*(?:M2:\s*)?L:\s*H:/i.test(texto)
   return temRodape && temHeaderTabelaV2
 }
 
@@ -188,8 +192,9 @@ function extrairItens(linhas: string[]): ItemWvetroV2[] {
   //   - Se header tem prefixo numérico → ordem = prefixo, dados = N+1
   //   - Se linha N+1 é só um número → ordem = N+1, dados = N+2
   //   - Senão → ordem cai no fallback i+1, dados = N+1
-  const reHeader = /Tipo:\s*Qtd:\s*M2:\s*L:\s*H:/i
-  const reHeaderComOrdem = /^(\d+)\s+Tipo:\s*Qtd:\s*M2:\s*L:\s*H:/i
+  // M2 opcional — ver comentário em ehPdfWvetroV2.
+  const reHeader = /Tipo:\s*Qtd:\s*(?:M2:\s*)?L:\s*H:/i
+  const reHeaderComOrdem = /^(\d+)\s+Tipo:\s*Qtd:\s*(?:M2:\s*)?L:\s*H:/i
 
   type IdxHeader = { idx: number; ordemDetectada: number | null; idxDados: number }
   const indicesHeader: IdxHeader[] = []
@@ -287,15 +292,44 @@ function parsearItem(
     }
   }
 
+  // Layout SEM coluna M2: "1 12540 1100 17.923,12 17.923,12" → qtd larg alt.
+  // Só entra se o padrão com M2 não achou nada (não altera PDFs que já funcionavam).
+  if (qtde === null) {
+    const reSemM2 = /(\d+)\s+(\d{2,5})\s+(\d{2,5})(?=\s|$)/g
+    let mSem: RegExpExecArray | null
+    while ((mSem = reSemM2.exec(linhaDados)) !== null) {
+      const q = parseInt(mSem[1], 10)
+      const lg = parseInt(mSem[2], 10)
+      const al = parseInt(mSem[3], 10)
+      if (lg >= 200 && lg <= 30000 && al >= 200 && al <= 30000 && q > 0 && q < 1000) {
+        qtde = q
+        larguraMm = lg
+        alturaMm = al
+        break
+      }
+    }
+  }
+
   if (qtde === null || larguraMm === null || alturaMm === null) return null
 
   // ----- Bloco de descrição -----
   // Filtra ruído: rodapé, números de página, dados do cabeçalho da empresa
-  const linhasDescricao = blocoAntes.filter((l) => {
+  const linhasDescricao = blocoAntes.filter((l, idx) => {
+    // Nome da empresa no cabeçalho que se repete a cada página: é a linha
+    // imediatamente ANTES de um telefone ou e-mail (ex.: "FUNIFÉR INDUSTRIAL"
+    // seguida de "(49)3645-1229"). Sem isso, ela grudava na descrição do item
+    // que abre a página.
+    const proxima = blocoAntes[idx + 1] ?? ''
+    if (/^\(?\d{2}\)?\s*\d{4,5}-?\d{4}/.test(proxima) || /\S+@\S+\.\w/.test(proxima)) return false
+    // Continuação do endereço da obra quando ele quebra em 2 linhas — a segunda
+    // não começa com "Endereço:", mas termina em "CIDADE/UF".
+    if (/\/(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MG|MS|MT|PA|PB|PE|PI|PR|RJ|RN|RO|RR|RS|SC|SE|SP|TO)\s*$/i.test(l)) return false
     if (/^©|Wvetro\s*-/i.test(l)) return false
     if (/^\d+\s*\/\s*\d+$/.test(l)) return false // "1 / 6"
     if (/^WS VIDROS|^Proposta\s+\d/i.test(l)) return false
-    if (/vidracariawsna@|@gmail\.com/i.test(l)) return false
+    // Qualquer e-mail (era só gmail — o rodapé da Funifér é @funifer.com.br)
+    if (/\S+@\S+\.\w/.test(l)) return false
+    if (/^\(?\d{2}\)?\s*\d{4,5}-?\d{4}$/.test(l)) return false // telefone solto
     if (/^\(\d{2}\)\d/.test(l)) return false // telefones
     // Labels do cabeçalho da empresa/cliente — usar \b pra casar "CNPJ/CPF:",
     // "IE/RG:", etc, que têm "/" antes do ":"
@@ -313,8 +347,17 @@ function parsearItem(
 
   let acumuladorDescricao = ''
   let descricaoFinalizada = false
+  // "Observações:" traz um comentário do item ANTERIOR. Sem isso, o texto da
+  // observação grudava na descrição do próximo item (ex.: "ESTRUTURA EM ALUMINIO
+  // E CABO EM AÇO INOX MÓDULO FIXO RIPADO" no PDF da Funifér).
+  let pulandoObservacao = false
 
   for (const l of linhasDescricao) {
+    if (/^Observa[çc][õo]es\s*:/i.test(l)) {
+      acumuladorDescricao = ''
+      pulandoObservacao = true
+      continue
+    }
     // Perfil: PRETO
     const mPerfil = l.match(/^Perfil\s*:\s*(.+)$/i)
     if (mPerfil) {
@@ -350,6 +393,11 @@ function parsearItem(
     }
     // Número solo (ordem do item) — ignora pra descrição
     if (/^\d+$/.test(l)) continue
+    // Texto livre logo após "Observações:" — pertence ao item anterior, descarta
+    if (pulandoObservacao) {
+      pulandoObservacao = false
+      continue
+    }
     // Linha de descrição — acumula
     acumuladorDescricao = acumuladorDescricao ? `${acumuladorDescricao} ${l}` : l
   }
