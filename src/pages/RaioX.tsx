@@ -103,6 +103,7 @@ function Rotulo({ children }: { children: React.ReactNode }) {
 
 /** Pergunta com opções. Destaca-se sozinha quando é a vez dela. */
 function Pergunta({
+  id,
   titulo,
   apoio,
   opcoes,
@@ -111,6 +112,7 @@ function Pergunta({
   vez,
   colunas = 2,
 }: {
+  id: string
   titulo: string
   apoio?: string
   opcoes: Opcao[]
@@ -122,6 +124,7 @@ function Pergunta({
   const feito = !!valor
   return (
     <div
+      id={id}
       className={
         'relative bg-white border rounded-2xl p-5 transition ' +
         (vez
@@ -244,6 +247,22 @@ function Explodida({
   )
 }
 
+/** Aviso quando ele pulou uma pergunta: a página não pode ficar muda. */
+function Falta({ quantas, aoIr }: { quantas: number; aoIr: () => void }) {
+  return (
+    <div className="mt-4 bg-laranja-soft border border-laranja-border rounded-2xl p-4 flex flex-col items-center gap-2.5 text-center">
+      <p className="text-[15.5px] text-slate-700">
+        {quantas === 1
+          ? 'Falta responder 1 pergunta pra eu te mostrar a tela.'
+          : 'Faltam ' + quantas + ' perguntas pra eu te mostrar a tela.'}
+      </p>
+      <button type="button" onClick={aoIr} className="btn-primary w-full">
+        Ir pra pergunta que falta ↑
+      </button>
+    </div>
+  )
+}
+
 /** Botão que leva pra próxima pergunta — ele nunca fica sem saber onde ir. */
 function Proxima({ texto, alvo, aoIr }: { texto: string; alvo: string; aoIr: (id: string) => void }) {
   return (
@@ -320,7 +339,7 @@ export default function RaioX() {
     window.setTimeout(() => {
       const el = document.getElementById(id)
       if (!el) return
-      window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 80, behavior: 'smooth' })
+      window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 90, behavior: 'smooth' })
     }, 90)
   }
 
@@ -425,6 +444,7 @@ export default function RaioX() {
         {/* ---------- tela 1 ---------- */}
         <section className="mt-7 grid gap-3.5">
           <Pergunta
+            id="card-q1"
             titulo="Quantas obras você administra hoje?"
             apoio="Contando as que estão rodando e os contratos fechados esperando."
             opcoes={P1}
@@ -433,6 +453,7 @@ export default function RaioX() {
             aoEscolher={(o) => responder('q1', o)}
           />
           <Pergunta
+            id="card-q2"
             titulo="Como você controla isso hoje?"
             opcoes={P2}
             valor={resp.q2}
@@ -440,6 +461,7 @@ export default function RaioX() {
             aoEscolher={(o) => responder('q2', o)}
           />
           <Pergunta
+            id="card-q3"
             titulo="Quanto tempo você leva pra saber, com certeza, em que fase está uma obra?"
             opcoes={P3}
             valor={resp.q3}
@@ -448,6 +470,13 @@ export default function RaioX() {
             aoEscolher={(o) => responder('q3', o)}
           />
         </section>
+
+        {!tela1Pronta && (resp.q1 || resp.q2 || resp.q3) && (
+          <Falta
+            quantas={3 - [resp.q1, resp.q2, resp.q3].filter(Boolean).length}
+            aoIr={() => vez && rolarAte('card-' + vez)}
+          />
+        )}
 
         {tela1Pronta && (
           <section id="rv1" className="mt-4">
@@ -518,6 +547,7 @@ export default function RaioX() {
         {tela1Pronta && (
           <section id="p4" className="mt-7">
             <Pergunta
+              id="card-q4"
               titulo="O que mais te desgasta ao longo do tempo?"
               opcoes={[
                 { v: 'discutir prazo e status com o cliente', r: 'Discutir prazo e status com o cliente' },
@@ -655,6 +685,7 @@ export default function RaioX() {
         {ramo2 && (
           <section id="p5" className="mt-7">
             <Pergunta
+              id="card-q5"
               titulo="E hoje, o que você não consegue enxergar?"
               opcoes={[
                 { v: 'quais obras vão estourar o prazo', r: 'Quais obras vão estourar o prazo' },
@@ -750,6 +781,7 @@ export default function RaioX() {
         {ramo3 && (
           <section id="p6" className="mt-7 grid gap-3.5">
             <Pergunta
+              id="card-q6"
               titulo="Mês passado, quantas peças você refez — por erro de medida ou por vão que não estava pronto?"
               opcoes={P6}
               valor={resp.q6}
@@ -757,6 +789,7 @@ export default function RaioX() {
               aoEscolher={(o) => responder('q6', o)}
             />
             <Pergunta
+              id="card-q7"
               titulo="E quanto tempo você gastou explicando de novo a mesma coisa — pro funcionário, pro cliente, pro técnico?"
               opcoes={P7}
               valor={resp.q7}
@@ -764,6 +797,10 @@ export default function RaioX() {
               aoEscolher={(o) => responder('q7', o)}
             />
           </section>
+        )}
+
+        {ramo3 && !tela4Pronta && (resp.q6 || resp.q7) && (
+          <Falta quantas={1} aoIr={() => vez && rolarAte('card-' + vez)} />
         )}
 
         {tela4Pronta && (
