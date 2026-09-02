@@ -61,6 +61,29 @@ export interface HistoricoRow {
 
 // =============== Empresa ===============
 
+/**
+ * Status de assinatura/trial da empresa logada — consulta leve, usada pelo
+ * BannerTrial no topo do app. Separada de pegarMinhaEmpresa() de propósito:
+ * roda em toda navegação, então traz só 2 colunas.
+ * Cravado 31/08/2026 (trial de 14 dias sem cartão).
+ */
+export async function pegarStatusAssinatura(): Promise<{
+  assinaturaStatus: 'trial' | 'ativo' | 'suspenso' | 'cancelado'
+  trialTerminaEm: string | null
+} | null> {
+  if (!supabase) return null
+  const { data, error } = await supabase
+    .from('empresas')
+    .select('assinatura_status, trial_termina_em')
+    .limit(1)
+    .maybeSingle()
+  if (error || !data) return null
+  return {
+    assinaturaStatus: (data.assinatura_status ?? 'trial') as 'trial' | 'ativo' | 'suspenso' | 'cancelado',
+    trialTerminaEm: (data.trial_termina_em as string | null) ?? null,
+  }
+}
+
 export async function pegarMinhaEmpresa() {
   if (!supabase) return null
   // Campos especificos — evita trazer onboarding_status (jsonb pesado) e

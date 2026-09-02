@@ -16,6 +16,8 @@ import ObraTecnico from './pages/ObraTecnico'
 import Ajuda from './pages/Ajuda'
 import Configuracoes from './pages/Configuracoes'
 import Admin from './pages/Admin'
+import TesteGratis from './pages/TesteGratis'
+import RaioX from './pages/RaioX'
 import Termos from './pages/Termos'
 import Privacidade from './pages/Privacidade'
 import RotaProtegida from './components/RotaProtegida'
@@ -29,6 +31,10 @@ function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/cadastro" element={<Cadastro />} />
+          {/* Teste grátis de 14 dias, sem cartão (estratégia rep-free) */}
+          <Route path="/teste-gratis" element={<TesteGratis />} />
+          {/* Página de venda interativa — diagnóstico que mostra o sistema */}
+          <Route path="/raio-x" element={<RaioX />} />
           <Route path="/recuperar-senha" element={<RecuperarSenha />} />
           <Route path="/redefinir-senha" element={<RedefinirSenha />} />
           <Route path="/termos" element={<Termos />} />
