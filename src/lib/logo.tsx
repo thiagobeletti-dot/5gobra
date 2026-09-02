@@ -55,3 +55,18 @@ export function LogoStack({ size = 320 }: { size?: number }) {
     />
   )
 }
+
+// Versão horizontal com fundo transparente e recortada (02/09/2026).
+// O `logo-gobra-tagline.png` original é 1080x1080 com uma moldura branca
+// enorme em volta — em fundo claro aparecia como uma caixa branca e a arte
+// ficava minúscula. Este arquivo é o mesmo logo sem fundo e sem a sobra.
+// Usado na /raio-x; as outras telas continuam no LogoFull.
+export function LogoHorizontal({ height = 52 }: { height?: number }) {
+  return (
+    <img
+      src="/logo-gobra-horizontal.png"
+      alt="G Obra — Diário de Obra"
+      style={{ height, width: 'auto', display: 'block' }}
+    />
+  )
+}
