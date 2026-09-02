@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { LogoFull } from '../lib/logo'
+import LinkIndisponivel from '../components/LinkIndisponivel'
 import { ABAS } from '../types/obra'
 import type { AbaId, Card } from '../types/obra'
 import type { TecnicoObra } from '../types/tecnico'
@@ -277,13 +278,7 @@ export default function ObraTecnico() {
   if (carregando) return <div className="min-h-screen flex items-center justify-center text-slate-500">Carregando...</div>
 
   if (erro || !tecnico || !dados || !obraReal) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-slate-600 px-6 text-center">
-        <LogoFull />
-        <p className="mt-6">{erro ?? 'Link inválido'}</p>
-        <p className="text-sm text-slate-400">Se você acredita que isso é um erro, fale com a empresa.</p>
-      </div>
-    )
+    return <LinkIndisponivel token={token} mensagem={erro ?? undefined} />
   }
 
   const cardsDaAba = dados.cards.filter((c) => c.aba === abaAtiva)

@@ -22,9 +22,13 @@ interface Props {
   onFechar: () => void
   /** Cupom pré-preenchido (vindo do pop-up de saída, por ex.) */
   cupomInicial?: string
+  /** Esconde o campo de cupom (Raio-X vende sem cupom — cupom ancora preço baixo). */
+  semCupom?: boolean
+  /** Origem gravada no pré-cadastro (ex.: 'raio-x'). */
+  origem?: string
 }
 
-export default function ModalComprar({ aberto, onFechar, cupomInicial }: Props) {
+export default function ModalComprar({ aberto, onFechar, cupomInicial, semCupom = false, origem }: Props) {
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
   const [whatsapp, setWhatsapp] = useState('')
@@ -67,9 +71,9 @@ export default function ModalComprar({ aberto, onFechar, cupomInicial }: Props) 
         email: email.trim(),
         whatsapp: whatsapp.replace(/\D/g, ''),
         cpf_cnpj: cpfCnpj.replace(/\D/g, ''),
-        cupom: cupom.trim() || undefined,
+        cupom: semCupom ? undefined : cupom.trim() || undefined,
         ref_parceiro: pegarRefParceiro(),
-        origem: 'landing',
+        origem: origem ?? 'landing',
       })
 
       if (!r.ok || !r.invoiceUrl) {
@@ -198,6 +202,7 @@ export default function ModalComprar({ aberto, onFechar, cupomInicial }: Props) 
               </div>
             </div>
 
+            {!semCupom && (
             <div>
               <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-1.5">
                 Cupom (opcional)
@@ -210,6 +215,7 @@ export default function ModalComprar({ aberto, onFechar, cupomInicial }: Props) 
                 disabled={enviando}
               />
             </div>
+            )}
 
             {erro && (
               <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2">

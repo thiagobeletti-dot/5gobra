@@ -34,6 +34,10 @@ import { trackPurchase, trackCompleteRegistration, valorPorCupom } from '../lib/
 
 type Etapa = 1 | 2 | 3
 
+// Link da call de implementação (bônus de quem contrata). Trocar aqui se criar
+// um evento próprio no Calendly. Cravado 02/09/2026.
+const CALENDLY_IMPLEMENTACAO = 'https://calendly.com/thiagobeletti/30min'
+
 export default function Cadastro() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
@@ -394,7 +398,23 @@ export default function Cadastro() {
               <p className="text-xs text-slate-500 mb-6">
                 Em alguns minutos você vai receber em <strong>{email}</strong> uma cópia em PDF dos contratos aceitos, com cabeçalho de auditoria (data, hora, IP, hash). Se não chegar, dá pra reenviar em <em>Configurações → Contratos aceitos</em>.
               </p>
-              <button onClick={() => navigate('/app/obras')} className="btn-primary w-full">Entrar no sistema</button>
+              {fluxoB && (
+                <div className="mb-4 text-left rounded-lg border border-laranja/40 bg-laranja-soft/40 p-4">
+                  <p className="text-sm font-bold text-slate-900">Sua implementação vai junto com o plano.</p>
+                  <p className="text-xs text-slate-600 mt-1 mb-3">
+                    Uma call de 30 min em que a gente sobe a sua primeira obra real junto com você — importa o orçamento, configura os prazos e deixa o link do cliente pronto pra mandar.
+                  </p>
+                  <a
+                    href={CALENDLY_IMPLEMENTACAO}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-primary w-full"
+                  >
+                    Agendar minha implementação
+                  </a>
+                </div>
+              )}
+              <button onClick={() => navigate('/app/obras')} className={fluxoB ? 'btn-ghost w-full' : 'btn-primary w-full'}>Entrar no sistema</button>
             </div>
           )}
         </div>

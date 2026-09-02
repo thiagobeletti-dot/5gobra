@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { pegarSituacao, type Situacao } from './lib/api'
 import { AuthProvider } from './lib/auth'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
@@ -18,10 +20,21 @@ import Configuracoes from './pages/Configuracoes'
 import Admin from './pages/Admin'
 import TesteGratis from './pages/TesteGratis'
 import RaioX from './pages/RaioX'
+import Assinar from './pages/Assinar'
 import Termos from './pages/Termos'
 import Privacidade from './pages/Privacidade'
 import RotaProtegida from './components/RotaProtegida'
 import ErrorBoundary from './components/ErrorBoundary'
+
+// /app/assinar aberto durante o trial (não bloqueado): busca a situação só pra
+// mostrar os dias restantes.
+function AssinarRota() {
+  const [situacao, setSituacao] = useState<Situacao | null>(null)
+  useEffect(() => {
+    void pegarSituacao().then(setSituacao)
+  }, [])
+  return <Assinar situacao={situacao} />
+}
 
 function App() {
   return (
@@ -55,6 +68,16 @@ function App() {
             element={
               <RotaProtegida>
                 <Obras />
+              </RotaProtegida>
+            }
+          />
+          {/* Conversão trial → pago (checkout Asaas). Quando o trial vence, a
+              RotaProtegida renderiza esta mesma tela no lugar de QUALQUER rota. */}
+          <Route
+            path="/app/assinar"
+            element={
+              <RotaProtegida>
+                <AssinarRota />
               </RotaProtegida>
             }
           />

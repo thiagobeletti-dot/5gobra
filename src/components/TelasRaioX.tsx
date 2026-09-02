@@ -69,7 +69,7 @@ export function TelaCliente() {
   return (
     <Moldura url="5gobra.com.br/obra/vila-bela">
       <Cabecalho titulo="Residencial Vila Bela" sub="Rua das Palmeiras, 450 · Cliente: João Silva" />
-      <div className="flex gap-4 px-3.5 border-b border-slate-200 text-[11px] font-semibold overflow-x-auto whitespace-nowrap">
+      <div className="flex gap-4 px-3.5 border-b border-slate-200 text-[11px] font-semibold overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {[
           { l: 'Cliente', n: 4, a: true },
           { l: 'Em andamento', n: 8, a: false },

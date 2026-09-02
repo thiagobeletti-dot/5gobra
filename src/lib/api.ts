@@ -1,4 +1,4 @@
-import { supabase, type DbClient } from './supabase'
+import { supabase, supabasePublico, type DbClient } from './supabase'
 import type { Card, DadosObra, ObraInfo, RegistroHistorico, AbaId, TipoCard, FotoCard } from '../types/obra'
 import type { Checklist } from '../types/checklist'
 import type { Anexo } from './anexos'
@@ -60,6 +60,75 @@ export interface HistoricoRow {
 }
 
 // =============== Empresa ===============
+
+export type StatusAssinatura = 'trial' | 'ativo' | 'suspenso' | 'cancelado'
+
+/**
+ * Situação de acesso da empresa logada — calculada NO BANCO pela RPC
+ * `minha_situacao()` (supabase/2026-09-02-trial-bloqueio.sql). É o que a
+ * RotaProtegida consulta em toda tela do app: `acesso=false` = paywall.
+ *
+ * Fallback: se a RPC ainda não existir no banco (SQL não aplicado), lê as
+ * colunas direto e calcula no front, pra não trancar ninguém por engano.
+ */
+export interface Situacao {
+  empresaId: string | null
+  status: StatusAssinatura
+  trialTerminaEm: string | null
+  acesso: boolean
+  admin: boolean
+  diasRestantes: number | null
+}
+
+export async function pegarSituacao(): Promise<Situacao | null> {
+  if (!supabase) return null
+  const { data, error } = await supabase.rpc('minha_situacao')
+  if (!error && data) {
+    const d = data as {
+      empresa_id?: string | null
+      status?: string | null
+      trial_termina_em?: string | null
+      acesso?: boolean
+      admin?: boolean
+      dias_restantes?: number | null
+    }
+    return {
+      empresaId: d.empresa_id ?? null,
+      status: (d.status ?? 'trial') as StatusAssinatura,
+      trialTerminaEm: d.trial_termina_em ?? null,
+      acesso: Boolean(d.acesso),
+      admin: Boolean(d.admin),
+      diasRestantes: d.dias_restantes ?? null,
+    }
+  }
+  if (error) console.warn('[api] minha_situacao indisponível, usando fallback:', error.message)
+  const antigo = await pegarStatusAssinatura()
+  if (!antigo) return null
+  const fim = antigo.trialTerminaEm ? new Date(antigo.trialTerminaEm).getTime() : null
+  const acesso =
+    antigo.assinaturaStatus === 'ativo' ||
+    (antigo.assinaturaStatus === 'trial' && fim !== null && fim > Date.now())
+  return {
+    empresaId: null,
+    status: antigo.assinaturaStatus,
+    trialTerminaEm: antigo.trialTerminaEm,
+    acesso,
+    admin: false,
+    diasRestantes: fim ? Math.max(0, Math.ceil((fim - Date.now()) / 86400000)) : null,
+  }
+}
+
+/**
+ * Por que um link público (/obra/:token ou /tec/:token) não abre:
+ * 'ok' | 'bloqueado' (empresa sem acesso — trial vencido/suspensa) | 'invalido'.
+ */
+export async function situacaoLinkPublico(token: string): Promise<'ok' | 'bloqueado' | 'invalido'> {
+  if (!supabasePublico || !token) return 'invalido'
+  const { data, error } = await supabasePublico.rpc('situacao_link_publico', { p_token: token })
+  if (error || !data) return 'invalido'
+  return data as 'ok' | 'bloqueado' | 'invalido'
+}
+
 
 /**
  * Status de assinatura/trial da empresa logada — consulta leve, usada pelo

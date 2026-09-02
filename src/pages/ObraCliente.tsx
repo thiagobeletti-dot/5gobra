@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { LogoFull } from '../lib/logo'
+import LinkIndisponivel from '../components/LinkIndisponivel'
 import { ABAS } from '../types/obra'
 import type { AbaId, Card } from '../types/obra'
 import { diasAte, formataData, formataDataHora, statusSemantico } from '../lib/helpers'
@@ -73,13 +74,7 @@ export default function ObraCliente() {
     return <div className="min-h-screen flex items-center justify-center text-slate-500">Carregando obra...</div>
   }
   if (data.erro || !data.dados) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-slate-600 px-6 text-center">
-        <LogoFull />
-        <p className="mt-6">Link inválido ou obra encerrada.</p>
-        <p className="text-sm text-slate-400">Se você acredita que isso é um erro, fale com a empresa.</p>
-      </div>
-    )
+    return <LinkIndisponivel token={token} />
   }
 
   const dados = data.dados

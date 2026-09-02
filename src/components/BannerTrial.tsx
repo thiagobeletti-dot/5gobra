@@ -1,100 +1,65 @@
-// Banner que mostra status do trial / assinatura no topo do app.
+// Banner do trial no topo do app (só aparece enquanto a empresa NÃO é assinante).
 // - Trial ativo: barra azul com contagem regressiva
-// - Trial nos últimos 3 dias: barra âmbar (alerta visual)
-// - Trial expirado: barra vermelha + bloqueio de novas ações
-// - Suspenso: barra vermelha
-// - Ativo (assinante): não renderiza nada
+// - Trial nos últimos 3 dias: barra âmbar
+// - Assinante ativo: não renderiza
 //
-// Botão "Assinar agora" abre WhatsApp por enquanto. Quando Asaas estiver
-// configurado, troca pro link de pagamento direto.
+// Trial vencido / suspenso / cancelado NÃO passa por aqui: a RotaProtegida
+// troca o app inteiro pela tela <Assinar bloqueado /> (paywall total).
+//
+// "Assinar agora" leva pra /app/assinar (checkout Asaas direto) — antes abria
+// WhatsApp, o que contradizia a estratégia rep-free. Cravado 02/09/2026.
 
-const WHATSAPP_LINK =
-  'https://wa.me/5511933969913?text=' +
-  encodeURIComponent('Olá! Quero assinar o G Obra (R$ 349/mês).')
-
-type AssinaturaStatus = 'trial' | 'ativo' | 'suspenso' | 'cancelado'
+import { Link } from 'react-router-dom'
+import type { StatusAssinatura } from '../lib/api'
 
 interface Props {
   trialTerminaEm: string | null
-  assinaturaStatus: AssinaturaStatus
+  assinaturaStatus: StatusAssinatura
+  diasRestantes?: number | null
 }
 
-export default function BannerTrial({ trialTerminaEm, assinaturaStatus }: Props) {
-  // Assinante ativo — sem banner
+export default function BannerTrial({ trialTerminaEm, assinaturaStatus, diasRestantes }: Props) {
   if (assinaturaStatus === 'ativo') return null
 
-  const fim = trialTerminaEm ? new Date(trialTerminaEm) : null
-  const agora = new Date()
-  const ms = fim ? fim.getTime() - agora.getTime() : -1
-  const dias = Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)))
-  const expirado = !fim || ms <= 0
-
-  // Estado bloqueado: trial expirado, suspenso ou cancelado
-  if (expirado || assinaturaStatus === 'suspenso' || assinaturaStatus === 'cancelado') {
-    const titulo =
-      assinaturaStatus === 'suspenso'
-        ? 'Sua assinatura foi suspensa.'
-        : assinaturaStatus === 'cancelado'
-        ? 'Sua assinatura foi cancelada.'
-        : 'Seu período de teste acabou.'
-    return (
-      <div className="bg-red-600 text-white text-sm">
-        <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="font-bold flex-shrink-0">⚠</span>
-            <span className="font-semibold">{titulo}</span>
-            <span className="opacity-90 hidden sm:inline">
-              Assine pra continuar usando o G Obra sem perder seus dados.
-            </span>
-          </div>
-          <a
-            href={WHATSAPP_LINK}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-white text-red-700 px-4 py-1.5 rounded-md text-xs font-bold hover:bg-red-50 flex-shrink-0"
-          >
-            Assinar agora
-          </a>
-        </div>
-      </div>
-    )
+  // Dias vêm do banco (minha_situacao). Fallback calcula no front.
+  let dias = diasRestantes ?? null
+  if (dias === null) {
+    const fim = trialTerminaEm ? new Date(trialTerminaEm).getTime() : null
+    dias = fim ? Math.max(0, Math.ceil((fim - Date.now()) / 86400000)) : 0
   }
 
-  // Trial ativo: muda cor conforme proximidade do fim
-  const cor =
-    dias <= 3
-      ? 'bg-amber-500 text-white'
-      : 'bg-blue-600 text-white'
+  const cor = dias <= 3 ? 'bg-amber-500 text-white' : 'bg-blue-600 text-white'
+  const texto =
+    dias <= 0
+      ? 'Seu período de teste termina hoje.'
+      : `Faltam ${dias} ${dias === 1 ? 'dia' : 'dias'} do seu período de teste.`
 
   return (
     <div className={cor + ' text-sm'}>
       <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 min-w-0">
           <span className="flex-shrink-0">⏱</span>
-          <span className="font-bold">
-            Faltam {dias} {dias === 1 ? 'dia' : 'dias'} do seu período de teste.
-          </span>
+          <span className="font-bold">{texto}</span>
           <span className="opacity-90 hidden sm:inline">
-            Garanta seu acesso por R$ 349/mês.
+            Garanta seu acesso por R$ 349/mês, sem fidelidade.
           </span>
         </div>
-        <a
-          href={WHATSAPP_LINK}
-          target="_blank"
-          rel="noopener noreferrer"
+        <Link
+          to="/app/assinar"
           className="bg-white/20 hover:bg-white/30 px-4 py-1.5 rounded-md text-xs font-bold flex-shrink-0"
         >
           Assinar agora
-        </a>
+        </Link>
       </div>
     </div>
   )
 }
 
-// Helper exportado pra usar em outros lugares (ex: bloquear botões de criação)
+// Helper mantido por compatibilidade. A regra oficial vive no banco
+// (empresa_tem_acesso) e chega ao front via pegarSituacao().acesso.
 export function calcularAcessoLiberado(
   trialTerminaEm: string | null,
-  assinaturaStatus: AssinaturaStatus
+  assinaturaStatus: StatusAssinatura
 ): boolean {
   if (assinaturaStatus === 'ativo') return true
   if (assinaturaStatus === 'suspenso' || assinaturaStatus === 'cancelado') return false

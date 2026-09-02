@@ -346,6 +346,8 @@ async function enviarEmailCadastro(args: {
   const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
   const FROM = Deno.env.get('EMAIL_FROM') ?? 'G Obra <onboarding@resend.dev>'
   const APP_URL = Deno.env.get('APP_URL') ?? 'https://5gobra.com.br'
+  // Link da call de implementação (bônus de quem contrata). Cravado 02/09/2026.
+  const CALENDLY_IMPLEMENTACAO = Deno.env.get('CALENDLY_IMPLEMENTACAO') ?? 'https://calendly.com/thiagobeletti/30min'
 
   if (!RESEND_API_KEY) {
     console.warn('[webhook-asaas] RESEND_API_KEY nao configurada — pulando email')
@@ -374,6 +376,15 @@ async function enviarEmailCadastro(args: {
       Se o botão não funcionar, copia e cola este link:<br>
       <span style="word-break:break-all;">${link}</span>
     </p>
+    <div style="margin:24px 0 0; padding:16px; border:1px solid #fed7aa; background:#fff7ed; border-radius:10px;">
+      <p style="font-size:14px; font-weight:600; margin:0 0 6px; color:#0f172a;">Sua implementação vai junto com o plano</p>
+      <p style="font-size:13px; line-height:1.55; margin:0 0 12px; color:#334155;">
+        Uma call de 30 min em que a gente sobe a sua primeira obra real junto com você: importa o orçamento, configura os prazos e deixa o link do cliente pronto pra mandar. O G Instalação já está liberado no mesmo login.
+      </p>
+      <a href="${CALENDLY_IMPLEMENTACAO}" style="display:inline-block; background:#0f172a; color:white; text-decoration:none; padding:11px 20px; border-radius:8px; font-weight:600; font-size:14px;">
+        Agendar minha implementação →
+      </a>
+    </div>
     <hr style="border:none; border-top:1px solid #e2e8f0; margin:24px 0;">
     <p style="font-size:12px; color:#94a3b8; line-height:1.55; margin:0;">
       Esse link é exclusivo, não compartilhe. Qualquer dúvida, responde esse email ou chama no WhatsApp da 5G.

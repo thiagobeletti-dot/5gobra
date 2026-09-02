@@ -61,8 +61,8 @@ interface Opcao {
 
 const P1: Opcao[] = [
   { v: 'até 10 obras', r: 'Até 10' },
-  { v: '30 obras', r: '11 a 30' },
-  { v: '50 obras', r: '31 a 50' },
+  { v: 'até 30 obras', r: '11 a 30' },
+  { v: 'até 50 obras', r: '31 a 50' },
   { v: 'mais de 50 obras', r: 'Mais de 50' },
 ]
 const P2: Opcao[] = [
@@ -290,11 +290,15 @@ function Falta({ quantas, aoIr }: { quantas: number; aoIr: () => void }) {
   )
 }
 
+function cap(t: string | undefined) {
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) : ''
+}
+
 function Proxima({ texto, alvo, aoIr }: { texto: string; alvo: string; aoIr: (id: string) => void }) {
   return (
     <div className="mt-4 pt-[18px] border-t border-dashed border-slate-300 flex flex-col items-center gap-2.5">
       <span className="text-[14px] text-slate-500">{texto}</span>
-      <button type="button" onClick={() => aoIr(alvo)} className="btn-primary w-full">
+      <button type="button" onClick={() => aoIr(alvo)} className="text-[14px] font-semibold text-laranja-dark underline underline-offset-4">
         Próxima pergunta ↓
       </button>
     </div>
@@ -601,6 +605,21 @@ export default function RaioX() {
     }
   }, [])
 
+  // Título próprio + noindex: a página é distribuída por link (DM, WhatsApp),
+  // não pra ser indexada. O <title> do index.html é o da landing.
+  useEffect(() => {
+    const tituloAnterior = document.title
+    document.title = 'Raio-X — veja o G Obra funcionando em 2 minutos'
+    const meta = document.createElement('meta')
+    meta.name = 'robots'
+    meta.content = 'noindex, nofollow'
+    document.head.appendChild(meta)
+    return () => {
+      document.title = tituloAnterior
+      meta.remove()
+    }
+  }, [])
+
   useEffect(() => {
     const dados: Record<string, string> = {}
     if (origem.utm_source) dados.utm_source = origem.utm_source
@@ -653,12 +672,20 @@ export default function RaioX() {
   }, [tela4Pronta])
 
   // grava o diagnóstico (best-effort — se falhar, a página continua)
+  //
+  // O id é gerado AQUI, não pelo banco: anon tem policy de INSERT mas não de
+  // SELECT, então `insert().select('id')` (RETURNING) era recusado pelo RLS e
+  // NENHUM diagnóstico estava sendo gravado. Com id no cliente, o insert vai
+  // sem RETURNING e o "clicou" é marcado via RPC security definer
+  // (supabase/2026-09-02-diagnosticos-fix.sql). Corrigido 02/09/2026.
   useEffect(() => {
     if (!tela4Pronta || !supabase || gravou.current) return
     gravou.current = true
+    const id = crypto.randomUUID()
     void supabase
       .from('diagnosticos')
       .insert({
+        id,
         respostas: { ...resp, ramo2, ramo3, abriu_saber_mais_2: abriu2, abriu_saber_mais_3: abriu3 },
         origem: origem.utm_source ?? 'raio-x',
         utm_campaign: origem.utm_campaign ?? null,
@@ -666,14 +693,15 @@ export default function RaioX() {
         chegou_ao_fim: true,
         user_agent: navigator.userAgent.slice(0, 300),
       })
-      .select('id')
-      .single()
-      .then(({ data }) => { if (data?.id) setRegistroId(data.id) })
+      .then(({ error }) => {
+        if (error) console.warn('[raio-x] diagnóstico não gravado:', error.message)
+        else setRegistroId(id)
+      })
   }, [tela4Pronta, resp, ramo2, ramo3, abriu2, abriu3, origem])
 
   function marcar(campo: 'clicou_trial' | 'clicou_assinar') {
     if (!supabase || !registroId) return
-    void supabase.from('diagnosticos').update({ [campo]: true }).eq('id', registroId)
+    void supabase.rpc('marcar_diagnostico', { p_id: registroId, p_campo: campo })
   }
 
   function abrirCheckout() {
@@ -697,7 +725,7 @@ export default function RaioX() {
 
   return (
     <div className="min-h-full bg-[#f4f6fa] text-slate-900">
-      <header className="sticky top-0 z-40 bg-[#f4f6fa]/92 backdrop-blur border-b border-slate-200">
+      <header className="sticky top-0 z-40 bg-[#f4f6fa] border-b border-slate-200">
         <div className="max-w-[620px] mx-auto px-4 py-2 flex items-center justify-between gap-3">
           <LogoHorizontal height={46} />
           <button type="button" onClick={() => rolarAte(tela4Pronta ? 'fechamento' : 'fim')} className="btn-primary text-[14px] px-3.5 py-2 flex-none">
@@ -747,7 +775,7 @@ export default function RaioX() {
         {tela1Pronta && (
           <section id="rv1" className="mt-4">
             <Resposta>
-              <Titulo3>{resp.q1}, controladas em {resp.q2}.</Titulo3>
+              <Titulo3>{cap(resp.q1)}, controladas em {resp.q2}.</Titulo3>
               <p className="text-slate-500 text-[16.5px]">E pra saber em que fase está uma delas, {resp.q3}.</p>
               <p className="text-slate-600 text-[16.5px] mt-2.5">
                 A informação existe — ela só não está num lugar só. Está na planilha, na cabeça do
@@ -798,7 +826,7 @@ export default function RaioX() {
               </div>
             )}
 
-            <Proxima texto="Falta pouco — mais 4 perguntas." alvo="card-q4" aoIr={rolarAte} />
+            <Proxima texto="Mais 4 perguntas — as respostas seguem mostrando o sistema." alvo="card-q4" aoIr={rolarAte} />
           </section>
         )}
 
@@ -922,7 +950,7 @@ export default function RaioX() {
               <Rotulo>o que você me contou</Rotulo>
               <ul className="list-none m-0 p-0 grid gap-2.5">
                 {[
-                  <>{resp.q1}, controladas em <b className="text-slate-900">{resp.q2}</b></>,
+                  <>{cap(resp.q1)}, controladas em <b className="text-slate-900">{resp.q2}</b></>,
                   <>Pra saber em que fase está uma delas: <b className="text-slate-900">{resp.q3}</b></>,
                   resp.q6 === 'nenhuma'
                     ? <>Mês passado você <b className="text-slate-900">não refez nenhuma peça</b></>
@@ -1102,8 +1130,8 @@ export default function RaioX() {
         </footer>
       </div>
 
-      {!tela4Pronta && (
-        <div className="fixed left-0 right-0 bottom-0 z-50 bg-white/96 backdrop-blur border-t border-slate-200 px-4 py-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))]">
+      {!tela4Pronta && resp.q1 && (
+        <div className="fixed left-0 right-0 bottom-0 z-50 bg-white border-t border-slate-200 px-4 py-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))]">
           <div className="max-w-[620px] mx-auto flex items-center gap-3">
             <div className="flex-1 min-w-0 text-[13px] text-slate-500 leading-tight">
               <b className="block text-slate-900 text-[14.5px]">14 dias grátis</b>
@@ -1133,7 +1161,7 @@ export default function RaioX() {
         </div>
       )}
 
-      <ModalComprar aberto={comprar} onFechar={() => setComprar(false)} />
+      <ModalComprar aberto={comprar} onFechar={() => setComprar(false)} semCupom origem="raio-x" />
     </div>
   )
 }

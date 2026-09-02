@@ -19,7 +19,7 @@ idempotentes. Esta é a ordem canônica pra reconstruir o banco do zero.
 11. `empresa-dados.sql` + `empresa-logo.sql`
 12. `pre-cadastros.sql` + `pre-cadastros-extras.sql`
 13. `cupons.sql`
-14. `asaas-assinaturas.sql` + `trial-system.sql` + `sync-empresa-assinatura.sql`
+14. `asaas-assinaturas.sql` + `trial-system.sql` (o trigger de sync assinaturas→empresas está em `2026-09-02-trial-bloqueio.sql`)
 15. `parceiros.sql`
 16. `leads-quentes.sql` + `leads-quentes-lgpd.sql`
 17. `onboarding-aceites.sql`
@@ -27,6 +27,7 @@ idempotentes. Esta é a ordem canônica pra reconstruir o banco do zero.
 19. `calendly-capi.sql`
 20. `fix-rls-isolamento-empresa.sql` — fix cross-tenant entre empresas autenticadas
 21. **`2026-07-07-hardening-rls-anon.sql`** — ⭐ fecha o vazamento anon (escopo por token `x-obra-token`). **Rodar por último e SEMPRE depois de qualquer re-run de `schema.sql`/`rls-tecnico-anon.sql`/`cronograma.sql`**, porque ele substitui as policies anon permissivas pelas escopadas.
+22. **`2026-09-02-trial-bloqueio.sql`** — trial 14 dias sem cartão + bloqueio no dia 15 (funções de acesso, trava do dono, triggers de bloqueio, links públicos). Redefine `anon_obra_ids()`, então **rodar DEPOIS do hardening** e re-rodar sempre que o hardening for re-rodado.
 
 ## Regras
 
