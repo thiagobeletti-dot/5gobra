@@ -18,7 +18,13 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth, sair } from '../lib/auth'
 import { LogoFull } from '../lib/logo'
-import { pegarMinhaEmpresa, atualizarMinhaEmpresa, type Situacao } from '../lib/api'
+import {
+  pegarMinhaEmpresa,
+  atualizarMinhaEmpresa,
+  possoRenovarTrial,
+  renovarTrial,
+  type Situacao,
+} from '../lib/api'
 import { ativarAssinatura, pegarMinhaAssinatura, type AssinaturaRow } from '../lib/asaas'
 import { mensagemDeErro } from '../lib/erros'
 
@@ -42,6 +48,10 @@ export default function Assinar({ situacao, bloqueado = false }: Props) {
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [faturaUrl, setFaturaUrl] = useState<string | null>(null)
+  // Segundo teste: só aparece pra quem deixou vencer sem criar nenhuma obra.
+  const [podeRenovar, setPodeRenovar] = useState(false)
+  const [renovando, setRenovando] = useState(false)
+  const [erroRenovar, setErroRenovar] = useState<string | null>(null)
 
   useEffect(() => {
     let ativo = true
@@ -60,6 +70,11 @@ export default function Assinar({ situacao, bloqueado = false }: Props) {
         if (ass && (ass.status === 'pendente' || ass.status === 'atrasada') && ass.fatura_atual_url) {
           setFaturaUrl(ass.fatura_atual_url)
         }
+        // Só na tela de bloqueio: durante o trial em dia não há o que reabrir.
+        if (bloqueado) {
+          const r = await possoRenovarTrial()
+          if (ativo) setPodeRenovar(r.elegivel)
+        }
       } catch (e) {
         if (ativo) setErro(mensagemDeErro(e))
       } finally {
@@ -69,7 +84,22 @@ export default function Assinar({ situacao, bloqueado = false }: Props) {
     return () => {
       ativo = false
     }
-  }, [])
+  }, [bloqueado])
+
+  // Reabre o teste e joga a pessoa direto pro app. Recarrega a página inteira
+  // de propósito: a situação de acesso é lida no RotaProtegida, acima desta
+  // tela, e só um reload garante que ele veja o trial novo.
+  async function reabrirTeste() {
+    setErroRenovar(null)
+    setRenovando(true)
+    const r = await renovarTrial()
+    if (!r.ok) {
+      setErroRenovar(r.erro ?? 'Não consegui reabrir seu teste.')
+      setRenovando(false)
+      return
+    }
+    window.location.href = '/app/obras'
+  }
 
   async function assinar(e: FormEvent) {
     e.preventDefault()
@@ -158,6 +188,36 @@ export default function Assinar({ situacao, bloqueado = false }: Props) {
           <div className="bg-white border border-slate-200 rounded-xl p-6 md:p-8 shadow-sm">
             <h1 className="text-2xl font-bold text-slate-900">{titulo}</h1>
             <p className="mt-2 text-slate-600">{subtitulo}</p>
+
+            {podeRenovar && (
+              <div className="mt-6 rounded-lg border-2 border-laranja bg-laranja-soft p-4">
+                <h2 className="font-bold text-slate-900">Você não chegou a usar</h2>
+                <p className="mt-1.5 text-sm text-slate-700">
+                  Sua conta ficou parada sem nenhuma obra cadastrada — então não dá pra dizer que
+                  você testou o G Obra. A gente reabre seus 14 dias, uma vez.
+                </p>
+                <p className="mt-1.5 text-sm text-slate-700">
+                  E se quiser, a gente sobe sua primeira obra junto numa call de 30 minutos. É só
+                  chamar no WhatsApp depois de entrar.
+                </p>
+                {erroRenovar && (
+                  <div className="mt-3 bg-red-50 border border-red-200 text-red-800 px-3 py-2 rounded-lg text-sm">
+                    {erroRenovar}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => void reabrirTeste()}
+                  disabled={renovando}
+                  className="btn-primary w-full mt-3.5"
+                >
+                  {renovando ? 'Reabrindo...' : 'Reabrir meus 14 dias grátis →'}
+                </button>
+                <p className="mt-2.5 text-xs text-slate-500 text-center">
+                  Sem cartão. Ou assine agora, abaixo.
+                </p>
+              </div>
+            )}
 
             <div className="mt-6 rounded-lg bg-slate-50 border border-slate-200 p-4">
               <div className="flex items-baseline justify-between">

@@ -1,4 +1,5 @@
 import { supabase, supabasePublico, type DbClient } from './supabase'
+import { mensagemDaFuncao } from './erro-funcao'
 import type { Card, DadosObra, ObraInfo, RegistroHistorico, AbaId, TipoCard, FotoCard } from '../types/obra'
 import type { Checklist } from '../types/checklist'
 import type { Anexo } from './anexos'
@@ -745,4 +746,40 @@ export async function pegarAcessosAdmin(): Promise<Record<string, UsoEmpresa>> {
     }
   }
   return mapa
+}
+
+/**
+ * Segundo teste de 14 dias — só pra quem deixou o trial vencer sem criar
+ * nenhuma obra. Decisão do Thiago em 03/09/2026: a diferença é entre quem não
+ * quis e quem não conseguiu começar; o segundo é problema de onboarding.
+ *
+ * `posso...` só consulta (RPC). Quem escreve é a Edge Function renovar-trial,
+ * com service_role: o trigger tg_empresas_protege_assinatura proíbe o papel
+ * `authenticated` de mexer em trial_termina_em, e é bom que continue proibindo.
+ */
+export interface PodeRenovar {
+  elegivel: boolean
+  motivo: 'nunca_usou' | 'ja_usou' | 'ja_renovou' | 'nao_e_trial_vencido' | 'sem_empresa'
+}
+
+export async function possoRenovarTrial(): Promise<PodeRenovar> {
+  const fora: PodeRenovar = { elegivel: false, motivo: 'nao_e_trial_vencido' }
+  if (!supabase) return fora
+  const { data, error } = await supabase.rpc('posso_renovar_trial')
+  if (error || !data) return fora
+  const d = data as { elegivel?: boolean; motivo?: string }
+  return {
+    elegivel: Boolean(d.elegivel),
+    motivo: (d.motivo ?? 'nao_e_trial_vencido') as PodeRenovar['motivo'],
+  }
+}
+
+export async function renovarTrial(): Promise<{ ok: boolean; erro?: string }> {
+  if (!supabase) return { ok: false, erro: 'Sistema indisponível no momento.' }
+  const { data, error } = await supabase.functions.invoke('renovar-trial', { body: {} })
+  const msg = (data as { error?: string } | null)?.error ?? (await mensagemDaFuncao(error))
+  if (error || !data || (data as { ok?: boolean }).ok !== true) {
+    return { ok: false, erro: msg ?? 'Não consegui reabrir seu teste. Tenta de novo.' }
+  }
+  return { ok: true }
 }
