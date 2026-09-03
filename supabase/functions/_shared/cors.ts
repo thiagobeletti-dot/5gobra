@@ -6,6 +6,10 @@
 const ORIGINS_PERMITIDOS = new Set([
   'https://5gobra.com.br',
   'https://www.5gobra.com.br',
+  // Subdomínio do Raio-X (a página de venda). Sem ele o botão "Contratar
+  // agora" não chama a comprar-publico e o visitante que veio da campanha
+  // não consegue comprar. Cravado 03/09/2026.
+  'https://raiox.5gobra.com.br',
   'https://5gobra.vercel.app',
   'https://gerenciamento5g.com.br',
   'https://www.gerenciamento5g.com.br',
