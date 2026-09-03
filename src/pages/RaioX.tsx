@@ -49,6 +49,18 @@ import {
 const PRECO = 349
 const WHATS = '5511933969913'
 
+// Domínio onde o app vive. No subdomínio raiox.* o cadastro TEM que sair pra
+// cá: a sessão do Supabase é por origem, então quem se cadastrasse no
+// raiox.5gobra.com.br voltaria ao app aparentando estar deslogado.
+// A query vai junto pra não perder a UTM no meio do caminho.
+const DOMINIO_APP = 'https://5gobra.com.br'
+
+function linkTeste(): string {
+  const query = typeof window !== 'undefined' ? window.location.search : ''
+  const fora = typeof window !== 'undefined' && window.location.hostname.startsWith('raiox.')
+  return (fora ? DOMINIO_APP : '') + '/teste-gratis' + query
+}
+
 type Chave = 'q1' | 'q2' | 'q3' | 'q4' | 'q5' | 'q6' | 'q7'
 const ORDEM: Chave[] = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7']
 type Zoom = { titulo: string; tela: React.ReactNode }
@@ -999,9 +1011,9 @@ export default function RaioX() {
             <div className="border border-slate-200 rounded-2xl bg-white p-[18px] mt-3">
               <h3 className="font-display font-bold text-[19px]">Testar 14 dias grátis</h3>
               <p className="text-[15.5px] text-slate-600 mt-1.5">Sem cartão. Você entra agora e sobe sua primeira obra hoje.</p>
-              <Link to="/teste-gratis" onClick={() => { marcar('clicou_trial'); trackCustom('raiox_clicou_trial') }} className="btn-ghost w-full mt-3.5">
+              <a href={linkTeste()} onClick={() => { marcar('clicou_trial'); trackCustom('raiox_clicou_trial') }} className="btn-ghost w-full mt-3.5">
                 Criar minha conta de teste
-              </Link>
+              </a>
             </div>
 
             <div className="relative border-2 border-laranja rounded-2xl bg-white p-[18px] mt-3 shadow-[0_8px_26px_rgba(255,106,0,.16)]">
@@ -1113,7 +1125,7 @@ export default function RaioX() {
                 <h3 className="font-display font-bold text-[19px]">Pronto pra começar?</h3>
                 <p className="text-[15.5px] text-slate-600 mt-1.5">G Instalação e implementação inclusos. 14 dias de garantia — não serviu, a gente devolve.</p>
                 <button type="button" onClick={abrirCheckout} className="btn-primary w-full mt-3.5">Contratar agora</button>
-                <Link to="/teste-gratis" onClick={() => { marcar('clicou_trial'); trackCustom('raiox_clicou_trial') }} className="btn-ghost w-full mt-2.5">Ou testar 14 dias grátis</Link>
+                <a href={linkTeste()} onClick={() => { marcar('clicou_trial'); trackCustom('raiox_clicou_trial') }} className="btn-ghost w-full mt-2.5">Ou testar 14 dias grátis</a>
                 <a href={linkWhats()} target="_blank" rel="noopener noreferrer" onClick={() => trackContact('rodape')} className="btn-ghost w-full mt-2.5">Falar comigo no WhatsApp</a>
               </div>
             </section>
@@ -1137,7 +1149,7 @@ export default function RaioX() {
               <b className="block text-slate-900 text-[14.5px]">14 dias grátis</b>
               sem cartão, sem compromisso
             </div>
-            <Link to="/teste-gratis" onClick={() => trackCustom('raiox_clicou_trial', { onde: 'barra' })} className="btn-primary">Testar</Link>
+            <a href={linkTeste()} onClick={() => trackCustom('raiox_clicou_trial', { onde: 'barra' })} className="btn-primary">Testar</a>
           </div>
         </div>
       )}

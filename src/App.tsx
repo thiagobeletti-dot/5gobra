@@ -36,12 +36,20 @@ function AssinarRota() {
   return <Assinar situacao={situacao} />
 }
 
+// O subdomínio raiox.5gobra.com.br serve o Raio-X na raiz, sem /raio-x na
+// URL — é o endereço que vai em anúncio, DM e WhatsApp. A rota /raio-x
+// continua valendo no domínio principal, então link antigo não quebra.
+// Não é rewrite da Vercel de propósito: num SPA o rewrite troca o arquivo
+// servido mas não o caminho que o React Router lê, e a raiz cairia na landing.
+const NO_SUBDOMINIO_RAIOX =
+  typeof window !== 'undefined' && window.location.hostname.startsWith('raiox.')
+
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Landing />} />
+          <Route path="/" element={NO_SUBDOMINIO_RAIOX ? <RaioX /> : <Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/cadastro" element={<Cadastro />} />
           {/* Teste grátis de 14 dias, sem cartão (estratégia rep-free) */}
