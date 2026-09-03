@@ -713,14 +713,36 @@ export async function registrarAcesso(): Promise<void> {
   if (error) console.warn('[api] registrar_acesso falhou (ignorado):', error.message)
 }
 
-/** Último acesso por empresa, para o painel gerencial. Só admin. */
-export async function pegarAcessosAdmin(): Promise<Record<string, string>> {
+/**
+ * Uso real por empresa, para o painel gerencial. Só admin.
+ *
+ * `movimentos30d` é o pulso: mede trabalho acontecendo, não cadastro feito uma
+ * vez. Cruzado com `obrasAbertas` é o que denuncia o cliente que montou tudo e
+ * abandonou — em 03/09/2026 a WS estava com 42 obras abertas e 0 movimentos.
+ */
+export interface UsoEmpresa {
+  ultimoAcesso: string | null
+  movimentos30d: number
+  obrasAbertas: number
+}
+
+export async function pegarAcessosAdmin(): Promise<Record<string, UsoEmpresa>> {
   if (!supabase) return {}
   const { data, error } = await supabase.rpc('painel_admin_acessos')
   if (error || !data) return {}
-  const mapa: Record<string, string> = {}
-  for (const linha of data as { empresa_id: string; ultimo_acesso_em: string }[]) {
-    mapa[linha.empresa_id] = linha.ultimo_acesso_em
+  const mapa: Record<string, UsoEmpresa> = {}
+  const linhas = data as {
+    empresa_id: string
+    ultimo_acesso_em: string | null
+    movimentos_30d: number | null
+    obras_abertas: number | null
+  }[]
+  for (const l of linhas) {
+    mapa[l.empresa_id] = {
+      ultimoAcesso: l.ultimo_acesso_em ?? null,
+      movimentos30d: l.movimentos_30d ?? 0,
+      obrasAbertas: l.obras_abertas ?? 0,
+    }
   }
   return mapa
 }

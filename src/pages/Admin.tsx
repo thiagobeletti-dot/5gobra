@@ -12,7 +12,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { LogoFull } from '../lib/logo'
 import { supabase } from '../lib/supabase'
-import { pegarAcessosAdmin } from '../lib/api'
+import { pegarAcessosAdmin, type UsoEmpresa } from '../lib/api'
 
 interface ClienteAdmin {
   empresa_id: string
@@ -35,7 +35,7 @@ interface ClienteAdmin {
   ativado: boolean
 }
 
-type Filtro = 'todos' | 'trial' | 'ativos' | 'risco'
+type Filtro = 'todos' | 'trial' | 'ativos' | 'risco' | 'parados'
 
 /** Dias inteiros desde uma data ISO. Null se não houver data. */
 function diasDesde(iso: string | null): number | null {
@@ -68,11 +68,20 @@ function dataCurta(iso: string | null): string {
  * é a reserva pra empresa que ainda não entrou depois dessa mudança.
  * Corrigido 02/09/2026.
  */
-function semaforo(c: ClienteAdmin, acesso: string | null): { cor: 'verde' | 'amarelo' | 'vermelho'; texto: string } {
+function semaforo(c: ClienteAdmin, uso: UsoEmpresa | null): { cor: 'verde' | 'amarelo' | 'vermelho'; texto: string } {
   if (!c.ativado) return { cor: 'vermelho', texto: 'Não ativou' }
-  const d = diasDesde(acesso ?? c.ultimo_login)
+  // O pior caso não é quem sumiu: é quem montou tudo e parou. Obra aberta sem
+  // nenhum movimento em 30 dias significa cliente final abrindo o link e vendo
+  // obra parada. Vem antes de "parou de usar" de propósito.
+  if (obrasParadas(uso)) return { cor: 'vermelho', texto: 'Obras paradas' }
+  const d = diasDesde(uso?.ultimoAcesso ?? c.ultimo_login)
   if (d === null || d >= 7) return { cor: 'amarelo', texto: 'Parou de usar' }
   return { cor: 'verde', texto: 'Usando' }
+}
+
+/** Tem obra aberta e nenhum movimento em 30 dias. */
+function obrasParadas(uso: UsoEmpresa | null): boolean {
+  return !!uso && uso.obrasAbertas > 0 && uso.movimentos30d === 0
 }
 
 const CLASSE_SEMAFORO: Record<'verde' | 'amarelo' | 'vermelho', string> = {
@@ -84,7 +93,7 @@ const CLASSE_SEMAFORO: Record<'verde' | 'amarelo' | 'vermelho', string> = {
 export default function Admin() {
   const [clientes, setClientes] = useState<ClienteAdmin[]>([])
   /** empresa_id -> último acesso ao sistema (carimbo de verdade). */
-  const [acessos, setAcessos] = useState<Record<string, string>>({})
+  const [acessos, setAcessos] = useState<Record<string, UsoEmpresa>>({})
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
   const [filtro, setFiltro] = useState<Filtro>('todos')
@@ -130,8 +139,17 @@ export default function Admin() {
       (c) => c.assinatura_status === 'trial' && !c.ativado && (c.dias_restantes ?? 99) <= 5,
     )
     const pctAtivacao = clientes.length > 0 ? Math.round((ativados.length / clientes.length) * 100) : 0
-    return { total: clientes.length, emTrial: emTrial.length, ativos: ativos.length, pctAtivacao, risco: risco.length }
-  }, [clientes])
+    // Quem paga (ou testa) e deixou obra parada. É a fila de resgate.
+    const parados = clientes.filter((c) => obrasParadas(acessos[c.empresa_id] ?? null))
+    return {
+      total: clientes.length,
+      emTrial: emTrial.length,
+      ativos: ativos.length,
+      pctAtivacao,
+      risco: risco.length,
+      parados: parados.length,
+    }
+  }, [clientes, acessos])
 
   const lista = useMemo(() => {
     let l = clientes
@@ -139,6 +157,7 @@ export default function Admin() {
     else if (filtro === 'ativos') l = l.filter((c) => c.assinatura_status === 'ativo')
     else if (filtro === 'risco')
       l = l.filter((c) => c.assinatura_status === 'trial' && !c.ativado && (c.dias_restantes ?? 99) <= 5)
+    else if (filtro === 'parados') l = l.filter((c) => obrasParadas(acessos[c.empresa_id] ?? null))
     const q = busca.trim().toLowerCase()
     if (q) {
       l = l.filter(
@@ -149,7 +168,7 @@ export default function Admin() {
       )
     }
     return l
-  }, [clientes, filtro, busca])
+  }, [clientes, filtro, busca, acessos])
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -179,13 +198,29 @@ export default function Admin() {
           <p className="mt-6 text-slate-500 text-sm">Carregando...</p>
         ) : erro ? null : (
           <>
-            <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="mt-6 grid grid-cols-2 md:grid-cols-6 gap-3">
               <Kpi titulo="Clientes" valor={kpis.total} cor="text-slate-900" />
               <Kpi titulo="Em teste" valor={kpis.emTrial} cor="text-amber-600" />
               <Kpi titulo="Pagantes" valor={kpis.ativos} cor="text-green-600" />
               <Kpi titulo="Ativação" valor={`${kpis.pctAtivacao}%`} cor="text-blue-600" />
               <Kpi titulo="Precisam de você" valor={kpis.risco} cor="text-red-600" />
+              <Kpi titulo="Obras paradas" valor={kpis.parados} cor="text-red-600" />
             </div>
+
+            {kpis.parados > 0 && (
+              <div className="mt-4 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-900 flex items-center gap-3 flex-wrap">
+                <span>
+                  <strong>{kpis.parados}</strong>{' '}
+                  {kpis.parados === 1
+                    ? 'cliente tem obra aberta e nenhum movimento há 30 dias'
+                    : 'clientes têm obra aberta e nenhum movimento há 30 dias'}
+                  . Montaram o sistema e pararam — e o cliente final que abrir o link vê obra parada.
+                </span>
+                <button onClick={() => setFiltro('parados')} className="btn-primary text-xs py-1.5 px-3 ml-auto">
+                  Ver quem são
+                </button>
+              </div>
+            )}
 
             {kpis.risco > 0 && (
               <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-900 flex items-center gap-3 flex-wrap">
@@ -206,6 +241,7 @@ export default function Admin() {
                 ['trial', 'Em teste'],
                 ['ativos', 'Pagantes'],
                 ['risco', 'Precisam de você'],
+                ['parados', 'Obras paradas'],
               ] as [Filtro, string][]).map(([id, label]) => (
                 <button
                   key={id}
@@ -250,8 +286,8 @@ export default function Admin() {
                     </tr>
                   ) : (
                     lista.map((c) => {
-                      const acesso = acessos[c.empresa_id] ?? null
-                      const s = semaforo(c, acesso)
+                      const uso = acessos[c.empresa_id] ?? null
+                      const s = semaforo(c, uso)
                       const zap = (c.contato_whatsapp ?? '').replace(/\D/g, '')
                       return (
                         <tr key={c.empresa_id} className="hover:bg-slate-50 align-top">
@@ -283,14 +319,20 @@ export default function Admin() {
                             <StatusAssinatura cliente={c} />
                           </td>
                           <td className="px-4 py-3 text-xs text-slate-600">
-                            {textoDesde(acesso ?? c.ultimo_login)}
-                            <div className="text-[11px] text-slate-400">
-                              mexeu numa obra: {textoDesde(c.ultima_atividade)}
+                            {textoDesde(uso?.ultimoAcesso ?? c.ultimo_login)}
+                            <div
+                              className={
+                                'text-[11px] ' +
+                                (uso && uso.movimentos30d === 0 ? 'text-red-600 font-semibold' : 'text-slate-400')
+                              }
+                            >
+                              {uso?.movimentos30d ?? 0} movimento{(uso?.movimentos30d ?? 0) !== 1 ? 's' : ''} em 30 dias
                             </div>
                           </td>
                           <td className="px-4 py-3 text-xs text-slate-600 whitespace-nowrap">
-                            {c.qtd_obras} obra{c.qtd_obras !== 1 ? 's' : ''} · {c.qtd_pecas} peça
-                            {c.qtd_pecas !== 1 ? 's' : ''}
+                            {c.qtd_obras} obra{c.qtd_obras !== 1 ? 's' : ''}
+                            {uso ? ` (${uso.obrasAbertas} aberta${uso.obrasAbertas !== 1 ? 's' : ''})` : ''} ·{' '}
+                            {c.qtd_pecas} peça{c.qtd_pecas !== 1 ? 's' : ''}
                             <div className="text-[11px] text-slate-400">
                               {c.qtd_fotos} foto{c.qtd_fotos !== 1 ? 's' : ''} ·{' '}
                               {c.cliente_interagiu ? (
