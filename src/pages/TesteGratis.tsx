@@ -11,6 +11,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { LogoFull } from '../lib/logo'
 import { supabase } from '../lib/supabase'
+import { mensagemDaFuncao } from '../lib/erro-funcao'
 import { entrar } from '../lib/auth'
 
 export default function TesteGratis() {
@@ -43,9 +44,12 @@ export default function TesteGratis() {
         },
       })
 
-      // A Edge Function devolve { ok:false, error } com status 4xx — o supabase-js
-      // transforma isso em `error`, então a mensagem útil pode vir dos dois lados.
-      const msgFuncao = (data as { ok?: boolean; error?: string } | null)?.error
+      // A Edge Function devolve { ok:false, error } com status 4xx. Nesse caso o
+      // supabase-js deixa o `data` vazio e esconde o corpo no `error.context` —
+      // por isso mensagemDaFuncao(). Sem ela, "já existe uma conta com esse
+      // e-mail" virava "não consegui criar sua conta".
+      const msgFuncao =
+        (data as { ok?: boolean; error?: string } | null)?.error ?? (await mensagemDaFuncao(error))
       if (error || !data || (data as { ok?: boolean }).ok !== true) {
         setErro(msgFuncao ?? 'Não consegui criar sua conta. Tenta de novo em instantes.')
         setCarregando(false)

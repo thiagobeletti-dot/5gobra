@@ -5,6 +5,7 @@
 // validações.
 
 import { supabase } from './supabase'
+import { mensagemDaFuncao } from './erro-funcao'
 
 export type StatusAssinatura =
   | 'sem_plano'
@@ -70,7 +71,7 @@ export async function ativarAssinatura(input: {
     const { data, error } = await supabase.functions.invoke('criar-assinatura-asaas', {
       body: input,
     })
-    if (error) return { ok: false, error: error.message }
+    if (error) return { ok: false, error: (await mensagemDaFuncao(error)) ?? error.message }
     return data as ResultadoAtivar
   } catch (e) {
     return { ok: false, error: (e as { message?: string })?.message ?? 'Erro desconhecido' }
@@ -113,7 +114,7 @@ export async function comprarPublico(input: CompraPublicaInput): Promise<Resulta
     const { data, error } = await supabase.functions.invoke('comprar-publico', {
       body: input,
     })
-    if (error) return { ok: false, error: error.message }
+    if (error) return { ok: false, error: (await mensagemDaFuncao(error)) ?? error.message }
     return data as ResultadoCompraPublica
   } catch (e) {
     return { ok: false, error: (e as { message?: string })?.message ?? 'Erro desconhecido' }
@@ -146,7 +147,7 @@ export async function buscarPreCadastroPorToken(token: string): Promise<PreCadas
       body: { token },
     })
     if (error) {
-      console.warn('[asaas] pre-cadastro-por-token erro:', error)
+      console.warn('[asaas] pre-cadastro-por-token erro:', await mensagemDaFuncao(error), error)
       return null
     }
     if (!data?.ok) return null
@@ -184,7 +185,7 @@ export async function ativarPreCadastro(input: AtivarInput): Promise<ResultadoAt
     const { data, error } = await supabase.functions.invoke('ativar-pre-cadastro', {
       body: input,
     })
-    if (error) return { ok: false, error: error.message }
+    if (error) return { ok: false, error: (await mensagemDaFuncao(error)) ?? error.message }
     return data as ResultadoAtivacao
   } catch (e) {
     return { ok: false, error: (e as { message?: string })?.message ?? 'Erro desconhecido' }
