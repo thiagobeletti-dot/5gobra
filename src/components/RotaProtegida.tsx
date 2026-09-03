@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../lib/auth'
-import { pegarSituacao, type Situacao } from '../lib/api'
+import { pegarSituacao, registrarAcesso, type Situacao } from '../lib/api'
 import BannerTrial from './BannerTrial'
 import Assinar from '../pages/Assinar'
 import type { ReactNode } from 'react'
@@ -31,6 +31,8 @@ export default function RotaProtegida({ children }: { children: ReactNode }) {
     if (!habilitado || !user) return
     // Não zera a situação anterior: na troca de rota a tela não pisca
     // "Carregando", só atualiza quando a resposta nova chega.
+    // Carimba o acesso da empresa. Silencioso: telemetria nunca segura a tela.
+    void registrarAcesso()
     void pegarSituacao()
       .then((s) => {
         if (ativo) setSituacao(s)

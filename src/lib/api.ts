@@ -696,3 +696,31 @@ export async function hashSha256(texto: string): Promise<string> {
   const arr = Array.from(new Uint8Array(buf))
   return arr.map((b) => b.toString(16).padStart(2, '0')).join('')
 }
+
+/**
+ * Carimba o acesso da empresa do usuário logado (RPC registrar_acesso).
+ *
+ * Existe porque `auth.users.last_sign_in_at` só muda quando a pessoa digita a
+ * senha de novo: quem fica logado usa todo dia e o painel mostrava "há 1
+ * semana". O banco engole no máximo 1 gravação a cada 10 min por empresa.
+ *
+ * Silencioso de propósito: é telemetria, nunca pode atrapalhar a navegação.
+ * Cravado 02/09/2026.
+ */
+export async function registrarAcesso(): Promise<void> {
+  if (!supabase) return
+  const { error } = await supabase.rpc('registrar_acesso')
+  if (error) console.warn('[api] registrar_acesso falhou (ignorado):', error.message)
+}
+
+/** Último acesso por empresa, para o painel gerencial. Só admin. */
+export async function pegarAcessosAdmin(): Promise<Record<string, string>> {
+  if (!supabase) return {}
+  const { data, error } = await supabase.rpc('painel_admin_acessos')
+  if (error || !data) return {}
+  const mapa: Record<string, string> = {}
+  for (const linha of data as { empresa_id: string; ultimo_acesso_em: string }[]) {
+    mapa[linha.empresa_id] = linha.ultimo_acesso_em
+  }
+  return mapa
+}

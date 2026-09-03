@@ -12,6 +12,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { LogoFull } from '../lib/logo'
 import { supabase } from '../lib/supabase'
+import { pegarAcessosAdmin } from '../lib/api'
 
 interface ClienteAdmin {
   empresa_id: string
@@ -58,12 +59,18 @@ function dataCurta(iso: string | null): string {
 /**
  * Semáforo de ativação — o coração do painel.
  *   vermelho = nunca ativou (não criou obra com peça)
- *   amarelo  = ativou mas parou (7+ dias sem mexer)
- *   verde    = ativou e está mexendo
+ *   amarelo  = ativou mas parou (7+ dias sem ABRIR o sistema)
+ *   verde    = ativou e está entrando
+ *
+ * Mede ACESSO, não movimentação de card: o card nasce no começo da obra e a
+ * obra corre por meses. Quem usa o sistema todo dia aparecia como abandonado.
+ * O carimbo vem de acessos_empresa (RPC painel_admin_acessos); `ultimo_login`
+ * é a reserva pra empresa que ainda não entrou depois dessa mudança.
+ * Corrigido 02/09/2026.
  */
-function semaforo(c: ClienteAdmin): { cor: 'verde' | 'amarelo' | 'vermelho'; texto: string } {
+function semaforo(c: ClienteAdmin, acesso: string | null): { cor: 'verde' | 'amarelo' | 'vermelho'; texto: string } {
   if (!c.ativado) return { cor: 'vermelho', texto: 'Não ativou' }
-  const d = diasDesde(c.ultima_atividade)
+  const d = diasDesde(acesso ?? c.ultimo_login)
   if (d === null || d >= 7) return { cor: 'amarelo', texto: 'Parou de usar' }
   return { cor: 'verde', texto: 'Usando' }
 }
@@ -76,6 +83,8 @@ const CLASSE_SEMAFORO: Record<'verde' | 'amarelo' | 'vermelho', string> = {
 
 export default function Admin() {
   const [clientes, setClientes] = useState<ClienteAdmin[]>([])
+  /** empresa_id -> último acesso ao sistema (carimbo de verdade). */
+  const [acessos, setAcessos] = useState<Record<string, string>>({})
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
   const [filtro, setFiltro] = useState<Filtro>('todos')
@@ -89,8 +98,12 @@ export default function Admin() {
         setCarregando(false)
         return
       }
-      const { data, error } = await supabase.rpc('painel_admin_clientes')
+      const [{ data, error }, mapaAcessos] = await Promise.all([
+        supabase.rpc('painel_admin_clientes'),
+        pegarAcessosAdmin(),
+      ])
       if (!ativo) return
+      setAcessos(mapaAcessos)
       if (error) {
         setErro(
           error.message.includes('Acesso negado')
@@ -237,7 +250,8 @@ export default function Admin() {
                     </tr>
                   ) : (
                     lista.map((c) => {
-                      const s = semaforo(c)
+                      const acesso = acessos[c.empresa_id] ?? null
+                      const s = semaforo(c, acesso)
                       const zap = (c.contato_whatsapp ?? '').replace(/\D/g, '')
                       return (
                         <tr key={c.empresa_id} className="hover:bg-slate-50 align-top">
@@ -269,9 +283,9 @@ export default function Admin() {
                             <StatusAssinatura cliente={c} />
                           </td>
                           <td className="px-4 py-3 text-xs text-slate-600">
-                            {textoDesde(c.ultimo_login)}
+                            {textoDesde(acesso ?? c.ultimo_login)}
                             <div className="text-[11px] text-slate-400">
-                              atividade: {textoDesde(c.ultima_atividade)}
+                              mexeu numa obra: {textoDesde(c.ultima_atividade)}
                             </div>
                           </td>
                           <td className="px-4 py-3 text-xs text-slate-600 whitespace-nowrap">
