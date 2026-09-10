@@ -234,31 +234,103 @@ export function TelaCronograma() {
   )
 }
 
-/* ---------- 7. metas ---------- */
+/* ---------- 7. metas: produção e instalação são DUAS contas ---------- */
+//
+// Duas métricas de propósito (confirmado pelo Thiago em 09/09/2026): o que
+// saiu da fábrica e o que foi instalado na obra. Somar as duas num número só
+// esconde de que lado está o gargalo — produzir 112 e instalar 65 no mesmo
+// mês é a informação que faz o dono agir.
 export function TelaMetas() {
-  const equipes = [
-    { p: 1, n: 'Equipe A — Carlos e Léo', w: '82%', v: '41/50' },
-    { p: 2, n: 'Equipe B — Marcos', w: '64%', v: '32/50' },
-    { p: 3, n: 'Equipe C — Rafael e Tiago', w: '48%', v: '24/50' },
+  const grupos = [
+    {
+      rot: 'Produção — peças fabricadas',
+      total: '112/150',
+      linhas: [
+        { p: 1, n: 'Serralheria — Léo e Ari', w: '84%', v: '63/75' },
+        { p: 2, n: 'Envidraçamento — Marcos', w: '65%', v: '49/75' },
+      ],
+    },
+    {
+      rot: 'Instalação — peças instaladas',
+      total: '65/110',
+      linhas: [
+        { p: 1, n: 'Equipe A — Carlos e Tiago', w: '73%', v: '41/56' },
+        { p: 2, n: 'Equipe B — Rafael', w: '44%', v: '24/54' },
+      ],
+    },
   ]
   return (
     <Moldura url="5gobra.com.br/app/metas">
-      <Cabecalho titulo="Metas de setembro" sub="Peças instaladas · atualizado há 4 minutos" />
+      <Cabecalho titulo="Metas de setembro" sub="Produção e instalação · atualizado há 4 minutos" />
       <div className="p-3 grid gap-2.5 bg-slate-50">
-        {equipes.map((e) => (
-          <div key={e.n} className="bg-white border border-slate-200 rounded-lg p-3 grid grid-cols-[26px_1fr_auto] gap-2.5 items-center">
-            <span className={'w-[26px] h-[26px] rounded-lg grid place-items-center text-[12px] font-bold ' + (e.p === 1 ? 'bg-laranja text-white' : 'bg-slate-100 text-slate-500')}>
-              {e.p}
-            </span>
-            <div>
-              <div className="text-[12.5px] font-semibold text-slate-900">{e.n}</div>
-              <div className="h-[5px] rounded-full bg-slate-100 mt-1.5 overflow-hidden">
-                <span className="block h-full bg-laranja rounded-full" style={{ width: e.w }} />
-              </div>
+        {grupos.map((g, gi) => (
+          <div
+            key={g.rot}
+            className={'grid gap-2.5' + (gi > 0 ? ' pt-3 mt-0.5 border-t border-dashed border-slate-300' : '')}
+          >
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="font-mono text-[9.5px] tracking-[.1em] uppercase text-slate-400">{g.rot}</span>
+              <span className="font-mono text-[10px] text-slate-500">{g.total}</span>
             </div>
-            <span className="font-mono text-[11.5px] font-medium text-slate-600">{e.v}</span>
+            {g.linhas.map((e) => (
+              <div key={e.n} className="bg-white border border-slate-200 rounded-lg p-3 grid grid-cols-[26px_1fr_auto] gap-2.5 items-center">
+                <span className={'w-[26px] h-[26px] rounded-lg grid place-items-center text-[12px] font-bold ' + (e.p === 1 ? 'bg-laranja text-white' : 'bg-slate-100 text-slate-500')}>
+                  {e.p}
+                </span>
+                <div>
+                  <div className="text-[12.5px] font-semibold text-slate-900">{e.n}</div>
+                  <div className="h-[5px] rounded-full bg-slate-100 mt-1.5 overflow-hidden">
+                    <span className="block h-full bg-laranja rounded-full" style={{ width: e.w }} />
+                  </div>
+                </div>
+                <span className="font-mono text-[11.5px] font-medium text-slate-600">{e.v}</span>
+              </div>
+            ))}
           </div>
         ))}
+      </div>
+    </Moldura>
+  )
+}
+
+/* ---------- 8. importação do orçamento ---------- */
+//
+// Existe pra responder, logo na primeira etapa da página, a objeção que mais
+// trava a decisão: "começar dá trabalho". O PDF do Wvetro/CEM entra e sai
+// card. É a ponte com o concorrente, nunca a comparação.
+export function TelaImportacao() {
+  const cards = [
+    { t: 'J1 · Janela sala 1', d: '1,20 × 1,00 m · 2 folhas · branco' },
+    { t: 'J2 · Janela sala 2', d: '1,20 × 1,00 m · 2 folhas · branco' },
+    { t: 'P1 · Porta balcão', d: '2,00 × 2,10 m · 4 folhas · verde 8mm' },
+  ]
+  return (
+    <Moldura url="5gobra.com.br/app/importar-orcamento">
+      <Cabecalho titulo="Importar orçamento" sub="Residencial Vila Bela · 38 peças reconhecidas" />
+      <div className="p-3 grid grid-cols-1 min-[430px]:grid-cols-[1fr_26px_1fr] gap-3 items-center bg-slate-50">
+        <div className="bg-white border border-slate-200 rounded-lg p-3">
+          <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-900">
+            orcamento-vila-bela.pdf
+            <span className="bg-red-100 text-red-800 text-[8px] font-bold px-1.5 py-0.5 rounded tracking-wide">PDF</span>
+          </div>
+          <div className="font-mono text-[9px] text-slate-400 leading-loose mt-2">
+            J1&nbsp;&nbsp;JAN 2F CORRER 1200×1000<br />
+            J2&nbsp;&nbsp;JAN 2F CORRER 1200×1000<br />
+            P1&nbsp;&nbsp;PORTA BALCÃO 4F 2000×2100<br />
+            V1&nbsp;&nbsp;VIDRO VERDE 8MM<br />
+            …
+          </div>
+        </div>
+        <div className="text-[19px] font-bold text-laranja text-center rotate-90 min-[430px]:rotate-0">→</div>
+        <div className="grid gap-1.5">
+          {cards.map((c) => (
+            <div key={c.t} className="bg-white border border-slate-200 rounded-md py-2 px-2.5 pl-3 relative overflow-hidden">
+              <span className="absolute left-0 top-0 bottom-0 w-1 bg-peca" />
+              <div className="text-[10.5px] font-semibold text-slate-900 leading-tight">{c.t}</div>
+              <div className="text-[9px] text-slate-500 mt-0.5">{c.d}</div>
+            </div>
+          ))}
+        </div>
       </div>
     </Moldura>
   )

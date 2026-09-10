@@ -20,6 +20,7 @@ import Configuracoes from './pages/Configuracoes'
 import Admin from './pages/Admin'
 import TesteGratis from './pages/TesteGratis'
 import RaioX from './pages/RaioX'
+import PassoAPasso from './pages/PassoAPasso'
 import Assinar from './pages/Assinar'
 import Termos from './pages/Termos'
 import Privacidade from './pages/Privacidade'
@@ -36,11 +37,17 @@ function AssinarRota() {
   return <Assinar situacao={situacao} />
 }
 
-// O subdomínio raiox.5gobra.com.br serve o Raio-X na raiz, sem /raio-x na
-// URL — é o endereço que vai em anúncio, DM e WhatsApp. A rota /raio-x
-// continua valendo no domínio principal, então link antigo não quebra.
+// O subdomínio raiox.5gobra.com.br serve a página de venda na raiz, sem
+// caminho na URL — é o endereço que vai em anúncio, DM e WhatsApp. A rota
+// /raio-x continua valendo no domínio principal, então link antigo não quebra.
 // Não é rewrite da Vercel de propósito: num SPA o rewrite troca o arquivo
 // servido mas não o caminho que o React Router lê, e a raiz cairia na landing.
+//
+// Desde 09/09/2026 quem chega nesses dois endereços vê o PASSO A PASSO, não
+// o quiz. Todo link já distribuído continua funcionando, apontando pra versão
+// nova. O quiz ficou em /raio-x-quiz — não foi apagado porque é o único
+// instrumento que já capturou a situação de quem entra, e nunca rodou com
+// volume que permitisse julgar.
 const NO_SUBDOMINIO_RAIOX =
   typeof window !== 'undefined' && window.location.hostname.startsWith('raiox.')
 
@@ -49,13 +56,15 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={NO_SUBDOMINIO_RAIOX ? <RaioX /> : <Landing />} />
+          <Route path="/" element={NO_SUBDOMINIO_RAIOX ? <PassoAPasso /> : <Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/cadastro" element={<Cadastro />} />
           {/* Teste grátis de 14 dias, sem cartão (estratégia rep-free) */}
           <Route path="/teste-gratis" element={<TesteGratis />} />
-          {/* Página de venda interativa — diagnóstico que mostra o sistema */}
-          <Route path="/raio-x" element={<RaioX />} />
+          {/* Página de venda: o passo a passo do sistema, tudo aberto */}
+          <Route path="/raio-x" element={<PassoAPasso />} />
+          {/* Versão quiz, guardada. Ver comentário acima. */}
+          <Route path="/raio-x-quiz" element={<RaioX />} />
           <Route path="/recuperar-senha" element={<RecuperarSenha />} />
           <Route path="/redefinir-senha" element={<RedefinirSenha />} />
           <Route path="/termos" element={<Termos />} />
