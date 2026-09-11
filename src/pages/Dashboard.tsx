@@ -14,6 +14,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { LogoFull } from '../lib/logo'
 import AtalhosModulos from '../components/AtalhosModulos'
+import MenuAdmin from '../components/MenuAdmin'
 import { sair, useAuth } from '../lib/auth'
 import { pegarDashboard, type DashboardData, type ObraDashboard } from '../lib/dashboard'
 import { pegarMinhaEmpresa } from '../lib/api'
@@ -182,6 +183,7 @@ export default function Dashboard() {
             <Link to="/app/ajuda" className="text-slate-500 hover:text-slate-900">Ajuda</Link>
             <Link to="/app/configuracoes" className="text-slate-500 hover:text-slate-900">Configurações</Link>
             <AtalhosModulos />
+            <MenuAdmin />
           </nav>
           <div className="flex items-center gap-3">
             <span className="text-sm text-slate-500 hidden lg:inline">{user?.email}</span>

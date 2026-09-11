@@ -17,6 +17,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import AtalhosModulos from '../components/AtalhosModulos'
+import MenuAdmin from '../components/MenuAdmin'
 import { LogoFull } from '../lib/logo'
 import { useAuth, sair } from '../lib/auth'
 import { criarObra, criarVariosCards, pegarMinhaEmpresa } from '../lib/api'
@@ -125,6 +126,7 @@ export default function ImportarOrcamento() {
               Configurações
             </Link>
             <AtalhosModulos />
+            <MenuAdmin />
           </nav>
           <div className="flex items-center gap-3">
             <span className="text-sm text-slate-500 hidden lg:inline">{user?.email}</span>
