@@ -18,6 +18,7 @@ import ObraTecnico from './pages/ObraTecnico'
 import Ajuda from './pages/Ajuda'
 import Configuracoes from './pages/Configuracoes'
 import Admin from './pages/Admin'
+import Vendas from './pages/Vendas'
 import TesteGratis from './pages/TesteGratis'
 import RaioX from './pages/RaioX'
 import PassoAPasso from './pages/PassoAPasso'
@@ -104,6 +105,16 @@ function App() {
             element={
               <RotaProtegida>
                 <Admin />
+              </RotaProtegida>
+            }
+          />
+          {/* Máquina de venda — leads e funil. A RLS das tabelas vendas_* só
+              deixa admin ler ou gravar; cliente comum não vê uma linha. */}
+          <Route
+            path="/app/vendas"
+            element={
+              <RotaProtegida>
+                <Vendas />
               </RotaProtegida>
             }
           />

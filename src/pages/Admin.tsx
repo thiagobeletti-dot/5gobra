@@ -178,7 +178,10 @@ export default function Admin() {
             <LogoFull small />
           </Link>
           <span className="text-sm font-bold text-slate-700">Painel gerencial</span>
-          <Link to="/app/obras" className="ml-auto text-xs text-slate-500 hover:text-laranja">
+          <Link to="/app/vendas" className="ml-auto text-xs text-slate-500 hover:text-laranja">
+            Vendas →
+          </Link>
+          <Link to="/app/obras" className="text-xs text-slate-500 hover:text-laranja">
             ← Voltar ao app
           </Link>
         </div>
