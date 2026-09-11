@@ -226,6 +226,18 @@ export async function criarLead(dados: Partial<Lead>): Promise<void> {
   }
 }
 
+/** Troca {nome} pelo primeiro nome do lead.
+ *
+ *  As mensagens da cadência ficam no banco com o marcador {nome} pra serem
+ *  editáveis sem deploy. Sem esta função o Thiago mandaria literalmente
+ *  "{nome}, aqui é o Thiago" pro cliente — que é como esse tipo de sistema
+ *  costuma queimar a primeira impressão. */
+export function personalizar(texto: string | null | undefined, lead: Lead): string {
+  if (!texto) return ''
+  const primeiro = (lead.nome ?? '').trim().split(/\s+/)[0] ?? ''
+  return texto.replace(/\{nome\}/g, primeiro)
+}
+
 /** wa.me com o texto dentro: um toque abre o WhatsApp já escrito. */
 export function linkWhats(lead: Lead, texto?: string): string {
   const so = (lead.telefone ?? '').replace(/\D/g, '')

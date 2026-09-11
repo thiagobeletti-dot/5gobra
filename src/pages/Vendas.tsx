@@ -22,7 +22,7 @@ import { Link } from 'react-router-dom'
 import { LogoFull } from '../lib/logo'
 import {
   ESTADOS, avancarEstado, criarLead, diasDeParado, encerrar, linkWhats,
-  migrouProWhats, pegarCadencia, pegarConfig, pegarLeads, registrarConversa,
+  migrouProWhats, pegarCadencia, pegarConfig, pegarLeads, personalizar, registrarConversa,
   registrarEnvio, registrarResposta,
   type EstadoLead, type Lead, type PassoCadencia,
 } from '../lib/vendas'
@@ -88,7 +88,8 @@ function Card({
   const prox = l.toque + 1
   const passo = cadencia.find((c) => c.numero === prox)
   const temZap = !!l.telefone && l.canal === 'whatsapp'
-  const texto = passo ? [passo.mensagem, passo.link].filter(Boolean).join('\n\n') : undefined
+  const corpo = personalizar(passo?.mensagem, l)
+  const texto = passo ? [corpo, passo.link].filter(Boolean).join('\n\n') : undefined
 
   return (
     <div className={'relative bg-white border rounded-2xl p-4 overflow-hidden ' +
@@ -136,8 +137,8 @@ function Card({
           <span className="block font-mono text-[10px] tracking-[.12em] uppercase text-slate-400 mb-1">
             toque {prox} — {passo.titulo}
           </span>
-          {passo.mensagem
-            ? <p className="text-[13.5px] text-slate-700 whitespace-pre-line leading-relaxed">{passo.mensagem}</p>
+          {corpo
+            ? <p className="text-[13.5px] text-slate-700 whitespace-pre-line leading-relaxed">{corpo}</p>
             : <p className="text-[13px] text-slate-400 italic">mensagem ainda não escrita — dá pra editar na cadência</p>}
           {temZap && (
             <a href={linkWhats(l, texto)} target="_blank" rel="noopener noreferrer"
