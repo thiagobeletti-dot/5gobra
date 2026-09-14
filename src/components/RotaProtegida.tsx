@@ -62,7 +62,10 @@ export default function RotaProtegida({ children }: { children: ReactNode }) {
   }
   return (
     <>
-      {situacao && situacao.status !== 'ativo' && (
+      {/* Admin não leva propaganda pra assinar o próprio sistema. A linha do
+          bloqueio acima já checava admin; o banner não checava — o Thiago,
+          dono, era convidado a contratar o G Obra (14/09/2026). */}
+      {situacao && situacao.status !== 'ativo' && !situacao.admin && (
         <BannerTrial
           trialTerminaEm={situacao.trialTerminaEm}
           assinaturaStatus={situacao.status}

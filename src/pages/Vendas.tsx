@@ -21,7 +21,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { LogoFull } from '../lib/logo'
 import {
-  ESTADOS, avancarEstado, criarLead, diasDeParado, encerrar, linkWhats,
+  ADIANTE, ESTADOS, avancarEstado, criarLead, diasDeParado, encerrar, linkWhats,
   migrouProWhats, pegarCadencia, pegarConfig, pegarLeads, personalizar, registrarConversa,
   registrarEnvio, registrarResposta,
   type EstadoLead, type Lead, type PassoCadencia,
@@ -88,8 +88,15 @@ function Card({
   const prox = l.toque + 1
   const passo = cadencia.find((c) => c.numero === prox)
   const temZap = !!l.telefone && l.canal === 'whatsapp'
-  const corpo = personalizar(passo?.mensagem, l)
-  const texto = passo ? [corpo, passo.link].filter(Boolean).join('\n\n') : undefined
+  // Quem já respondeu não está na cadência, mas PRECISA de texto: era o
+  // caso do Petterson, que abria sem nada pra mandar. A mensagem sob medida
+  // vem primeiro e serve qualquer estado; a da cadência é o padrão.
+  const bruto = l.mensagem_proxima ?? (emCadencia ? passo?.mensagem : null)
+  const corpo = personalizar(bruto, l, passo?.link)
+  const temLink = !!bruto && bruto.includes('{link}')
+  const texto = corpo
+    ? [corpo, !temLink && passo?.link ? passo.link : null].filter(Boolean).join('\n\n')
+    : undefined
 
   return (
     <div className={'relative bg-white border rounded-2xl p-4 overflow-hidden ' +
@@ -132,22 +139,24 @@ function Card({
         </div>
       )}
 
-      {emCadencia && passo && (
-        <div className="mt-2.5 bg-slate-50 border border-dashed border-slate-300 rounded-xl px-3 py-2.5">
-          <span className="block font-mono text-[10px] tracking-[.12em] uppercase text-slate-400 mb-1">
-            toque {prox} — {passo.titulo}
-          </span>
-          {corpo
-            ? <p className="text-[13.5px] text-slate-700 whitespace-pre-line leading-relaxed">{corpo}</p>
-            : <p className="text-[13px] text-slate-400 italic">mensagem ainda não escrita — dá pra editar na cadência</p>}
-          {temZap && (
-            <a href={linkWhats(l, texto)} target="_blank" rel="noopener noreferrer"
-               className="btn-primary w-full mt-2.5 text-[13px] py-2">
-              Abrir no WhatsApp com o texto
-            </a>
-          )}
-        </div>
-      )}
+      <div className="mt-2.5 bg-slate-50 border border-dashed border-slate-300 rounded-xl px-3 py-2.5">
+        <span className="block font-mono text-[10px] tracking-[.12em] uppercase text-slate-400 mb-1">
+          {l.mensagem_proxima
+            ? 'o que mandar'
+            : emCadencia && passo ? 'toque ' + prox + ' — ' + passo.titulo : 'o que mandar'}
+        </span>
+        {corpo
+          ? <p className="text-[13.5px] text-slate-700 whitespace-pre-line leading-relaxed">{corpo}</p>
+          : <p className="text-[13px] text-slate-400 italic">
+              Sem texto pronto pra esse. Escreve na hora, ou me pede que eu escrevo e carrego.
+            </p>}
+        {corpo && temZap && (
+          <a href={linkWhats(l, texto)} target="_blank" rel="noopener noreferrer"
+             className="btn-primary w-full mt-2.5 text-[13px] py-2">
+            Abrir no WhatsApp com o texto
+          </a>
+        )}
+      </div>
 
       <div className="grid grid-cols-[1.25fr_1fr] gap-2 mt-3">
         {emCadencia ? (
@@ -161,8 +170,24 @@ function Card({
           <>
             <button onClick={() => aoAgir(() => registrarConversa(l, cfg))}
                     className="btn-primary py-3">Falei hoje</button>
-            <button onClick={() => aoAgir(() => avancarEstado(l, cfg))}
-                    className="btn py-3 bg-emerald-100 text-emerald-900 hover:bg-emerald-200">Avançar →</button>
+            <button
+              onClick={() => {
+                // Antes era só "Avançar →": ninguém sabia pra onde, não pedia
+                // confirmação e não dava pra desfazer. Mandou o Petterson pra
+                // Testando sem ele ter criado conta (14/09/2026).
+                const destino = ADIANTE[l.estado]
+                if (!destino) return
+                const nome = ESTADOS.find((e) => e.id === destino)?.t ?? destino
+                if (window.confirm('Mover ' + l.nome + ' para "' + nome + '"?')) {
+                  aoAgir(() => avancarEstado(l, cfg))
+                }
+              }}
+              className="btn py-3 bg-emerald-100 text-emerald-900 hover:bg-emerald-200 text-[13px]">
+              {(() => {
+                const d = ADIANTE[l.estado]
+                return d ? '→ ' + (ESTADOS.find((e) => e.id === d)?.t ?? d) : 'Avançar'
+              })()}
+            </button>
           </>
         )}
       </div>

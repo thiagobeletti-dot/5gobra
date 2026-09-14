@@ -36,6 +36,10 @@ export interface Lead {
   passou_pela_giulia: boolean
   resumo: string | null
   gancho: string | null
+  /** Mensagem escrita sob medida pra ESTE lead. Tem prioridade sobre a da
+      cadência — existe porque quem já respondeu não cabe em texto genérico:
+      o que dizer depende do que a pessoa falou. */
+  mensagem_proxima: string | null
   motivo_fim: string | null
   notas: string | null
   /** vem da view vendas_fila */
@@ -68,7 +72,10 @@ export const ESTADOS: { id: EstadoLead; t: string; s: string }[] = [
 
 /** Avanço natural quando ele aperta "Avançar". Perdido e gelado são decisão
     explícita, nunca automáticos. */
-const ADIANTE: Partial<Record<EstadoLead, EstadoLead>> = {
+/** WhatsApp da 5G — usado no marcador {whats} das mensagens. */
+export const WHATS_5G = '5511933969913'
+
+export const ADIANTE: Partial<Record<EstadoLead, EstadoLead>> = {
   conversando: 'testando',
   testando: 'decidindo',
   decidindo: 'cliente',
@@ -151,6 +158,8 @@ export async function registrarEnvio(
     proximo_em: ultimo ? hojeMais(90) : hojeMais(passo.dias_ate_o_proximo),
     ultimo_contato_em: new Date().toISOString(),
     motivo_fim: ultimo ? 'terminou a sequência sem responder' : null,
+    // a mensagem sob medida vale uma vez: mandou, some
+    mensagem_proxima: null,
   }).eq('id', lead.id)
 
   await gravarToque(lead.id, novo, tipo, lead.canal, 'enviado', passo?.titulo)
@@ -176,6 +185,7 @@ export async function registrarConversa(
   await supabase.from('vendas_leads').update({
     proximo_em: hojeMais(diasDeParado(lead.estado, cfg) || 2),
     ultimo_contato_em: new Date().toISOString(),
+    mensagem_proxima: null,
   }).eq('id', lead.id)
   await gravarToque(lead.id, null, tipo, lead.canal, 'enviado', 'falei hoje')
 }
@@ -232,10 +242,15 @@ export async function criarLead(dados: Partial<Lead>): Promise<void> {
  *  editáveis sem deploy. Sem esta função o Thiago mandaria literalmente
  *  "{nome}, aqui é o Thiago" pro cliente — que é como esse tipo de sistema
  *  costuma queimar a primeira impressão. */
-export function personalizar(texto: string | null | undefined, lead: Lead): string {
+export function personalizar(
+  texto: string | null | undefined, lead: Lead, link?: string | null,
+): string {
   if (!texto) return ''
   const primeiro = (lead.nome ?? '').trim().split(/\s+/)[0] ?? ''
-  return texto.replace(/\{nome\}/g, primeiro)
+  return texto
+    .replace(/\{nome\}/g, primeiro)
+    .replace(/\{link\}/g, link ?? '')
+    .replace(/\{whats\}/g, 'wa.me/' + WHATS_5G)
 }
 
 /** wa.me com o texto dentro: um toque abre o WhatsApp já escrito. */
