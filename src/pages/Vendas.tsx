@@ -268,6 +268,19 @@ export default function Vendas() {
     { t: 'sem prazo correndo',  v: false, itens: lista.filter((l) => !l.situacao) },
   ].filter((g) => g.itens.length)), [lista])
 
+  // Quantos leads estão em cada toque. O bloco "Em cadência" conta ESTADO, e
+  // isso confundiu na primeira operação real: 20 mensagens saíram no Direct
+  // mas o bloco mostrava 18, porque 2 dos 20 já estavam em Conversando e não
+  // voltam pra cadência fria. Esta linha conta o que foi ENVIADO.
+  const resumoToques = useMemo(() => {
+    const m = new Map<number, number>()
+    for (const l of leads) m.set(l.toque ?? 0, (m.get(l.toque ?? 0) ?? 0) + 1)
+    return [...m.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([n, q]) => (n === 0 ? q + ' sem toque' : q + ' no toque ' + n))
+      .join(' · ')
+  }, [leads])
+
   const naFila = leads.filter((l) => l.na_fila)
   const atrasados = naFila.filter((l) => l.situacao === 'atrasado').length
   const teto = cfg.teto_por_dia ?? 15
@@ -363,6 +376,11 @@ export default function Vendas() {
                 {bloco === 'hoje' && naFila.length > teto && (
                   <span className="block text-[12px] text-laranja-dark mt-1.5">
                     Manda no máximo {teto} hoje. Acima disso o Instagram começa a limitar sua conta.
+                  </span>
+                )}
+                {bloco === 'hoje' && leads.length > 0 && (
+                  <span className="block text-[12px] text-slate-500 mt-1.5 pt-1.5 border-t border-slate-100">
+                    {leads.length} leads no total: {resumoToques}.
                   </span>
                 )}
               </div>
